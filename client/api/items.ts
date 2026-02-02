@@ -23,8 +23,8 @@ export const useSearchItems = (query: string) => {
         .from('items')
         .select(`
           *,
-          category:categories(name),
-          store:stores(name)
+          category:categories!default_category_id(name),
+          store:stores!default_store_id(name)
         `)
         .ilike('name', `${query}%`)
         .limit(10);
@@ -45,8 +45,8 @@ export const useAllItems = (searchTerm: string = '') => {
         .from('items')
         .select(`
           *,
-          category:categories(name),
-          store:stores(name)
+          category:categories!default_category_id(name),
+          store:stores!default_store_id(name)
         `)
         .order('name');
 
@@ -84,6 +84,7 @@ export const useCreateMasterItem = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['items'] });
+      queryClient.invalidateQueries({ queryKey: ['all_items'] });
     },
   });
 };

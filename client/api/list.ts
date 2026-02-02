@@ -49,8 +49,8 @@ export const useShoppingList = () => {
         .from('list_items')
         .select(`
           *,
-          store:stores(name, color_code),
-          category:categories(name, sort_order)
+          store:stores!store_id(name, color_code),
+          category:categories!category_id(name, sort_order)
         `)
         .is('purchased_at', null) // Only active items
         .order('is_purchased', { ascending: true }) // Unbought first

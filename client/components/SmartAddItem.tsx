@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Modal, Keyboard } from 'react-native';
 import { Search, X, ChevronRight } from 'lucide-react-native';
-import { useSearchItems } from '@/api/items';
+import { useSearchItems, useCreateMasterItem } from '@/api/items';
 import { useAddToList } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 
@@ -18,6 +18,7 @@ export function SmartAddItem() {
   // API Hooks
   const { data: results = [] } = useSearchItems(query);
   const { mutate: addItem } = useAddToList();
+  const { mutateAsync: createMasterItem } = useCreateMasterItem(); // Using Async for chaining
   const { data: metadata } = useMetadata();
 
   const handleSearch = (text: string) => {
@@ -62,10 +63,28 @@ export function SmartAddItem() {
     setIsEditing(true);
   };
 
-  const onSaveEdited = () => {
+  const onSaveEdited = async () => {
+    let itemId = selectedItem?.id;
+
+    // If it's a brand new item (no ID), save to Master Database first
+    if (!itemId) {
+      try {
+        const newItem = await createMasterItem({
+          name: selectedItem?.name || query,
+          default_qty: editQty,
+          default_store_id: editStoreId,
+          default_category_id: editCategoryId,
+        });
+        itemId = newItem.id;
+      } catch (err) {
+        console.error('Failed to create master item:', err);
+        // Fallback to adding as one-off if master creation fails
+      }
+    }
+
     addItem({
       name: selectedItem ? selectedItem.name : query,
-      item_id: selectedItem ? selectedItem.id : null,
+      item_id: itemId || null,
       quantity: editQty,
       store_id: editStoreId,
       category_id: editCategoryId,
