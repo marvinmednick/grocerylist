@@ -1,33 +1,63 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Modal, StyleSheet } from 'react-native';
 import { Search, Tag, Store, Plus } from 'lucide-react-native';
-import { useAllItems, useCreateMasterItem } from '@/api/items';
+import { useAllItems, useCreateMasterItem, useUpdateMasterItem } from '@/api/items';
 import { useMetadata } from '@/api/metadata';
 
 export default function ItemsScreen() {
   const [search, setSearch] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  
   const { data: items, isLoading, error } = useAllItems(search);
   const { data: metadata } = useMetadata();
   const { mutate: createItem } = useCreateMasterItem();
+  const { mutate: updateItem } = useUpdateMasterItem();
 
   // Form State
   const [name, setName] = useState('');
   const [qty, setQty] = useState('');
+  const [altQtys, setAltQtys] = useState('');
   const [storeId, setStoreId] = useState('');
   const [categoryId, setCategoryId] = useState('');
 
-  const handleCreate = () => {
+  const openModal = (item: any = null) => {
+    if (item) {
+      setEditingItem(item);
+      setName(item.name);
+      setQty(item.default_qty || '');
+      setAltQtys(item.alternate_qtys ? item.alternate_qtys.join(', ') : '');
+      setStoreId(item.default_store_id || metadata?.stores?.[0]?.id || '');
+      setCategoryId(item.default_category_id || metadata?.categories?.[0]?.id || '');
+    } else {
+      setEditingItem(null);
+      setName('');
+      setQty('');
+      setAltQtys('');
+      setStoreId(metadata?.stores?.[0]?.id || '');
+      setCategoryId(metadata?.categories?.[0]?.id || '');
+    }
+    setIsModalVisible(true);
+  };
+
+  const handleSave = () => {
     if (!name) return;
-    createItem({
+
+    const payload = {
       name,
       default_qty: qty,
+      alternate_qtys: altQtys.split(',').map(s => s.trim()).filter(s => s.length > 0),
       default_store_id: storeId,
       default_category_id: categoryId,
-    });
+    };
+
+    if (editingItem) {
+      updateItem({ id: editingItem.id, ...payload });
+    } else {
+      createItem(payload);
+    }
+    
     setIsModalVisible(false);
-    setName('');
-    setQty('');
   };
 
   return (
@@ -38,11 +68,7 @@ export default function ItemsScreen() {
           <Text style={styles.title}>Master Database</Text>
           <TouchableOpacity 
             style={styles.addBtn}
-            onPress={() => {
-              setStoreId(metadata?.stores?.[0]?.id || '');
-              setCategoryId(metadata?.categories?.[0]?.id || '');
-              setIsModalVisible(true);
-            }}
+            onPress={() => openModal()}
           >
             <Plus size={24} color="#2563eb" />
           </TouchableOpacity>
@@ -77,9 +103,14 @@ export default function ItemsScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
-            <View style={styles.itemCard}>
+            <TouchableOpacity 
+              style={styles.itemCard}
+              onPress={() => openModal(item)}
+            >
               <View style={styles.itemInfo}>
-                <Text style={styles.itemName}>{item.name}</Text>
+                <Text style={styles.itemName}>
+                  {item.name}{item.default_qty ? ` - ${item.default_qty}` : ''}
+                </Text>
                 <View style={styles.badgeRow}>
                   <View style={styles.badge}>
                     <Tag size={12} color="#6b7280" />
@@ -91,7 +122,7 @@ export default function ItemsScreen() {
                   </View>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -101,11 +132,13 @@ export default function ItemsScreen() {
         />
       )}
 
-      {/* Add Item Modal */}
+      {/* Add/Edit Item Modal */}
       <Modal visible={isModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>New Master Item</Text>
+            <Text style={styles.modalTitle}>
+              {editingItem ? 'Edit Item' : 'New Master Item'}
+            </Text>
             
             <Text style={styles.label}>Item Name</Text>
             <TextInput 
@@ -123,6 +156,14 @@ export default function ItemsScreen() {
               placeholder="e.g. 1 gal"
             />
 
+            <Text style={styles.label}>Alternate Quantities (comma separated)</Text>
+            <TextInput 
+              style={styles.modalInput}
+              value={altQtys}
+              onChangeText={setAltQtys}
+              placeholder="e.g. 1/2 gal, 2 gal"
+            />
+
             <Text style={styles.label}>Default Store</Text>
             <View style={styles.tagsContainer}>
               {metadata?.stores?.map(store => (
@@ -138,12 +179,29 @@ export default function ItemsScreen() {
               ))}
             </View>
 
+            <Text style={styles.label}>Category</Text>
+            <View style={styles.tagsContainer}>
+              {metadata?.categories?.map(cat => (
+                <TouchableOpacity
+                  key={cat.id}
+                  onPress={() => setCategoryId(cat.id)}
+                  style={[styles.tag, categoryId === cat.id ? styles.tagActive : styles.tagInactive]}
+                >
+                  <Text style={categoryId === cat.id ? styles.tagTextActive : styles.tagTextInactive}>
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsModalVisible(false)}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={handleCreate}>
-                <Text style={styles.saveBtnText}>Save to Library</Text>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+                <Text style={styles.saveBtnText}>
+                  {editingItem ? 'Update Item' : 'Save to Library'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -13,8 +13,9 @@
 1.  **"Shopping Trip" Workflow:** 
     - Implementation of "Start Trip" and "End Trip".
     - "Cleanup" logic: When ending a trip, what happens to unbought items? (Keep, Delete, or Move to next trip).
-2.  **Master Item Editing:**
-    - Allow users to edit existing items in the "Items" tab (change default store, rename, etc.).
+2.  **Item Editing & Refinement:**
+    - Allow users to edit existing items in the "Items" tab (change category, default store, etc.).
+    - Allow users to edit items directly from the Shopping List (change qty or store after adding).
 3.  **Database Security (RLS):**
     - Enable Row Level Security in Supabase so users only see their own family/user lists.
 

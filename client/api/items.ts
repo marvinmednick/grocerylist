@@ -5,6 +5,7 @@ export interface MasterItem {
   id: string;
   name: string;
   default_qty: string | null;
+  alternate_qtys: string[] | null;
   default_category_id: string | null;
   default_store_id: string | null;
   category?: { name: string };
@@ -72,6 +73,7 @@ export const useCreateMasterItem = () => {
       default_category_id?: string; 
       default_store_id?: string;
       default_qty?: string;
+      alternate_qtys?: string[];
     }) => {
       const { data, error } = await supabase
         .from('items')
@@ -85,6 +87,37 @@ export const useCreateMasterItem = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['items'] });
       queryClient.invalidateQueries({ queryKey: ['all_items'] });
+    },
+  });
+};
+
+// Update an existing Master Item
+export const useUpdateMasterItem = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { 
+      id: string;
+      name?: string; 
+      default_category_id?: string; 
+      default_store_id?: string;
+      default_qty?: string;
+      alternate_qtys?: string[];
+    }) => {
+      const { data, error } = await supabase
+        .from('items')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['items'] });
+      queryClient.invalidateQueries({ queryKey: ['all_items'] });
+      queryClient.invalidateQueries({ queryKey: ['shopping_list'] }); // Invalidate list in case names changed
     },
   });
 };

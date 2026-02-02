@@ -125,9 +125,11 @@ export function SmartAddItem() {
                 style={styles.resultMain}
                 onPress={() => onQuickAdd(item)}
               >
-                <Text style={styles.resultName}>{item.name}</Text>
+                <Text style={styles.resultName}>
+                  {item.name}{item.default_qty ? ` - ${item.default_qty}` : ''}
+                </Text>
                 <Text style={styles.resultSubtext}>
-                  {item.default_qty || '1'} • {item.store?.name || 'Any Store'}
+                  {item.store?.name || 'Any Store'}
                 </Text>
               </TouchableOpacity>
               
@@ -173,6 +175,28 @@ export function SmartAddItem() {
               onChangeText={setEditQty}
               placeholder="e.g. 1 gal"
             />
+
+            {selectedItem?.alternate_qtys?.length > 0 && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={styles.label}>Usual Quantities</Text>
+                <View style={styles.tagsContainer}>
+                  {selectedItem.alternate_qtys.map((q: string) => (
+                    <TouchableOpacity
+                      key={q}
+                      onPress={() => setEditQty(q)}
+                      style={[
+                        styles.tag,
+                        editQty === q ? styles.tagActive : styles.tagInactive
+                      ]}
+                    >
+                      <Text style={editQty === q ? styles.tagTextActive : styles.tagTextInactive}>
+                        {q}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
 
             <Text style={styles.label}>Store</Text>
             <View style={styles.tagsContainer}>

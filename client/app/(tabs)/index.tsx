@@ -65,22 +65,15 @@ export default function ShoppingListScreen() {
                 )}
               </View>
 
-              {/* Col 2: Name */}
+              {/* Col 2: Name & Qty */}
               <View style={styles.colName}>
                  <Text 
                     style={[styles.nameText, item.is_purchased && styles.strikethrough]} 
                     numberOfLines={1}
                   >
-                    {item.name}
+                    {item.name}{item.quantity ? ` - ${item.quantity}` : ''}
                   </Text>
               </View>
-
-              {/* Col 3: Quantity */}
-              {item.quantity ? (
-                 <View style={styles.colQty}>
-                   <Text style={styles.qtyText}>{item.quantity}</Text>
-                 </View>
-              ) : <View style={styles.colQty} />}
 
                {/* Col 4: Category */}
                <View style={styles.colCategory}>
