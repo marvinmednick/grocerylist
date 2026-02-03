@@ -68,3 +68,12 @@ These scenarios define the expected behavior of the application and should be us
 - **Expected:** "Cheese" is removed.
 - **Action:** User clicks Redo (RotateCw icon).
 - **Expected:** "Cheese" reappears on the list.
+
+### Scenario 9: Duplicate Entry Handling
+- **Pre-condition:** "Ground Beef" is already on the list for Safeway.
+- **Action:** User types "Grou" and selects "Ground Beef" for Safeway again.
+- **Expected:** 
+  1. A prompt appears: "Ground Beef is already on your Safeway list. What would you like to do?"
+  2. Options: "Update Quantity", "Add Duplicate", "Cancel".
+- **Action:** User selects "Add Duplicate".
+- **Expected:** A second "Ground Beef" entry appears in the Safeway section.

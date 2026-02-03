@@ -56,6 +56,15 @@ The shopping list uses a flattened data structure to enable moving items across 
 - **Sync:** The item's `store_id` is updated to match the header found.
 - **Undo:** The move registers an action in the `UndoStack` to revert the `store_id` change.
 
+### D. Duplicate Entry Handling
+To prevent accidental duplicates and manage list clutter, the "Add" workflow will perform a check against the active `list_items`.
+- **Match Criteria:** Same `item_id` (for master items) or exact name match (for one-offs).
+- **Conflict Resolution:** If a match is found, a prompt appears:
+    1.  **Merge:** Update the existing item's quantity (e.g., adding "1 lb" to "1 lb" results in "2 lbs" or "1 lb + 1 lb").
+    2.  **Duplicate:** Add a second distinct entry for the item (useful if buying different brands/types).
+    3.  **Cancel:** Abort the addition.
+- **Cross-Store Detection:** If the item exists in a *different* store, the system will highlight this to the user during the merge/duplicate choice.
+
 ## 4. Feature Definitions
 
 ### A. Smart Item Entry (The "Add" Workflow)

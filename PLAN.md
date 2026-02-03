@@ -29,6 +29,10 @@
     - Finalize Supabase RLS policies to ensure user privacy and multi-tenancy.
 3.  **Fuzzy Matching:**
     - Improve search logic with Levenshtein distance for "Did you mean?" suggestions.
+4.  **Duplicate Entry Handling:**
+    - Detect when an item being added is already on the active list.
+    - Scenarios: Same store match, different store match, quantity variations.
+    - User Options: "Update/Merge Quantities", "Add as Duplicate", or "Cancel".
 
 ## 🛠 Future Features (Backlog)
 - [ ] **Family Sharing:** Invite another user to a shared list/household.
