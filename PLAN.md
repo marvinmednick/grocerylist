@@ -13,9 +13,12 @@
     - Global "End All Shopping Trips" footer.
     - Items remain crossed out until archived.
     - `archived_at` and `trip_id` linkage for history and integrity.
-- [x] **Global Undo System:** Command-pattern based stack (last 100 actions). Covers Adds, Toggles, Edits, Deletes, and Trip Archivals.
+- [x] **Global Undo & Redo System:** Command-pattern based stack (last 100 actions). Covers Adds, Toggles, Edits, Deletes, Trip Archivals, and Drag-and-Drop moves.
 - [x] **In-List Editing:** Tap item name to change Qty, Store, or Name post-addition.
 - [x] **Deletion:** Trash icon in Edit modal with full Undo restoration.
+- [x] **Drag and Drop Reordering:** Long-press to move items between store sections with automatic database re-assignment.
+- [x] **Active Selection Search:** Configure quantity and store via inline pills before adding to list.
+- [x] **Multi-Store Management:** Link items to multiple stores and designate defaults in the Master Library.
 - [x] **Visual Polish:** Consistent `Description - Quantity` formatting and centered mobile-responsive layout.
 
 ## 🚀 Current Focus (Next Steps)

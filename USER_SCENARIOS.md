@@ -52,3 +52,19 @@ These scenarios define the expected behavior of the application and should be us
 - **Expected:** List updates immediately to show "Milk - 2 gal".
 - **Action:** User clicks Undo.
 - **Expected:** List reverts back to "Milk - 1 gal".
+
+### Scenario 7: Drag and Drop Store Change
+- **Action:** User long-presses the grip icon next to "Milk" (currently under Safeway) and drags it under the "Costco" header.
+- **Expected:** 
+  1. The item stays under Costco.
+  2. Database: `store_id` for "Milk" updates to Costco's ID.
+  3. UI: The Undo badge increments.
+- **Action:** User clicks Undo.
+- **Expected:** "Milk" moves back to the Safeway section.
+
+### Scenario 8: Redo Action
+- **Action:** User adds "Cheese" to the list.
+- **Action:** User clicks Undo.
+- **Expected:** "Cheese" is removed.
+- **Action:** User clicks Redo (RotateCw icon).
+- **Expected:** "Cheese" reappears on the list.

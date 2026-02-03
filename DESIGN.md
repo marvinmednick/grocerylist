@@ -49,6 +49,13 @@ Items move through three states:
 2.  **Purchased:** `is_purchased = true`. Visible but crossed out. `purchased_at` is set.
 3.  **Archived:** `archived_at` IS NOT NULL. Hidden from active list. Linked to a `trip_id`.
 
+### C. Drag and Drop Store Assignment
+The shopping list uses a flattened data structure to enable moving items across store boundaries.
+- **Trigger:** Long-press on the vertical grip icon (`GripVertical`).
+- **Logic:** Upon drop (`onDragEnd`), the system traverses the list upwards from the drop index to find the nearest `header` row.
+- **Sync:** The item's `store_id` is updated to match the header found.
+- **Undo:** The move registers an action in the `UndoStack` to revert the `store_id` change.
+
 ## 4. Feature Definitions
 
 ### A. Smart Item Entry (The "Add" Workflow)
