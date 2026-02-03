@@ -77,3 +77,12 @@ These scenarios define the expected behavior of the application and should be us
   2. Options: "Update Quantity", "Add Duplicate", "Cancel".
 - **Action:** User selects "Add Duplicate".
 - **Expected:** A second "Ground Beef" entry appears in the Safeway section.
+
+### Scenario 10: Quantity Units Selection
+- **Pre-condition:** "Ground Beef" has default unit "lbs".
+- **Action:** User edits "Ground Beef" in the shopping list.
+- **Expected:** 
+  1. The quantity input shows the current value (e.g., "1").
+  2. A unit picker shows "lbs" as selected.
+- **Action:** User types "2-3" in the value field and selects "packages" in the unit picker. Taps Save.
+- **Expected:** The list displays "Ground Beef - 2-3 packages".

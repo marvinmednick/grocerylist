@@ -33,6 +33,10 @@
     - Detect when an item being added is already on the active list.
     - Scenarios: Same store match, different store match, quantity variations.
     - User Options: "Update/Merge Quantities", "Add as Duplicate", or "Cancel".
+5.  **Quantity Units System:**
+    - Create a master list of common units (lbs, oz, cans, bags, etc.).
+    - Allow items to define a default unit (e.g., Ground Beef defaults to 'lbs').
+    - UI: Provide a picker for units while still allowing free-form text for the quantity value (e.g., "2-2.5").
 
 ## 🛠 Future Features (Backlog)
 - [ ] **Family Sharing:** Invite another user to a shared list/household.

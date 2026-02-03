@@ -18,47 +18,40 @@ CREATE TABLE categories (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. ITEMS (Master Database)
+-- 3. UNITS
+CREATE TABLE units (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL UNIQUE,
+    abbreviation TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 4. ITEMS (Master Database)
 CREATE TABLE items (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL UNIQUE,
     default_category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     default_store_id UUID REFERENCES stores(id) ON DELETE SET NULL,
+    default_unit_id UUID REFERENCES units(id) ON DELETE SET NULL,
     default_qty TEXT,
     alternate_qtys TEXT[] DEFAULT '{}',
-    search_tokens TSVECTOR,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Create a GIN index for search tokens
-CREATE INDEX items_search_idx ON items USING GIN (search_tokens);
-
--- 4. SHOPPING TRIPS (Future Proofing)
-CREATE TABLE shopping_trips (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    started_at TIMESTAMPTZ DEFAULT NOW(),
-    ended_at TIMESTAMPTZ,
-    primary_store_id UUID REFERENCES stores(id),
-    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'retroactive')),
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 5. LIST ITEMS (The Active Shopping List)
-CREATE TABLE list_items (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    item_id UUID REFERENCES items(id) ON DELETE SET NULL,
-    name TEXT NOT NULL, -- Snapshot
+// ...
     quantity TEXT,      -- Snapshot
+    unit_id UUID REFERENCES units(id) ON DELETE SET NULL, -- Snapshot unit
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    store_id UUID REFERENCES stores(id) ON DELETE SET NULL,
-    trip_id UUID REFERENCES shopping_trips(id) ON DELETE SET NULL,
-    is_purchased BOOLEAN DEFAULT FALSE,
-    added_at TIMESTAMPTZ DEFAULT NOW(),
-    purchased_at TIMESTAMPTZ,
-    archived_at TIMESTAMPTZ,
-    added_by UUID, -- Link to auth.users.id
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
+// ...
+INSERT INTO units (name, abbreviation) VALUES 
+('Pounds', 'lbs'),
+('Ounces', 'oz'),
+('Grams', 'g'),
+('Kilograms', 'kg'),
+('Count', 'x'),
+('Packages', 'pkgs'),
+('Cans', 'cans'),
+('Bags', 'bags'),
+('Gallons', 'gal'),
+('Quarts', 'qt');
+
 
 -- 6. ITEM_STORES (Many-to-Many relationship for "Known Stores" for an item)
 CREATE TABLE item_stores (

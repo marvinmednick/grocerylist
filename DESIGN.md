@@ -65,6 +65,15 @@ To prevent accidental duplicates and manage list clutter, the "Add" workflow wil
     3.  **Cancel:** Abort the addition.
 - **Cross-Store Detection:** If the item exists in a *different* store, the system will highlight this to the user during the merge/duplicate choice.
 
+### E. Quantity Units System
+To standardize quantity entry while preserving flexibility, the system will support a formal Units dictionary.
+- **`units` Table:** Stores standardized unit names (e.g., "Pounds", "Ounces", "Count", "Cans").
+- **Master Item Defaults:** Items can specify a `default_unit_id`.
+- **UI Integration:**
+    - The "Add" and "Edit" modals will feature a unit picker (dropdown or chip bar).
+    - The quantity value remains a text field to allow ranges or notes (e.g., "2-2.5").
+    - Resulting string: `{Value} {Unit}` (e.g., "2-2.5 lbs").
+
 ## 4. Feature Definitions
 
 ### A. Smart Item Entry (The "Add" Workflow)
