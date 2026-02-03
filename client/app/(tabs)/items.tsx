@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Modal, StyleSheet } from 'react-native';
-import { Search, Tag, Store, Plus } from 'lucide-react-native';
+import { Search, Tag, Store, Plus, Star } from 'lucide-react-native';
 import { useAllItems, useCreateMasterItem, useUpdateMasterItem } from '@/api/items';
 import { useMetadata } from '@/api/metadata';
 
@@ -187,38 +187,47 @@ export default function ItemsScreen() {
               placeholder="e.g. 1/2 gal, 2 gal"
             />
 
-            <Text style={styles.label}>Associated Stores (Tap to select, Tap again to set default)</Text>
+            <Text style={styles.label}>Associated Stores (Tap name to toggle, Tap star to set default)</Text>
             <View style={styles.tagsContainer}>
               {metadata?.stores?.map(store => {
                 const isSelected = selectedStoreIds.includes(store.id);
                 const isDefault = storeId === store.id;
                 
                 return (
-                  <TouchableOpacity
+                  <View 
                     key={store.id}
-                    onPress={() => {
-                      if (!isSelected) {
-                        toggleStore(store.id);
-                      } else {
-                        setStoreId(store.id); // Set as default if already selected
-                      }
-                    }}
-                    onLongPress={() => toggleStore(store.id)} // Allow de-selection
                     style={[
-                      styles.tag, 
+                      styles.splitTag, 
                       isSelected ? styles.tagActive : styles.tagInactive,
-                      isDefault && { borderStyle: 'dashed', borderWidth: 2, borderColor: '#fbbf24' }
+                      isDefault && styles.tagDefault
                     ]}
                   >
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity
+                      onPress={() => toggleStore(store.id)}
+                      style={styles.tagMain}
+                    >
                       <Text style={isSelected ? styles.tagTextActive : styles.tagTextInactive}>
-                        {isDefault ? '⭐ ' : ''}{store.name}
+                        {store.name}
                       </Text>
-                    </View>
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+                    
+                    {isSelected && (
+                      <TouchableOpacity 
+                        onPress={() => setStoreId(store.id)}
+                        style={styles.tagStar}
+                      >
+                        <Star 
+                          size={14} 
+                          fill={isDefault ? "#fbbf24" : "transparent"} 
+                          color={isDefault ? "#fbbf24" : "white"} 
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 );
               })}
             </View>
+
 
             <Text style={styles.label}>Category</Text>
             <View style={styles.tagsContainer}>
@@ -279,7 +288,29 @@ const styles = StyleSheet.create({
   tag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
   tagActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
   tagInactive: { backgroundColor: 'white', borderColor: '#d1d5db' },
-  tagTextActive: { color: 'white' },
+  tagDefault: { borderColor: '#fbbf24', borderWidth: 2 },
+  splitTag: {
+    flexDirection: 'row',
+    borderRadius: 999,
+    borderWidth: 1,
+    overflow: 'hidden',
+    alignItems: 'center',
+  },
+  tagMain: {
+    paddingLeft: 12,
+    paddingRight: 8,
+    paddingVertical: 6,
+  },
+  tagStar: {
+    paddingRight: 10,
+    paddingLeft: 4,
+    paddingVertical: 6,
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(255,255,255,0.3)',
+    height: '100%',
+    justifyContent: 'center',
+  },
+  tagTextActive: { color: 'white', fontWeight: '600' },
   tagTextInactive: { color: '#374151' },
   modalActions: { flexDirection: 'row', gap: 12 },
   cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center' },

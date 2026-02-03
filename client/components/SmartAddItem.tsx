@@ -11,6 +11,9 @@ export function SmartAddItem() {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   
+  // Local state for dropdown selections: itemId -> { qty, storeId }
+  const [selections, setSelections] = useState<Record<string, { qty: string, storeId: string }>>({});
+
   // Local state for the Edit Form
   const [editQty, setEditQty] = useState('');
   const [editStoreId, setEditStoreId] = useState('');
@@ -24,6 +27,21 @@ export function SmartAddItem() {
   const { data: metadata } = useMetadata();
   const { pushAction } = useUndo();
 
+  const getSelection = (item: any) => {
+    return selections[item.id] || { 
+      qty: item.default_qty || '1', 
+      storeId: item.default_store_id 
+    };
+  };
+
+  const toggleSelection = (itemId: string, updates: any) => {
+    const item = results.find(r => r.id === itemId);
+    setSelections(prev => ({
+      ...prev,
+      [itemId]: { ...getSelection(item), ...updates }
+    }));
+  };
+
   const handleSearch = (text: string) => {
     setQuery(text);
   };
@@ -32,41 +50,23 @@ export function SmartAddItem() {
     setQuery('');
     setIsEditing(false);
     setSelectedItem(null);
+    setSelections({});
     Keyboard.dismiss();
   };
 
-  const onQuickAdd = async (item: any) => {
+  const onCommitAdd = async (item: any) => {
+    const selection = getSelection(item);
     const name = item.name;
     const result = await addItem({
       name: item.name,
       item_id: item.id,
-      quantity: item.default_qty || '1',
-      store_id: item.default_store_id,
+      quantity: selection.qty,
+      store_id: selection.storeId,
       category_id: item.default_category_id,
     });
 
     pushAction({
-      label: `Added ${name}`,
-      undo: async () => {
-        await deleteItem(result.id);
-      }
-    });
-    
-    clearAndClose();
-  };
-
-  const onOverrideAdd = async (item: any, overrides: { quantity?: string, store_id?: string }) => {
-    const name = item.name;
-    const result = await addItem({
-      name: item.name,
-      item_id: item.id,
-      quantity: overrides.quantity || item.default_qty || '1',
-      store_id: overrides.store_id || item.default_store_id,
-      category_id: item.default_category_id,
-    });
-
-    pushAction({
-      label: `Added ${name} (${overrides.quantity || item.default_qty})`,
+      label: `Added ${name} (${selection.qty})`,
       undo: async () => {
         await deleteItem(result.id);
       }
@@ -167,62 +167,70 @@ export function SmartAddItem() {
             </View>
           )}
           
-          {results.map((item) => (
-            <View key={item.id} style={styles.resultRowComplex}>
-              <View style={styles.resultMainSection}>
-                <TouchableOpacity 
-                  style={styles.resultHeader}
-                  onPress={() => onQuickAdd(item)}
-                >
-                  <Text style={styles.resultName}>
-                    {item.name}{item.default_qty ? ` - ${item.default_qty}` : ''}
-                  </Text>
-                  <Text style={styles.resultSubtext}>
-                    {item.store?.name || 'Any Store'}
-                  </Text>
-                </TouchableOpacity>
+          {results.map((item) => {
+            const selection = getSelection(item);
+            
+            return (
+              <View key={item.id} style={styles.resultRowComplex}>
+                <View style={styles.resultMainSection}>
+                  <TouchableOpacity 
+                    style={styles.resultHeader}
+                    onPress={() => onCommitAdd(item)}
+                  >
+                    <Text style={styles.resultName}>{item.name}</Text>
+                  </TouchableOpacity>
 
-                {/* Inline Qty Pills */}
-                {item.alternate_qtys?.length > 0 && (
+                  {/* Inline Qty Pills */}
                   <View style={styles.inlinePillRow}>
                     <Text style={styles.inlineLabel}>Qty: </Text>
-                    {item.alternate_qtys.map((q: string) => (
-                      <TouchableOpacity 
-                        key={q} 
-                        style={styles.inlinePill}
-                        onPress={() => onOverrideAdd(item, { quantity: q })}
-                      >
-                        <Text style={styles.inlinePillText}>{q}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    {[item.default_qty || '1', ...(item.alternate_qtys || [])].map((q: string) => {
+                      const isActive = selection.qty === q;
+                      return (
+                        <TouchableOpacity 
+                          key={q} 
+                          style={[styles.inlinePill, isActive && styles.pillActiveBlue]}
+                          onPress={() => toggleSelection(item.id, { qty: q })}
+                        >
+                          <Text style={[styles.inlinePillText, isActive && styles.pillTextActive]}>{q}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
-                )}
 
-                {/* Inline Store Pills */}
-                {item.item_stores?.length > 0 && (
+                  {/* Inline Store Pills */}
                   <View style={styles.inlinePillRow}>
                     <Text style={styles.inlineLabel}>Store: </Text>
-                    {item.item_stores.map((s: any) => (
-                      <TouchableOpacity 
-                        key={s.store.id} 
-                        style={[styles.inlinePill, { borderColor: '#dcfce7' }]}
-                        onPress={() => onOverrideAdd(item, { store_id: s.store.id })}
-                      >
-                        <Text style={[styles.inlinePillText, { color: '#166534' }]}>{s.store.name}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    {Array.from(new Set([
+                      item.default_store_id, 
+                      ...(item.item_stores?.map((s: any) => s.store.id) || [])
+                    ])).filter(Boolean).map((sid: any) => {
+                      const storeName = sid === item.default_store_id 
+                        ? (item.store?.name || 'Any Store')
+                        : item.item_stores?.find((s: any) => s.store.id === sid)?.store.name;
+                      
+                      const isActive = selection.storeId === sid;
+                      return (
+                        <TouchableOpacity 
+                          key={sid} 
+                          style={[styles.inlinePill, isActive && styles.pillActiveGreen]}
+                          onPress={() => toggleSelection(item.id, { storeId: sid })}
+                        >
+                          <Text style={[styles.inlinePillText, isActive && styles.pillTextActive]}>{storeName}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
-                )}
+                </View>
+                
+                <TouchableOpacity 
+                  style={styles.resultEditBtn}
+                  onPress={() => onEditAdd(item)}
+                >
+                  <ChevronRight size={20} color="#9ca3af" />
+                </TouchableOpacity>
               </View>
-              
-              <TouchableOpacity 
-                style={styles.resultEditBtn}
-                onPress={() => onEditAdd(item)}
-              >
-                <ChevronRight size={20} color="#9ca3af" />
-              </TouchableOpacity>
-            </View>
-          ))}
+            );
+          })}
           
           {/* Create New / One Off */}
           <View style={styles.createRow}>
@@ -387,7 +395,19 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   resultHeader: {
-    marginBottom: 8,
+    marginBottom: 4,
+  },
+  pillActiveBlue: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  pillActiveGreen: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
+  },
+  pillTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
   },
   resultName: {
     fontSize: 16,
