@@ -105,6 +105,34 @@ export const useAddToList = () => {
   });
 };
 
+// Update existing list item
+export const useUpdateListItem = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: {
+      id: string;
+      name?: string;
+      quantity?: string;
+      store_id?: string;
+      category_id?: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('list_items')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
+    },
+  });
+};
+
 // Delete item from list
 export const useDeleteListItem = () => {
   const queryClient = useQueryClient();
