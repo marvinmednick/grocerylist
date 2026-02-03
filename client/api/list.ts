@@ -10,6 +10,7 @@ export interface ListItem {
   category_id: string | null;
   store_id: string | null;
   item_id: string | null; // Link to master item
+  trip_id?: string | null;
   store?: { name: string; color_code: string };
   category?: { name: string; sort_order: number };
 }
@@ -19,19 +20,16 @@ export const useShoppingList = () => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Subscribe to real-time changes
     const channel = supabase
       .channel('public:list_items')
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen to INSERT, UPDATE, DELETE
+          event: '*',
           schema: 'public',
           table: 'list_items',
         },
-        (payload) => {
-          // Ideally we would optimistically merge the payload, but invalidating is safer and fast enough for MVP
-          console.log('Realtime update received:', payload);
+        () => {
           queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
         }
       )
@@ -52,12 +50,36 @@ export const useShoppingList = () => {
           store:stores!store_id(name, color_code),
           category:categories!category_id(name, sort_order)
         `)
-        .is('purchased_at', null) // Only active items
-        .order('is_purchased', { ascending: true }) // Unbought first
+        .is('archived_at', null)
         .order('added_at', { ascending: false });
 
       if (error) throw error;
       return data as ListItem[];
+    },
+  });
+};
+
+// Toggle Purchased Status
+export const useTogglePurchased = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, is_purchased }: { id: string; is_purchased: boolean }) => {
+      const { data, error } = await supabase
+        .from('list_items')
+        .update({
+          is_purchased,
+          purchased_at: is_purchased ? new Date().toISOString() : null
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
     },
   });
 };
@@ -67,13 +89,7 @@ export const useAddToList = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (newItem: {
-      name: string;
-      item_id?: string | null;
-      quantity?: string;
-      store_id?: string;
-      category_id?: string;
-    }) => {
+    mutationFn: async (newItem: any) => {
       const { data, error } = await supabase
         .from('list_items')
         .insert(newItem)
@@ -89,44 +105,76 @@ export const useAddToList = () => {
   });
 };
 
-// Toggle Purchased Status
-export const useTogglePurchased = () => {
+// Delete item from list
+export const useDeleteListItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('list_items').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
+    },
+  });
+};
+
+// End Trip (Create trip record and archive purchased items)
+export const useEndTrip = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, is_purchased }: { id: string; is_purchased: boolean }) => {
-      const { data, error } = await supabase
+    mutationFn: async ({ store_id }: { store_id?: string } = {}) => {
+      const { data: trip, error: tripError } = await supabase
+        .from('shopping_trips')
+        .insert({
+          primary_store_id: store_id || null,
+          status: 'completed',
+          ended_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (tripError) throw tripError;
+
+      let query = supabase
         .from('list_items')
         .update({ 
-          is_purchased,
-          purchased_at: is_purchased ? null : new Date().toISOString() // Logic for "Cleanup" will be different, for now simple toggle
+          archived_at: new Date().toISOString(),
+          trip_id: trip.id 
         })
-        .eq('id', id)
-        .select();
+        .eq('is_purchased', true)
+        .is('archived_at', null);
 
-      if (error) throw error;
-      return data;
-    },
-    onMutate: async ({ id, is_purchased }) => {
-      // Optimistic Update
-      await queryClient.cancelQueries({ queryKey: ['shopping_list'] });
-      const previousList = queryClient.getQueryData(['shopping_list']);
-
-      queryClient.setQueryData(['shopping_list'], (old: ListItem[] | undefined) => {
-        if (!old) return [];
-        return old.map(item => 
-          item.id === id ? { ...item, is_purchased } : item
-        );
-      });
-
-      return { previousList };
-    },
-    onError: (err, variables, context) => {
-      if (context?.previousList) {
-        queryClient.setQueryData(['shopping_list'], context.previousList);
+      if (store_id) {
+        query = query.eq('store_id', store_id);
       }
+
+      const { data: items, error: itemsError } = await query.select();
+      if (itemsError) throw itemsError;
+
+      return { trip, items };
     },
-    onSettled: () => {
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
+    },
+  });
+};
+
+// Revert Archival
+export const useRevertArchival = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ trip_id }: { trip_id: string }) => {
+      const { error: itemsError } = await supabase
+        .from('list_items')
+        .update({ archived_at: null, trip_id: null })
+        .eq('trip_id', trip_id);
+      if (itemsError) throw itemsError;
+
+      await supabase.from('shopping_trips').delete().eq('id', trip_id);
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
     },
   });

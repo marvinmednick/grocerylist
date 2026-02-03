@@ -10,6 +10,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import { View, ActivityIndicator } from 'react-native';
+import { UndoProvider } from '@/api/undoContext';
 
 import { useColorScheme } from '@/components/useColorScheme';
 
@@ -51,7 +52,9 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <RootLayoutNav />
+      <UndoProvider>
+        <RootLayoutNav />
+      </UndoProvider>
     </QueryClientProvider>
   );
 }

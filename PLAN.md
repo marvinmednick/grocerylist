@@ -25,6 +25,7 @@
 - [ ] **Usual Quantities:** Dropdown in Edit Modal populated by historical usage for that item.
 - [ ] **Retroactive Trips:** Log a trip that happened in the past (Cleanup for "forgot to check off" scenario).
 - [ ] **Family Sharing:** Ability to invite another user to see the same list.
+- [ ] **Sorting & Reordering:** Review methods for custom list sorting (e.g., by category or aisle) or allowing manual drag-and-drop reordering.
 
 ## 📝 User Workflows (Target Scenarios)
 1.  **The Quick Add:** Type "Mi", tap "Milk", item appears in Safeway section immediately.

@@ -55,6 +55,7 @@ CREATE TABLE list_items (
     is_purchased BOOLEAN DEFAULT FALSE,
     added_at TIMESTAMPTZ DEFAULT NOW(),
     purchased_at TIMESTAMPTZ,
+    archived_at TIMESTAMPTZ,
     added_by UUID, -- Link to auth.users.id
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

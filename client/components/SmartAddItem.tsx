@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Modal, Keyboard } from 'react-native';
 import { Search, X, ChevronRight } from 'lucide-react-native';
 import { useSearchItems, useCreateMasterItem } from '@/api/items';
-import { useAddToList } from '@/api/list';
+import { useAddToList, useDeleteListItem } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
+import { useUndo } from '@/api/undoContext';
 
 export function SmartAddItem() {
   const [query, setQuery] = useState('');
@@ -17,9 +18,11 @@ export function SmartAddItem() {
 
   // API Hooks
   const { data: results = [] } = useSearchItems(query);
-  const { mutate: addItem } = useAddToList();
-  const { mutateAsync: createMasterItem } = useCreateMasterItem(); // Using Async for chaining
+  const { mutateAsync: addItem } = useAddToList();
+  const { mutateAsync: createMasterItem } = useCreateMasterItem(); 
+  const { mutateAsync: deleteItem } = useDeleteListItem();
   const { data: metadata } = useMetadata();
+  const { pushAction } = useUndo();
 
   const handleSearch = (text: string) => {
     setQuery(text);
@@ -32,26 +35,43 @@ export function SmartAddItem() {
     Keyboard.dismiss();
   };
 
-  const onQuickAdd = (item: any) => {
-    addItem({
+  const onQuickAdd = async (item: any) => {
+    const name = item.name;
+    const result = await addItem({
       name: item.name,
       item_id: item.id,
       quantity: item.default_qty || '1',
       store_id: item.default_store_id,
       category_id: item.default_category_id,
     });
+
+    pushAction({
+      label: `Added ${name}`,
+      undo: async () => {
+        await deleteItem(result.id);
+      }
+    });
+    
     clearAndClose();
   };
 
-  const onOneOffAdd = () => {
-    addItem({
+  const onOneOffAdd = async () => {
+    const name = query;
+    const result = await addItem({
       name: query,
       item_id: null,
       quantity: '1',
-      // Default to first store/category or "Other" if undefined for now
       store_id: metadata?.stores?.[0]?.id, 
       category_id: metadata?.categories?.find(c => c.name === 'Other')?.id,
     });
+
+    pushAction({
+      label: `Added ${name}`,
+      undo: async () => {
+        await deleteItem(result.id);
+      }
+    });
+
     clearAndClose();
   };
 
@@ -82,15 +102,25 @@ export function SmartAddItem() {
       }
     }
 
-    addItem({
-      name: selectedItem ? selectedItem.name : query,
+    const name = selectedItem ? selectedItem.name : query;
+    const result = await addItem({
+      name: name,
       item_id: itemId || null,
       quantity: editQty,
       store_id: editStoreId,
       category_id: editCategoryId,
     });
+
+    pushAction({
+      label: `Added ${name}`,
+      undo: async () => {
+        await deleteItem(result.id);
+      }
+    });
+
     clearAndClose();
   };
+
 
   return (
     <View style={styles.container}>
