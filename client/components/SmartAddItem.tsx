@@ -55,6 +55,26 @@ export function SmartAddItem() {
     clearAndClose();
   };
 
+  const onOverrideAdd = async (item: any, overrides: { quantity?: string, store_id?: string }) => {
+    const name = item.name;
+    const result = await addItem({
+      name: item.name,
+      item_id: item.id,
+      quantity: overrides.quantity || item.default_qty || '1',
+      store_id: overrides.store_id || item.default_store_id,
+      category_id: item.default_category_id,
+    });
+
+    pushAction({
+      label: `Added ${name} (${overrides.quantity || item.default_qty})`,
+      undo: async () => {
+        await deleteItem(result.id);
+      }
+    });
+    
+    clearAndClose();
+  };
+
   const onOneOffAdd = async () => {
     const name = query;
     const result = await addItem({
@@ -86,7 +106,6 @@ export function SmartAddItem() {
   const onSaveEdited = async () => {
     let itemId = selectedItem?.id;
 
-    // If it's a brand new item (no ID), save to Master Database first
     if (!itemId) {
       try {
         const newItem = await createMasterItem({
@@ -98,7 +117,6 @@ export function SmartAddItem() {
         itemId = newItem.id;
       } catch (err) {
         console.error('Failed to create master item:', err);
-        // Fallback to adding as one-off if master creation fails
       }
     }
 
@@ -150,18 +168,52 @@ export function SmartAddItem() {
           )}
           
           {results.map((item) => (
-            <View key={item.id} style={styles.resultRow}>
-              <TouchableOpacity 
-                style={styles.resultMain}
-                onPress={() => onQuickAdd(item)}
-              >
-                <Text style={styles.resultName}>
-                  {item.name}{item.default_qty ? ` - ${item.default_qty}` : ''}
-                </Text>
-                <Text style={styles.resultSubtext}>
-                  {item.store?.name || 'Any Store'}
-                </Text>
-              </TouchableOpacity>
+            <View key={item.id} style={styles.resultRowComplex}>
+              <View style={styles.resultMainSection}>
+                <TouchableOpacity 
+                  style={styles.resultHeader}
+                  onPress={() => onQuickAdd(item)}
+                >
+                  <Text style={styles.resultName}>
+                    {item.name}{item.default_qty ? ` - ${item.default_qty}` : ''}
+                  </Text>
+                  <Text style={styles.resultSubtext}>
+                    {item.store?.name || 'Any Store'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Inline Qty Pills */}
+                {item.alternate_qtys?.length > 0 && (
+                  <View style={styles.inlinePillRow}>
+                    <Text style={styles.inlineLabel}>Qty: </Text>
+                    {item.alternate_qtys.map((q: string) => (
+                      <TouchableOpacity 
+                        key={q} 
+                        style={styles.inlinePill}
+                        onPress={() => onOverrideAdd(item, { quantity: q })}
+                      >
+                        <Text style={styles.inlinePillText}>{q}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* Inline Store Pills */}
+                {item.item_stores?.length > 0 && (
+                  <View style={styles.inlinePillRow}>
+                    <Text style={styles.inlineLabel}>Store: </Text>
+                    {item.item_stores.map((s: any) => (
+                      <TouchableOpacity 
+                        key={s.store.id} 
+                        style={[styles.inlinePill, { borderColor: '#dcfce7' }]}
+                        onPress={() => onOverrideAdd(item, { store_id: s.store.id })}
+                      >
+                        <Text style={[styles.inlinePillText, { color: '#166534' }]}>{s.store.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
               
               <TouchableOpacity 
                 style={styles.resultEditBtn}
@@ -274,7 +326,7 @@ const styles = StyleSheet.create({
     zIndex: 50,
   },
   searchBar: {
-    flexDirection: 'row', // CRITICAL
+    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f3f4f6',
     borderRadius: 12,
@@ -297,7 +349,7 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     position: 'absolute',
-    top: 56, // Height + margin
+    top: 56,
     left: 16,
     right: 16,
     backgroundColor: 'white',
@@ -324,20 +376,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#9ca3af',
   },
-  resultRow: {
+  resultRowComplex: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     borderBottomWidth: 1,
     borderBottomColor: '#f9fafb',
   },
-  resultMain: {
+  resultMainSection: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 12,
+  },
+  resultHeader: {
+    marginBottom: 8,
   },
   resultName: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#111827',
   },
   resultSubtext: {
@@ -345,9 +399,35 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginTop: 2,
   },
+  inlinePillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: 4,
+    gap: 6,
+  },
+  inlineLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#9ca3af',
+    textTransform: 'uppercase',
+    width: 40,
+  },
+  inlinePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#ffffff',
+  },
+  inlinePillText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#4b5563',
+  },
   resultEditBtn: {
     paddingHorizontal: 16,
-    height: '100%',
     justifyContent: 'center',
     backgroundColor: '#f9fafb',
     borderLeftWidth: 1,
@@ -371,7 +451,7 @@ const styles = StyleSheet.create({
   },
   createEditBtn: {
     paddingHorizontal: 16,
-    height: '100%',
+    height: 48,
     justifyContent: 'center',
     backgroundColor: '#dbeafe',
     borderLeftWidth: 1,

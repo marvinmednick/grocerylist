@@ -29,11 +29,26 @@ These scenarios define the expected behavior of the application and should be us
 - **Action:** User A checks the box for "Apples".
 - **Expected:** User B sees the "Apples" row cross out and move (if sorting is enabled) instantly without refreshing.
 
-### Scenario 4: The Cleanup Flow (Future)
-- **Action:** User has "Milk" (Purchased) and "Bread" (Unpurchased) on the list.
-- **Action:** User taps "End Shopping Trip".
+### Scenario 4: The Cleanup Flow (Store Specific)
+- **Action:** User has "Milk" (Purchased) and "Bread" (Unpurchased) under Safeway.
+- **Action:** User taps "End Trip" in the Safeway header.
 - **Expected:** 
-  1. Modal asks: "What should we do with Bread?"
-  2. User selects "Keep on list".
-  3. "Milk" is removed from the active view (moved to history).
-  4. "Bread" remains on the active list for the next trip.
+  1. Confirmation dialog appears.
+  2. "Milk" is removed from the active view (`archived_at` set).
+  3. "Bread" remains on the active list.
+  4. An "Undo" badge increment appears at the top.
+
+### Scenario 5: Global Undo
+- **Action:** User accidentally deletes "Eggs" from the list via the trash icon.
+- **Action:** User taps the Undo button (RotateCcw icon) in the main header.
+- **Expected:** 
+  1. "Eggs" reappears in the list with all original details (Qty, Store).
+  2. The undo badge decrement happens.
+
+### Scenario 6: In-List Editing
+- **Action:** User taps the text "Milk - 1 gal".
+- **Expected:** "Edit Item" modal opens.
+- **Action:** User changes quantity to "2 gal" and taps "Save Changes".
+- **Expected:** List updates immediately to show "Milk - 2 gal".
+- **Action:** User clicks Undo.
+- **Expected:** List reverts back to "Milk - 1 gal".

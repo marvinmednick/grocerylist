@@ -1,34 +1,35 @@
 # Grocery App - Project Plan & Status
 
-## ✅ Completed (MVP Phase)
-- [x] **Project Scaffolding:** Expo (React Native) + TypeScript + NativeWind (partial) + StyleSheet.
-- [x] **Database Design:** Relational schema for Items, Stores, Categories, and List Items.
-- [x] **Authentication:** Supabase Auth (Sign In / Sign Up) with route protection.
-- [x] **Active Shopping List:** Grouped by store, checkbox toggle, real-time sync.
+## ✅ Completed (MVP + Core Enhancements)
+- [x] **Project Scaffolding:** Expo (React Native) + TypeScript + StyleSheet (Robust Layout).
+- [x] **Database Design:** Relational schema for Items, Stores, Categories, List Items, and Trips.
+- [x] **Authentication:** Supabase Auth (Sign In / Sign Up) with route protection and session persistence.
+- [x] **Active Shopping List:** Grouped by store, checkbox toggle, real-time sync via Supabase Channels.
 - [x] **Smart Add Component:** Autocomplete from Master DB, "Quick Add" with defaults, "Edit Before Add" modal, and One-off items.
-- [x] **Master Library View:** Searchable list of all known items (Tab 2).
-- [x] **Infrastructure:** Git initialized, `.env` configured, Supabase connected.
+- [x] **Master Library View:** Searchable list of all known items with Add/Edit capabilities.
+- [x] **Multi-Quantity Support:** Save `alternate_qtys` in Master DB; show as quick-select chips in the Add modal.
+- [x] **Detailed Trip Workflow:** 
+    - Store-specific "End Trip" buttons in headers.
+    - Global "End All Shopping Trips" footer.
+    - Items remain crossed out until archived.
+    - `archived_at` and `trip_id` linkage for history and integrity.
+- [x] **Global Undo System:** Command-pattern based stack (last 100 actions). Covers Adds, Toggles, Edits, Deletes, and Trip Archivals.
+- [x] **In-List Editing:** Tap item name to change Qty, Store, or Name post-addition.
+- [x] **Deletion:** Trash icon in Edit modal with full Undo restoration.
+- [x] **Visual Polish:** Consistent `Description - Quantity` formatting and centered mobile-responsive layout.
 
 ## 🚀 Current Focus (Next Steps)
-1.  **"Shopping Trip" Workflow:** 
-    - Implementation of "Start Trip" and "End Trip".
-    - "Cleanup" logic: When ending a trip, what happens to unbought items? (Keep, Delete, or Move to next trip).
-2.  **Item Editing & Refinement:**
-    - Allow users to edit existing items in the "Items" tab (change category, default store, etc.).
-    - Allow users to edit items directly from the Shopping List (change qty or store after adding).
-3.  **Database Security (RLS):**
-    - Enable Row Level Security in Supabase so users only see their own family/user lists.
+1.  **Recipes & Bundles:**
+    - Ability to define a "Recipe" (group of items).
+    - "Staging" UI: Select a recipe, check/uncheck ingredients, then add all to list at once.
+2.  **Database Security (RLS):**
+    - Finalize Supabase RLS policies to ensure user privacy and multi-tenancy.
+3.  **Fuzzy Matching:**
+    - Improve search logic with Levenshtein distance for "Did you mean?" suggestions.
 
 ## 🛠 Future Features (Backlog)
-- [ ] **Recipes & Bundles:** Add groups of items to the list at once (with the "Staging/Review" modal).
-- [ ] **Fuzzy Matching:** Improved "Did you mean?" logic for typos in the search bar.
-- [ ] **Usual Quantities:** Dropdown in Edit Modal populated by historical usage for that item.
-- [ ] **Retroactive Trips:** Log a trip that happened in the past (Cleanup for "forgot to check off" scenario).
-- [ ] **Family Sharing:** Ability to invite another user to see the same list.
-- [ ] **Sorting & Reordering:** Review methods for custom list sorting (e.g., by category or aisle) or allowing manual drag-and-drop reordering.
-
-## 📝 User Workflows (Target Scenarios)
-1.  **The Quick Add:** Type "Mi", tap "Milk", item appears in Safeway section immediately.
-2.  **The One-Off:** Type "Sunscreen", tap "Add One-time", item appears in "Other" section; not saved to DB.
-3.  **The New Favorite:** Type "Dragonfruit", hit Edit icon, assign "Produce" and "Whole Foods", tap "Save". Item is now in DB for next time.
-4.  **The Cleanup:** Tap "End Trip" button. System asks: "You didn't get Eggs. Keep them on the list?" User says Yes. Eggs remain, everything else is archived.
+- [ ] **Family Sharing:** Invite another user to a shared list/household.
+- [ ] **Sorting & Reordering:** Manual drag-and-drop or category-based sorting within stores.
+- [ ] **Aisle/Store Mapping:** Order items based on store layout.
+- [ ] **Price Tracking:** Log prices per item/store for total trip estimation.
+- [ ] **Offline Mode:** Local persistence for use in stores with poor reception.

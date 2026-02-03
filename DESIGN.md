@@ -10,65 +10,46 @@
 
 ## 2. Data Architecture (Schema)
 
-To support both the MVP and the Future Features (Recipes, Trips), we will use the following relational schema.
+To support both the MVP and the Future Features (Recipes, Trips), we use the following relational schema.
 
 ### Core Entities
 *   **`profiles`** (Users)
     *   `id` (UUID, matches Auth)
     *   `email`
-    *   `preferences` (JSONB - e.g., default store)
-
-*   **`stores`**
+*   **`stores`**: ID, Name, Color.
+*   **`categories`**: ID, Name, Sort Order.
+*   **`items`** (Master Dictionary)
     *   `id` (UUID)
-    *   `name` (Text)
-    *   `color_code` (Hex String)
-    *   `icon` (String/Enum)
-
-*   **`categories`**
-    *   `id` (UUID)
-    *   `name` (Text)
-    *   `sort_order` (Int)
-
-*   **`items`** (The "Master Database" / Dictionary)
-    *   `id` (UUID)
-    *   `name` (Text - Unique, CI)
-    *   `default_category_id` (FK -> categories)
-    *   `default_store_id` (FK -> stores, nullable)
-    *   `search_tokens` (TSVector - for fuzzy search)
+    *   `name` (Text - Unique)
+    *   `default_qty` (Text)
+    *   `alternate_qtys` (Array of Strings)
+    *   `default_category_id` (FK)
+    *   `default_store_id` (FK)
 
 ### The Shopping List (Active Data)
 *   **`list_items`**
     *   `id` (UUID)
-    *   `name` (Text - copied from Master or custom)
-    *   `quantity` (Text - "2 lbs", "1 bag")
+    *   `name`, `quantity` (Snapshots)
     *   `is_purchased` (Boolean)
-    *   `added_at` (Timestamp)
-    *   `purchased_at` (Timestamp - nullable)
-    *   **Foreign Keys:**
-        *   `item_id` (FK -> items, nullable. If null, it's a "one-off" or "unknown" item).
-        *   `store_id` (FK -> stores).
-        *   `added_by` (FK -> profiles).
-        *   `trip_id` (FK -> shopping_trips, nullable. Assigned when a trip is completed).
+    *   `purchased_at` (Timestamp - set when checked)
+    *   `archived_at` (Timestamp - set when Trip Ends)
+    *   `trip_id` (FK -> shopping_trips)
 
-### Future: Recipes & Trips
-*   **`recipes`**
-    *   `id` (UUID)
-    *   `name` (Text)
-    *   `description` (Text)
+## 3. Core System Patterns
 
-*   **`recipe_ingredients`**
-    *   `recipe_id` (FK)
-    *   `item_id` (FK)
-    *   `default_quantity` (Text)
+### A. The Command Pattern (Undo System)
+The app maintains a global `UndoStack` (React Context) containing the last 100 user actions. 
+- **Registration:** Every mutation (Add, Delete, Edit, Toggle) pushes an `UndoableAction` object.
+- **Payload:** Each action contains a `label` and an `undo()` function which contains the inverse Supabase logic.
+- **Persistence:** Undo persists through navigation but resets on app refresh (session-based).
 
-*   **`shopping_trips`**
-    *   `id` (UUID)
-    *   `started_at` (Timestamp)
-    *   `ended_at` (Timestamp)
-    *   `store_id` (FK - Primary store visited, nullable)
-    *   `status` (Enum: 'active', 'completed', 'retroactive_pending')
+### B. Multi-Tier Archiving (Trips)
+Items move through three states:
+1.  **Active:** `is_purchased = false`.
+2.  **Purchased:** `is_purchased = true`. Visible but crossed out. `purchased_at` is set.
+3.  **Archived:** `archived_at` IS NOT NULL. Hidden from active list. Linked to a `trip_id`.
 
-## 3. Feature Definitions
+## 4. Feature Definitions
 
 ### A. Smart Item Entry (The "Add" Workflow)
 **User Story:** "I want to add 'Milk', but I shouldn't have to type it all if the app knows it, and I want to see exactly what is being added."

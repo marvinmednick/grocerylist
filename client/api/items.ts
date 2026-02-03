@@ -25,7 +25,10 @@ export const useSearchItems = (query: string) => {
         .select(`
           *,
           category:categories!default_category_id(name),
-          store:stores!default_store_id(name)
+          store:stores!default_store_id(name),
+          item_stores(
+            store:stores(id, name)
+          )
         `)
         .ilike('name', `${query}%`)
         .limit(10);
@@ -47,7 +50,10 @@ export const useAllItems = (searchTerm: string = '') => {
         .select(`
           *,
           category:categories!default_category_id(name),
-          store:stores!default_store_id(name)
+          store:stores!default_store_id(name),
+          item_stores(
+            store:stores(id, name)
+          )
         `)
         .order('name');
 
@@ -74,15 +80,30 @@ export const useCreateMasterItem = () => {
       default_store_id?: string;
       default_qty?: string;
       alternate_qtys?: string[];
+      store_ids?: string[]; // New: list of all associated stores
     }) => {
-      const { data, error } = await supabase
+      const { store_ids, ...itemData } = newItem;
+      
+      const { data: item, error } = await supabase
         .from('items')
-        .insert(newItem)
+        .insert(itemData)
         .select()
         .single();
         
       if (error) throw error;
-      return data;
+
+      // Link to multiple stores if provided
+      if (store_ids && store_ids.length > 0) {
+        const links = store_ids.map(sid => ({
+          item_id: item.id,
+          store_id: sid,
+          is_preferred: sid === newItem.default_store_id
+        }));
+        const { error: linkError } = await supabase.from('item_stores').insert(links);
+        if (linkError) throw linkError;
+      }
+
+      return item;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['items'] });
@@ -96,14 +117,16 @@ export const useUpdateMasterItem = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...updates }: { 
+    mutationFn: async ({ id, store_ids, ...updates }: { 
       id: string;
       name?: string; 
       default_category_id?: string; 
       default_store_id?: string;
       default_qty?: string;
       alternate_qtys?: string[];
+      store_ids?: string[];
     }) => {
+      // 1. Update core item data
       const { data, error } = await supabase
         .from('items')
         .update(updates)
@@ -112,12 +135,27 @@ export const useUpdateMasterItem = () => {
         .single();
 
       if (error) throw error;
+
+      // 2. Sync stores (Delete old, Insert new)
+      if (store_ids) {
+        await supabase.from('item_stores').delete().eq('item_id', id);
+        
+        if (store_ids.length > 0) {
+          const links = store_ids.map(sid => ({
+            item_id: id,
+            store_id: sid,
+            is_preferred: sid === updates.default_store_id
+          }));
+          await supabase.from('item_stores').insert(links);
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['items'] });
       queryClient.invalidateQueries({ queryKey: ['all_items'] });
-      queryClient.invalidateQueries({ queryKey: ['shopping_list'] }); // Invalidate list in case names changed
+      queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
     },
   });
 };

@@ -18,7 +18,8 @@ export default function ItemsScreen() {
   const [name, setName] = useState('');
   const [qty, setQty] = useState('');
   const [altQtys, setAltQtys] = useState('');
-  const [storeId, setStoreId] = useState('');
+  const [storeId, setStoreId] = useState(''); // Default Store
+  const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
   const [categoryId, setCategoryId] = useState('');
 
   const openModal = (item: any = null) => {
@@ -27,17 +28,37 @@ export default function ItemsScreen() {
       setName(item.name);
       setQty(item.default_qty || '');
       setAltQtys(item.alternate_qtys ? item.alternate_qtys.join(', ') : '');
-      setStoreId(item.default_store_id || metadata?.stores?.[0]?.id || '');
-      setCategoryId(item.default_category_id || metadata?.categories?.[0]?.id || '');
+      setStoreId(item.default_store_id || '');
+      
+      const linkedStores = item.item_stores?.map((s: any) => s.store.id) || [];
+      setSelectedStoreIds(linkedStores.length > 0 ? linkedStores : (item.default_store_id ? [item.default_store_id] : []));
+      
+      setCategoryId(item.default_category_id || '');
     } else {
       setEditingItem(null);
       setName('');
       setQty('');
       setAltQtys('');
-      setStoreId(metadata?.stores?.[0]?.id || '');
+      setStoreId('');
+      setSelectedStoreIds([]);
       setCategoryId(metadata?.categories?.[0]?.id || '');
     }
     setIsModalVisible(true);
+  };
+
+  const toggleStore = (sid: string) => {
+    setSelectedStoreIds(prev => {
+      const isSelected = prev.includes(sid);
+      const next = isSelected ? prev.filter(id => id !== sid) : [...prev, sid];
+      
+      // If the default store was removed, clear it or pick another
+      if (isSelected && storeId === sid) {
+        setStoreId(next[0] || '');
+      } else if (!isSelected && next.length === 1) {
+        setStoreId(sid); // Auto-set first selection as default
+      }
+      return next;
+    });
   };
 
   const handleSave = () => {
@@ -47,7 +68,8 @@ export default function ItemsScreen() {
       name,
       default_qty: qty,
       alternate_qtys: altQtys.split(',').map(s => s.trim()).filter(s => s.length > 0),
-      default_store_id: storeId,
+      default_store_id: storeId || null,
+      store_ids: selectedStoreIds,
       default_category_id: categoryId,
     };
 
@@ -59,6 +81,7 @@ export default function ItemsScreen() {
     
     setIsModalVisible(false);
   };
+// ... (modal UI update next)
 
   return (
     <View style={styles.container}>
@@ -164,19 +187,37 @@ export default function ItemsScreen() {
               placeholder="e.g. 1/2 gal, 2 gal"
             />
 
-            <Text style={styles.label}>Default Store</Text>
+            <Text style={styles.label}>Associated Stores (Tap to select, Tap again to set default)</Text>
             <View style={styles.tagsContainer}>
-              {metadata?.stores?.map(store => (
-                <TouchableOpacity
-                  key={store.id}
-                  onPress={() => setStoreId(store.id)}
-                  style={[styles.tag, storeId === store.id ? styles.tagActive : styles.tagInactive]}
-                >
-                  <Text style={storeId === store.id ? styles.tagTextActive : styles.tagTextInactive}>
-                    {store.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {metadata?.stores?.map(store => {
+                const isSelected = selectedStoreIds.includes(store.id);
+                const isDefault = storeId === store.id;
+                
+                return (
+                  <TouchableOpacity
+                    key={store.id}
+                    onPress={() => {
+                      if (!isSelected) {
+                        toggleStore(store.id);
+                      } else {
+                        setStoreId(store.id); // Set as default if already selected
+                      }
+                    }}
+                    onLongPress={() => toggleStore(store.id)} // Allow de-selection
+                    style={[
+                      styles.tag, 
+                      isSelected ? styles.tagActive : styles.tagInactive,
+                      isDefault && { borderStyle: 'dashed', borderWidth: 2, borderColor: '#fbbf24' }
+                    ]}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={isSelected ? styles.tagTextActive : styles.tagTextInactive}>
+                        {isDefault ? '⭐ ' : ''}{store.name}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
             <Text style={styles.label}>Category</Text>
