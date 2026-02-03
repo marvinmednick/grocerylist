@@ -57,18 +57,26 @@ export function SmartAddItem() {
   const onCommitAdd = async (item: any) => {
     const selection = getSelection(item);
     const name = item.name;
-    const result = await addItem({
-      name: item.name,
-      item_id: item.id,
-      quantity: selection.qty,
-      store_id: selection.storeId,
-      category_id: item.default_category_id,
-    });
+    
+    const forwardAction = async () => {
+      return await addItem({
+        name: item.name,
+        item_id: item.id,
+        quantity: selection.qty,
+        store_id: selection.storeId,
+        category_id: item.default_category_id,
+      });
+    };
+
+    const result = await forwardAction();
 
     pushAction({
       label: `Added ${name} (${selection.qty})`,
       undo: async () => {
         await deleteItem(result.id);
+      },
+      redo: async () => {
+        await forwardAction();
       }
     });
     
@@ -77,18 +85,25 @@ export function SmartAddItem() {
 
   const onOneOffAdd = async () => {
     const name = query;
-    const result = await addItem({
-      name: query,
-      item_id: null,
-      quantity: '1',
-      store_id: metadata?.stores?.[0]?.id, 
-      category_id: metadata?.categories?.find(c => c.name === 'Other')?.id,
-    });
+    const forwardAction = async () => {
+      return await addItem({
+        name: query,
+        item_id: null,
+        quantity: '1',
+        store_id: metadata?.stores?.[0]?.id, 
+        category_id: metadata?.categories?.find(c => c.name === 'Other')?.id,
+      });
+    };
+
+    const result = await forwardAction();
 
     pushAction({
       label: `Added ${name}`,
       undo: async () => {
         await deleteItem(result.id);
+      },
+      redo: async () => {
+        await forwardAction();
       }
     });
 
@@ -105,11 +120,12 @@ export function SmartAddItem() {
 
   const onSaveEdited = async () => {
     let itemId = selectedItem?.id;
+    const itemName = selectedItem?.name || query;
 
     if (!itemId) {
       try {
         const newItem = await createMasterItem({
-          name: selectedItem?.name || query,
+          name: itemName,
           default_qty: editQty,
           default_store_id: editStoreId,
           default_category_id: editCategoryId,
@@ -120,19 +136,25 @@ export function SmartAddItem() {
       }
     }
 
-    const name = selectedItem ? selectedItem.name : query;
-    const result = await addItem({
-      name: name,
-      item_id: itemId || null,
-      quantity: editQty,
-      store_id: editStoreId,
-      category_id: editCategoryId,
-    });
+    const forwardAction = async () => {
+      return await addItem({
+        name: itemName,
+        item_id: itemId || null,
+        quantity: editQty,
+        store_id: editStoreId,
+        category_id: editCategoryId,
+      });
+    };
+
+    const result = await forwardAction();
 
     pushAction({
-      label: `Added ${name}`,
+      label: `Added ${itemName}`,
       undo: async () => {
         await deleteItem(result.id);
+      },
+      redo: async () => {
+        await forwardAction();
       }
     });
 

@@ -3,46 +3,68 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 export interface UndoableAction {
   label: string;
   undo: () => Promise<void>;
+  redo: () => Promise<void>;
 }
 
 interface UndoContextType {
   undoStack: UndoableAction[];
+  redoStack: UndoableAction[];
   pushAction: (action: UndoableAction) => void;
   undoLastAction: () => Promise<void>;
+  redoLastAction: () => Promise<void>;
   canUndo: boolean;
+  canRedo: boolean;
 }
 
 const UndoContext = createContext<UndoContextType | undefined>(undefined);
 
 export const UndoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [stack, setStack] = useState<UndoableAction[]>([]);
+  const [undoStack, setUndoStack] = useState<UndoableAction[]>([]);
+  const [redoStack, setRedoStack] = useState<UndoableAction[]>([]);
 
   const pushAction = useCallback((action: UndoableAction) => {
-    setStack((prev) => {
+    setUndoStack((prev) => {
       const newStack = [action, ...prev];
-      return newStack.slice(0, 100); // Keep last 100 actions
+      return newStack.slice(0, 100);
     });
+    setRedoStack([]); // Clear redo stack on new action
   }, []);
 
   const undoLastAction = useCallback(async () => {
-    const [lastAction, ...remaining] = stack;
-    if (!lastAction) return;
-
+    if (undoStack.length === 0) return;
+    
+    const [action, ...remainingUndo] = undoStack;
     try {
-      await lastAction.undo();
-      setStack(remaining);
+      await action.undo();
+      setUndoStack(remainingUndo);
+      setRedoStack(prev => [action, ...prev]);
     } catch (error) {
       console.error('Failed to undo action:', error);
-      // Optional: show error toast
     }
-  }, [stack]);
+  }, [undoStack]);
+
+  const redoLastAction = useCallback(async () => {
+    if (redoStack.length === 0) return;
+
+    const [action, ...remainingRedo] = redoStack;
+    try {
+      await action.redo();
+      setRedoStack(remainingRedo);
+      setUndoStack(prev => [action, ...prev]);
+    } catch (error) {
+      console.error('Failed to redo action:', error);
+    }
+  }, [redoStack]);
 
   return (
     <UndoContext.Provider value={{ 
-      undoStack: stack, 
+      undoStack, 
+      redoStack,
       pushAction, 
       undoLastAction, 
-      canUndo: stack.length > 0 
+      redoLastAction,
+      canUndo: undoStack.length > 0,
+      canRedo: redoStack.length > 0
     }}>
       {children}
     </UndoContext.Provider>

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, SectionList, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
-import { CheckCircle2, Circle, Archive, RotateCcw, Trash2 } from 'lucide-react-native';
+import { CheckCircle2, Circle, Archive, RotateCcw, RotateCw, Trash2 } from 'lucide-react-native';
 import { SmartAddItem } from '@/components/SmartAddItem';
-import { useShoppingList, useTogglePurchased, useUpdateListItem, useEndTrip, useDeleteListItem, useRevertArchival, ListItem } from '@/api/list';
+import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, useEndTrip, useDeleteListItem, useRevertArchival, ListItem } from '@/api/list';
 import { useUndo } from '@/api/undoContext';
 import { useMetadata } from '@/api/metadata';
 
@@ -10,11 +10,12 @@ export default function ShoppingListScreen() {
   const { data: listItems, isLoading } = useShoppingList();
   const { mutateAsync: togglePurchased } = useTogglePurchased();
   const { mutateAsync: updateListItem } = useUpdateListItem();
+  const { mutateAsync: addItem } = useAddToList();
   const { mutateAsync: endTrip } = useEndTrip();
   const { mutateAsync: deleteItem } = useDeleteListItem();
   const { mutateAsync: revertArchival } = useRevertArchival();
   
-  const { undoLastAction, pushAction, canUndo, undoStack } = useUndo();
+  const { undoLastAction, redoLastAction, pushAction, canUndo, canRedo, undoStack, redoStack } = useUndo();
   const { data: metadata } = useMetadata();
 
   // Undo state
@@ -55,6 +56,9 @@ export default function ShoppingListScreen() {
       label: `${newStatus ? 'Checked' : 'Unchecked'} ${item.name}`,
       undo: async () => {
         await togglePurchased({ id: item.id, is_purchased: !newStatus });
+      },
+      redo: async () => {
+        await togglePurchased({ id: item.id, is_purchased: newStatus });
       }
     });
   };
@@ -88,6 +92,9 @@ export default function ShoppingListScreen() {
       label: `Edited ${editName}`,
       undo: async () => {
         await updateListItem({ id: editingItem.id, ...previousState });
+      },
+      redo: async () => {
+        await updateListItem({ id: editingItem.id, ...updates });
       }
     });
 
@@ -105,12 +112,16 @@ export default function ShoppingListScreen() {
       label: `Deleted ${itemToDelete.name}`,
       undo: async () => {
         await addItem({
+          id: itemToDelete.id,
           name: itemToDelete.name,
           quantity: itemToDelete.quantity,
           store_id: itemToDelete.store_id,
           category_id: itemToDelete.category_id,
           item_id: itemToDelete.item_id,
         });
+      },
+      redo: async () => {
+        await deleteItem(itemToDelete.id);
       }
     });
 
@@ -128,6 +139,11 @@ export default function ShoppingListScreen() {
             label: `Ended trip ${storeName || 'All'}`,
             undo: async () => {
               await revertArchival({ trip_id: result.trip.id });
+            },
+            redo: async () => {
+              // Note: This is slightly simplified as it creates a NEW trip record
+              // but effectively archives the same items again
+              await endTrip({ store_id: storeId });
             }
           });
         }
@@ -142,18 +158,33 @@ export default function ShoppingListScreen() {
       {/* Global Header */}
       <View style={styles.globalHeader}>
         <Text style={styles.globalTitle}>Shopping List</Text>
-        <TouchableOpacity 
-          onPress={undoLastAction} 
-          disabled={!canUndo}
-          style={[styles.headerUndoBtn, !canUndo && { opacity: 0.3 }]}
-        >
-          <RotateCcw size={20} color={canUndo ? "#2563eb" : "#9ca3af"} />
-          {undoStack.length > 0 && (
-            <View style={styles.undoBadge}>
-              <Text style={styles.undoBadgeText}>{undoStack.length}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity 
+            onPress={undoLastAction} 
+            disabled={!canUndo}
+            style={[styles.headerActionBtn, !canUndo && { opacity: 0.3 }]} 
+          >
+            <RotateCcw size={20} color={canUndo ? "#2563eb" : "#9ca3af"} />
+            {undoStack.length > 0 && (
+              <View style={[styles.badge, styles.undoBadge]}>
+                <Text style={styles.badgeText}>{undoStack.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            onPress={redoLastAction} 
+            disabled={!canRedo}
+            style={[styles.headerActionBtn, !canRedo && { opacity: 0.3 }, { marginLeft: 12 }]} 
+          >
+            <RotateCw size={20} color={canRedo ? "#2563eb" : "#9ca3af"} />
+            {redoStack.length > 0 && (
+              <View style={[styles.badge, styles.redoBadge]}>
+                <Text style={styles.badgeText}>{redoStack.length}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.headerContainer}>
@@ -222,6 +253,7 @@ export default function ShoppingListScreen() {
         />
       )}
 
+      {/* Edit List Item Modal */}
       <Modal visible={isEditModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -300,17 +332,20 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#111827',
   },
-  headerUndoBtn: {
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerActionBtn: {
     padding: 8,
     backgroundColor: '#eff6ff',
     borderRadius: 12,
     position: 'relative',
   },
-  undoBadge: {
+  badge: {
     position: 'absolute',
     top: -4,
     right: -4,
-    backgroundColor: '#ef4444',
     borderRadius: 10,
     width: 18,
     height: 18,
@@ -319,7 +354,13 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'white',
   },
-  undoBadgeText: {
+  undoBadge: {
+    backgroundColor: '#ef4444',
+  },
+  redoBadge: {
+    backgroundColor: '#10b981',
+  },
+  badgeText: {
     color: 'white',
     fontSize: 9,
     fontWeight: '800',
