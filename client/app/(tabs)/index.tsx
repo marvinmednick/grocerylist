@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Modal, TextInput, FlatList } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, Platform } from 'react-native';
 import { CheckCircle2, Circle, Archive, RotateCcw, RotateCw, Trash2, GripVertical } from 'lucide-react-native';
-// import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
+import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { SmartAddItem } from '@/components/SmartAddItem';
 import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, useEndTrip, useDeleteListItem, useRevertArchival, ListItem } from '@/api/list';
 import { useUndo } from '@/api/undoContext';
@@ -90,26 +90,28 @@ export default function ShoppingListScreen() {
     if (!editingItem) return;
     const itemToDelete = { ...editingItem };
     await deleteItem(itemToDelete.id);
+    const tracker = { currentId: itemToDelete.id };
     pushAction({
       label: `Deleted ${itemToDelete.name}`,
       undo: async () => {
-        await addItem({
+        const result = await addItem({
           name: itemToDelete.name,
           quantity: itemToDelete.quantity,
           store_id: itemToDelete.store_id,
           category_id: itemToDelete.category_id,
           item_id: itemToDelete.item_id,
         });
+        tracker.currentId = result.id;
       },
-      redo: async () => { await deleteItem(itemToDelete.id); }
+      redo: async () => { await deleteItem(tracker.currentId); }
     });
     setIsEditModalVisible(false);
     setEditingItem(null);
   };
 
-  const handleEndTrip = async (storeId?: string, storeName?: string) => {
+  const handleEndTrip = (storeId?: string, storeName?: string) => {
     const title = storeName ? `End Trip at ${storeName}?` : 'End All Shopping Trips?';
-    if (confirm(`${title}\n\nThis will archive all purchased items.`)) {
+    const doEndTrip = async () => {
       try {
         const result = await endTrip({ store_id: storeId === 'other' ? undefined : storeId });
         if (result?.trip?.id) {
@@ -122,16 +124,47 @@ export default function ShoppingListScreen() {
       } catch (err) {
         console.error('Failed to end trip:', err);
       }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${title}\n\nThis will archive all purchased items.`)) {
+        doEndTrip();
+      }
+    } else {
+      Alert.alert(title, 'This will archive all purchased items.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'End Trip', style: 'destructive', onPress: doEndTrip },
+      ]);
     }
   };
 
-  /*
   const onDragEnd = async ({ data, from, to }: { data: FlatListItem[], from: number, to: number }) => {
-    // Drag logic disabled
+    const draggedItem = data[to];
+    if (draggedItem.type !== 'item') return;
+    let newStoreId = '';
+    let newStoreName = '';
+    for (let i = to; i >= 0; i--) {
+      if (data[i].type === 'header') {
+        const h = data[i] as FlatListItem & { type: 'header' };
+        newStoreId = h.storeId;
+        newStoreName = h.title;
+        break;
+      }
+    }
+    if (newStoreId && newStoreId !== draggedItem.data.store_id) {
+      const originalStoreId = draggedItem.data.store_id;
+      const itemId = draggedItem.id;
+      const itemName = draggedItem.data.name;
+      await updateListItem({ id: itemId, store_id: newStoreId === 'other' ? null : newStoreId });
+      pushAction({
+        label: `Moved ${itemName} to ${newStoreName}`,
+        undo: async () => { await updateListItem({ id: itemId, store_id: originalStoreId }); },
+        redo: async () => { await updateListItem({ id: itemId, store_id: newStoreId === 'other' ? null : newStoreId }); }
+      });
+    }
   };
-  */
 
-  const renderItem = ({ item }: { item: FlatListItem }) => {
+  const renderItem = ({ item, drag, isActive }: RenderItemParams<FlatListItem>) => {
     if (item.type === 'header') {
       const hasPurchased = item.items.some(i => i.is_purchased);
       return (
@@ -148,49 +181,54 @@ export default function ShoppingListScreen() {
     }
     const listItem = item.data;
     return (
-      <View style={styles.itemRow}>
-        <TouchableOpacity style={styles.colCheckbox} onPress={() => handleToggle(listItem)}>
-          {listItem.is_purchased ? <CheckCircle2 size={24} color="#10b981" /> : <Circle size={24} color="#d1d5db" />}
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.colName} onPress={() => openEditModal(listItem)}>
-             <Text style={[styles.nameText, listItem.is_purchased && styles.strikethrough]} numberOfLines={1}>
-                {listItem.name}{listItem.quantity ? ` - ${listItem.quantity}` : ''}
-              </Text>
-        </TouchableOpacity>
-           <View style={styles.colCategory}>
-             <Text style={styles.categoryText} numberOfLines={1}>{listItem.category?.name || '—'}</Text>
-           </View>
-      </View>
+      <ScaleDecorator>
+        <View style={[styles.itemRow, isActive && styles.itemRowActive]}>
+          <TouchableOpacity style={styles.colCheckbox} onPress={() => handleToggle(listItem)}>
+            {listItem.is_purchased ? <CheckCircle2 size={24} color="#10b981" /> : <Circle size={24} color="#d1d5db" />}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.colName} onPress={() => openEditModal(listItem)}>
+            <Text style={[styles.nameText, listItem.is_purchased && styles.strikethrough]} numberOfLines={1}>
+              {listItem.name}{listItem.quantity ? ` - ${listItem.quantity}` : ''}
+            </Text>
+          </TouchableOpacity>
+          <View style={styles.colCategory}>
+            <Text style={styles.categoryText} numberOfLines={1}>{listItem.category?.name || '—'}</Text>
+          </View>
+          <TouchableOpacity onLongPress={drag} delayLongPress={50} style={styles.dragHandle}>
+            <GripVertical size={20} color="#d1d5db" />
+          </TouchableOpacity>
+        </View>
+      </ScaleDecorator>
     );
   };
-           
-             return (
-               <View style={styles.container}>
-                 <View style={styles.globalHeader}>
-                   <Text style={styles.globalTitle}>Shopping List</Text>
-                   <View style={styles.headerActions}>
-                     <TouchableOpacity onPress={undoLastAction} disabled={!canUndo} style={[styles.headerActionBtn, !canUndo && { opacity: 0.3 }]}>
-                       <RotateCcw size={20} color={canUndo ? "#2563eb" : "#9ca3af"} />
-                       {undoStack.length > 0 && <View style={[styles.badge, styles.undoBadge]}><Text style={styles.badgeText}>{undoStack.length}</Text></View>}
-                     </TouchableOpacity>
-           
-                     <TouchableOpacity onPress={redoLastAction} disabled={!canRedo} style={[styles.headerActionBtn, !canRedo && { opacity: 0.3 }, { marginLeft: 12 }]}>
-                       <RotateCw size={20} color={canRedo ? "#2563eb" : "#9ca3af"} />
-                       {redoStack.length > 0 && <View style={[styles.badge, styles.redoBadge]}><Text style={styles.badgeText}>{redoStack.length}</Text></View>}
-                     </TouchableOpacity>
-                   </View>
-                 </View>
-                 <View style={styles.headerContainer}><SmartAddItem /></View>
-                 {isLoading ? (
-                   <View style={styles.center}><ActivityIndicator size="large" color="#0000ff" /></View>
-                 ) : (
-                   <View style={{ flex: 1, width: '100%', maxWidth: 600, alignSelf: 'center' }}>
-                     <FlatList
-                       data={flatData}
-                       keyExtractor={(item) => item.id}
-                       renderItem={renderItem}
-                       contentContainerStyle={styles.listContent}
-           
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.globalHeader}>
+        <Text style={styles.globalTitle}>Shopping List</Text>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={undoLastAction} disabled={!canUndo} style={[styles.headerActionBtn, !canUndo && { opacity: 0.3 }]}>
+            <RotateCcw size={20} color={canUndo ? "#2563eb" : "#9ca3af"} />
+            {undoStack.length > 0 && <View style={[styles.badge, styles.undoBadge]}><Text style={styles.badgeText}>{undoStack.length}</Text></View>}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={redoLastAction} disabled={!canRedo} style={[styles.headerActionBtn, !canRedo && { opacity: 0.3 }, { marginLeft: 12 }]}>
+            <RotateCw size={20} color={canRedo ? "#2563eb" : "#9ca3af"} />
+            {redoStack.length > 0 && <View style={[styles.badge, styles.redoBadge]}><Text style={styles.badgeText}>{redoStack.length}</Text></View>}
+          </TouchableOpacity>
+        </View>
+      </View>
+      <View style={styles.headerContainer}><SmartAddItem /></View>
+      {isLoading ? (
+        <View style={styles.center}><ActivityIndicator size="large" color="#0000ff" /></View>
+      ) : (
+        <View style={{ flex: 1, width: '100%', maxWidth: 600, alignSelf: 'center' }}>
+          <DraggableFlatList
+            data={flatData}
+            onDragEnd={onDragEnd}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            activationDistance={5}
+            contentContainerStyle={styles.listContent}
             ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>Your list is empty.</Text></View>}
             ListFooterComponent={() => {
               const hasAnyPurchased = listItems?.some(item => item.is_purchased);
@@ -219,7 +257,9 @@ export default function ShoppingListScreen() {
             <Text style={styles.label}>Store</Text>
             <View style={styles.tagsContainer}>
               {metadata?.stores?.map(store => (
-                <TouchableOpacity key={store.id} onPress={() => setEditStoreId(store.id)} style={[styles.tag, editStoreId === store.id ? styles.tagActive : styles.tagInactive]}><Text style={editStoreId === store.id ? styles.tagTextActive : styles.tagTextInactive}>{store.name}</Text></TouchableOpacity>
+                <TouchableOpacity key={store.id} onPress={() => setEditStoreId(store.id)} style={[styles.tag, editStoreId === store.id ? styles.tagActive : styles.tagInactive]}>
+                  <Text style={editStoreId === store.id ? styles.tagTextActive : styles.tagTextInactive}>{store.name}</Text>
+                </TouchableOpacity>
               ))}
             </View>
             <View style={styles.modalActions}>
@@ -246,16 +286,17 @@ const styles = StyleSheet.create({
   headerContainer: { paddingTop: 8, paddingBottom: 8, backgroundColor: '#ffffff', zIndex: 10, width: '100%', maxWidth: 600, alignSelf: 'center' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingBottom: 100 },
-  sectionHeader: { backgroundColor: '#f3f4f6', paddingHorizontal: 16, paddingVertical: 6, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#e5e7eb', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionHeader: { height: 32, backgroundColor: '#f3f4f6', paddingHorizontal: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#e5e7eb', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionHeaderText: { fontSize: 12, fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5 },
-  itemRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f9fafb', backgroundColor: '#ffffff', width: '100%' },
+  itemRow: { height: 48, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#f9fafb', backgroundColor: '#ffffff', width: '100%' },
+  itemRowActive: { backgroundColor: '#eff6ff', elevation: 5, zIndex: 100 },
   colCheckbox: { marginRight: 12, width: 24, alignItems: 'center' },
   colName: { flex: 1, marginRight: 8 },
   nameText: { fontSize: 16, fontWeight: '500', color: '#111827' },
   strikethrough: { textDecorationLine: 'line-through', color: '#9ca3af' },
   colCategory: { width: 80, alignItems: 'flex-end' },
   categoryText: { fontSize: 12, color: '#9ca3af' },
-  dragHandle: { paddingHorizontal: 8, height: '100%', justifyContent: 'center' },
+  dragHandle: { paddingHorizontal: 8, justifyContent: 'center' },
   inlineEndTripBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#bfdbfe' },
   inlineEndTripText: { fontSize: 11, fontWeight: '700', color: '#2563eb', marginLeft: 4 },
   globalEndTripBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2563eb', margin: 20, padding: 16, borderRadius: 16, shadowColor: '#2563eb', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },

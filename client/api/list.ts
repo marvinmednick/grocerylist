@@ -85,14 +85,23 @@ export const useTogglePurchased = () => {
 };
 
 // Add item to list
+export interface ListItemInsert {
+  name: string;
+  quantity?: string;
+  item_id?: string | null;
+  store_id?: string | null;
+  category_id?: string | null;
+}
+
 export const useAddToList = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (newItem: any) => {
+    mutationFn: async (newItem: ListItemInsert) => {
+      const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase
         .from('list_items')
-        .insert(newItem)
+        .insert({ ...newItem, added_by: session?.user?.id })
         .select()
         .single();
 
@@ -114,7 +123,7 @@ export const useUpdateListItem = () => {
       id: string;
       name?: string;
       quantity?: string;
-      store_id?: string;
+      store_id?: string | null;
       category_id?: string;
     }) => {
       const { data, error } = await supabase

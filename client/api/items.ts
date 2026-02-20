@@ -10,6 +10,7 @@ export interface MasterItem {
   default_store_id: string | null;
   category?: { name: string };
   store?: { name: string };
+  item_stores?: { store: { id: string; name: string } }[];
 }
 
 // Fetch all items (or search)
@@ -74,13 +75,13 @@ export const useCreateMasterItem = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (newItem: { 
-      name: string; 
-      default_category_id?: string; 
-      default_store_id?: string;
+    mutationFn: async (newItem: {
+      name: string;
+      default_category_id?: string | null;
+      default_store_id?: string | null;
       default_qty?: string;
       alternate_qtys?: string[];
-      store_ids?: string[]; // New: list of all associated stores
+      store_ids?: string[];
     }) => {
       const { store_ids, ...itemData } = newItem;
       
@@ -117,11 +118,11 @@ export const useUpdateMasterItem = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, store_ids, ...updates }: { 
+    mutationFn: async ({ id, store_ids, ...updates }: {
       id: string;
-      name?: string; 
-      default_category_id?: string; 
-      default_store_id?: string;
+      name?: string;
+      default_category_id?: string | null;
+      default_store_id?: string | null;
       default_qty?: string;
       alternate_qtys?: string[];
       store_ids?: string[];
