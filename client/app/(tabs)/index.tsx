@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Modal, TextInput, FlatList } from 'react-native';
 import { CheckCircle2, Circle, Archive, RotateCcw, RotateCw, Trash2, GripVertical } from 'lucide-react-native';
-import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
+// import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { SmartAddItem } from '@/components/SmartAddItem';
 import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, useEndTrip, useDeleteListItem, useRevertArchival, ListItem } from '@/api/list';
 import { useUndo } from '@/api/undoContext';
@@ -125,33 +125,13 @@ export default function ShoppingListScreen() {
     }
   };
 
+  /*
   const onDragEnd = async ({ data, from, to }: { data: FlatListItem[], from: number, to: number }) => {
-    const draggedItem = data[to];
-    if (draggedItem.type !== 'item') return;
-    let newStoreId = '';
-    let newStoreName = '';
-    for (let i = to; i >= 0; i--) {
-      if (data[i].type === 'header') {
-        const h = data[i] as any;
-        newStoreId = h.storeId;
-        newStoreName = h.title;
-        break;
-      }
-    }
-    if (newStoreId && newStoreId !== draggedItem.data.store_id) {
-      const originalStoreId = draggedItem.data.store_id;
-      const itemId = draggedItem.id;
-      const itemName = draggedItem.data.name;
-      await updateListItem({ id: itemId, store_id: newStoreId === 'other' ? null : newStoreId });
-      pushAction({
-        label: `Moved ${itemName} to ${newStoreName}`,
-        undo: async () => { await updateListItem({ id: itemId, store_id: originalStoreId }); },
-        redo: async () => { await updateListItem({ id: itemId, store_id: newStoreId === 'other' ? null : newStoreId }); }
-      });
-    }
+    // Drag logic disabled
   };
+  */
 
-  const renderItem = ({ item, drag, isActive }: RenderItemParams<FlatListItem>) => {
+  const renderItem = ({ item }: { item: FlatListItem }) => {
     if (item.type === 'header') {
       const hasPurchased = item.items.some(i => i.is_purchased);
       return (
@@ -168,30 +148,21 @@ export default function ShoppingListScreen() {
     }
     const listItem = item.data;
     return (
-      <ScaleDecorator>
-        <View style={[styles.itemRow, isActive && { backgroundColor: '#eff6ff', elevation: 5, zIndex: 100 }]}>
-          <TouchableOpacity style={styles.colCheckbox} onPress={() => handleToggle(listItem)}>
-            {listItem.is_purchased ? <CheckCircle2 size={24} color="#10b981" /> : <Circle size={24} color="#d1d5db" />}
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.colName} onPress={() => openEditModal(listItem)}>
+      <View style={styles.itemRow}>
+        <TouchableOpacity style={styles.colCheckbox} onPress={() => handleToggle(listItem)}>
+          {listItem.is_purchased ? <CheckCircle2 size={24} color="#10b981" /> : <Circle size={24} color="#d1d5db" />}
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.colName} onPress={() => openEditModal(listItem)}>
              <Text style={[styles.nameText, listItem.is_purchased && styles.strikethrough]} numberOfLines={1}>
                 {listItem.name}{listItem.quantity ? ` - ${listItem.quantity}` : ''}
               </Text>
-          </TouchableOpacity>
+        </TouchableOpacity>
            <View style={styles.colCategory}>
              <Text style={styles.categoryText} numberOfLines={1}>{listItem.category?.name || '—'}</Text>
            </View>
-                      <TouchableOpacity 
-                        onLongPress={drag} 
-                        delayLongPress={50} 
-                        style={styles.dragHandle}
-                      >
-                        <GripVertical size={20} color="#d1d5db" />
-                      </TouchableOpacity>
-                   </View>
-                 </ScaleDecorator>
-               );
-             };
+      </View>
+    );
+  };
            
              return (
                <View style={styles.container}>
@@ -214,12 +185,10 @@ export default function ShoppingListScreen() {
                    <View style={styles.center}><ActivityIndicator size="large" color="#0000ff" /></View>
                  ) : (
                    <View style={{ flex: 1, width: '100%', maxWidth: 600, alignSelf: 'center' }}>
-                     <DraggableFlatList
+                     <FlatList
                        data={flatData}
-                       onDragEnd={onDragEnd}
                        keyExtractor={(item) => item.id}
                        renderItem={renderItem}
-                       activationDistance={5}
                        contentContainerStyle={styles.listContent}
            
             ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>Your list is empty.</Text></View>}
