@@ -26,21 +26,26 @@
 - [x] **Sign-Out Cache Clear:** `queryClient.clear()` on sign-out wipes cached household_id and all stale data.
 
 ## 🚀 Current Focus (Next Steps)
-1.  **Multi-User Trip Management:** (`docs/design/multi-user-trips.md`)
+1.  **List Interaction Modes & Header Consolidation:** (`docs/design/list-interactions.md`)
+    - Consolidate redundant tab header and custom header into one.
+    - Replace info-circle icon with user avatar (first letter of display name, colored circle).
+    - Avatar opens dropdown menu (settings, sign out) instead of navigating to full-screen modal.
+    - Shopping/Planning mode toggle: tap-to-check vs tap-to-edit, with long press and edit icon fallbacks.
+2.  **Multi-User Trip Management:** (`docs/design/multi-user-trips.md`)
     - Add `purchased_by` to `list_items` — tracks who checked off each item.
     - Color-coded check-off icons per user (color from `profiles.color`).
     - User display names (`profiles.display_name_short`) — editable in settings.
     - Smart end-trip: single-user → immediate, multi-user at same store → selection dialog.
-2.  **Recipes & Bundles:**
+3.  **Recipes & Bundles:**
     - Ability to define a "Recipe" (group of items).
     - "Staging" UI: Select a recipe, check/uncheck ingredients, then add all to list at once.
-3.  **Fuzzy Matching:**
+4.  **Fuzzy Matching:**
     - Improve search logic with Levenshtein distance for "Did you mean?" suggestions.
-4.  **Duplicate Entry Handling:**
+5.  **Duplicate Entry Handling:**
     - Detect when an item being added is already on the active list.
     - Scenarios: Same store match, different store match, quantity variations.
     - User Options: "Update/Merge Quantities", "Add as Duplicate", or "Cancel".
-5.  **Quantity Units System:**
+6.  **Quantity Units System:**
     - Create a master list of common units (lbs, oz, cans, bags, etc.).
     - Allow items to define a default unit (e.g., Ground Beef defaults to 'lbs').
     - UI: Provide a picker for units while still allowing free-form text for the quantity value (e.g., "2-2.5").
