@@ -14,7 +14,7 @@ To support both the MVP and the Future Features (Recipes, Trips), we use the fol
 
 ### Household & User Entities
 *   **`households`**: ID, Name. The top-level grouping for shared data. All user-scoped tables reference a `household_id`. In single-household mode (`EXPO_PUBLIC_HOUSEHOLD_MODE=single`), all users join one default household. In multi-household mode, each user gets their own on signup.
-*   **`profiles`**: ID (matches `auth.users.id`), `household_id` (FK), `display_name`. Created during signup/first sign-in via application code in `client/app/auth.tsx`.
+*   **`profiles`**: ID (matches `auth.users.id`), `household_id` (FK), `display_name`, `display_name_short`, `color`. Created during signup/first sign-in via application code in `client/app/auth.tsx`. Short name and color are used for multi-user check-off indicators. See `docs/design/multi-user-trips.md`.
 
 ### Core Entities
 *   **`stores`**: ID, Name, Color. (Global — shared across all households.)
@@ -40,6 +40,7 @@ To support both the MVP and the Future Features (Recipes, Trips), we use the fol
     *   `trip_id` (FK -> shopping_trips)
     *   `household_id` (FK -> households)
     *   `added_by` (UUID -> auth.users.id)
+    *   `purchased_by` (UUID -> auth.users.id, set when checked off — enables per-user trip management)
 *   **`shopping_trips`**: `id`, `started_at`, `ended_at`, `primary_store_id`, `status`, `household_id`.
 
 ## 3. Core System Patterns
@@ -55,6 +56,13 @@ Items move through three states:
 1.  **Active:** `is_purchased = false`.
 2.  **Purchased:** `is_purchased = true`. Visible but crossed out. `purchased_at` is set.
 3.  **Archived:** `archived_at` IS NOT NULL. Hidden from active list. Linked to a `trip_id`.
+
+When an item is checked off, `purchased_by` is set to the current user. Check-off icons are color-coded per user (color from `profiles.color`), making it visible at a glance who is buying what. See `docs/design/multi-user-trips.md` for the full multi-user trip design.
+
+**Multi-User End Trip Logic:**
+- Active trips are inferred from distinct `(store_id, purchased_by)` combinations on purchased, non-archived items.
+- **One user at a store →** End Trip works as before, no dialog.
+- **Multiple users at a store →** Dialog shows each user's trip with item count; user selects which to end.
 
 ### C. Drag and Drop Store Assignment
 The shopping list uses a flattened data structure to enable moving items across store boundaries.
