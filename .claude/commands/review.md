@@ -1,0 +1,51 @@
+Review the code changes described or shown (use recent git diff if no specific code is provided): $ARGUMENTS
+
+Check the implementation against the patterns in GEMINI.md and the architecture in DESIGN.md.
+
+Evaluate each of the following and report pass / fail / not-applicable with a brief explanation:
+
+**Realtime Mutation Tracking**
+- Do all list_items writes wrap the Supabase call with incrementLocalMutation() / decrementLocalMutation() in a try/finally?
+
+**Household Guard**
+- Do all inserts into household-scoped tables (items, item_stores, list_items, shopping_trips) check `if (!householdId) throw` before the Supabase call?
+- Is `household_id: householdId` included in the insert payload?
+
+**Undo Registration**
+- Does every user-initiated mutation on the shopping list screen call pushAction with a label, undo fn, and redo fn?
+- Does the screen use mutateAsync (not mutate) where the returned id is needed for undo?
+
+**React Query Invalidation**
+- Are the correct query keys invalidated after each mutation?
+- Are any unnecessary keys being invalidated?
+
+**Styling**
+- Does the code use StyleSheet.create() only? No NativeWind className props?
+
+**Platform Compatibility**
+- Are any Alert.alert() calls guarded with Platform.OS === 'web'?
+
+**TypeScript**
+- Are new Supabase row shapes defined as interfaces in the api/ file?
+- Are there any unsafe `as any` casts in api/ files?
+
+**Supabase Query Shapes**
+- Do joins use the `!foreign_key_name` syntax where needed?
+- Does any active list query include `.is('archived_at', null)`?
+
+**Architecture Boundaries**
+- Is business logic in api/ files rather than screen components?
+- Were any patterns changed that require a design decision (new context providers, RLS changes, undo system changes, trip workflow changes)?
+
+**Test Coverage**
+- Does every item in the spec's Acceptance Criteria have a corresponding test?
+- Is there a test verifying the household guard throws when householdId is null (for any new inserts)?
+- Is there a test verifying pushAction is called with the correct label (for any new list mutations)?
+- Do tests use the full three-provider wrapper (QueryClientProvider + UndoProvider + HouseholdProvider)?
+- Do all tests pass? (`npm test` from client/)
+
+**Summary**
+Provide an overall assessment and a prioritized list of issues to fix, separated into:
+- Blocking (must fix before use — includes any failing tests)
+- Non-blocking (should fix but won't break things)
+- Suggestions (optional improvements)
