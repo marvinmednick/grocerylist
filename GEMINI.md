@@ -2,6 +2,33 @@
 
 This file provides guidance for implementing code in this repository. Architecture and design decisions are handled separately — if a task requires a new pattern, schema change, or significant structural decision, consult the spec provided or ask before proceeding.
 
+## Running a Spec
+
+Specs are written by Claude and saved to `specs/[feature-slug].md`. Each spec contains everything needed to implement a feature — files to modify, query shapes, patterns to follow, and specific test cases.
+
+### Gemini CLI
+```bash
+gemini "Read GEMINI.md and specs/list-interactions.md, then implement the spec. Run npm test from client/ before reporting back."
+```
+Or point it at both files directly if your CLI supports file arguments.
+
+### Copy-Paste (AI Studio or other interface)
+Paste the following into your prompt, in this order:
+1. The full contents of `GEMINI.md`
+2. The full contents of the spec file (`specs/[feature-slug].md`)
+3. Any source files the spec says to modify (optional but helps avoid hallucination on existing code)
+
+Then append:
+> "Implement the spec above following the conventions in GEMINI.md. Run all tests and confirm they pass before reporting back. List every file you changed."
+
+### What to Report Back
+Gemini should return:
+- Every file changed (diffs or full file contents)
+- Test output confirming all tests pass
+- Any spec sections that couldn't be implemented as written, with explanation
+
+Bring the output back to Claude and run `/review` to verify before committing.
+
 ## Tech Stack
 
 - **React Native** (Expo ~54, New Architecture enabled) + TypeScript
