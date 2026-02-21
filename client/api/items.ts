@@ -85,6 +85,7 @@ export const useCreateMasterItem = () => {
       alternate_qtys?: string[];
       store_ids?: string[];
     }) => {
+      if (!householdId) throw new Error('No household ID found');
       const { store_ids, ...itemData } = newItem;
 
       const { data: item, error } = await supabase
@@ -131,6 +132,7 @@ export const useUpdateMasterItem = () => {
       alternate_qtys?: string[];
       store_ids?: string[];
     }) => {
+      if (!householdId) throw new Error('No household ID found');
       // 1. Update core item data
       const { data, error } = await supabase
         .from('items')

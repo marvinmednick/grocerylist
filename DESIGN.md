@@ -77,6 +77,7 @@ All user-generated data (items, list_items, item_stores, shopping_trips) is scop
 - **Helper Function:** `get_my_household_id()` — a `SECURITY DEFINER` SQL function that looks up `profiles.household_id` for the current `auth.uid()`.
 - **Policy Pattern:** Every policy on household-scoped tables uses `household_id = get_my_household_id()` in both `USING` and `WITH CHECK` clauses.
 - **Global Tables:** `stores`, `categories`, `units`, and `households` remain globally readable by all authenticated users (household data itself isn't sensitive — the isolation happens on the child tables).
+- **Client Guard Pattern:** `HouseholdProvider` (`lib/household.tsx`) fetches `householdId` once per session (`staleTime: Infinity`). Mutations that require `household_id` throw early if it's null. The UI disables add/end-trip controls while the household is loading to prevent race conditions.
 
 ### F. Realtime Toast Notifications
 When another household member modifies the shopping list, the app shows a toast notification.

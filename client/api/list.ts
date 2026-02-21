@@ -123,6 +123,7 @@ export const useAddToList = () => {
 
   return useMutation({
     mutationFn: async (newItem: ListItemInsert) => {
+      if (!householdId) throw new Error('No household ID found');
       incrementLocalMutation();
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -203,6 +204,7 @@ export const useEndTrip = () => {
 
   return useMutation({
     mutationFn: async ({ store_id }: { store_id?: string } = {}) => {
+      if (!householdId) throw new Error('No household ID found');
       incrementLocalMutation();
       try {
         const { data: trip, error: tripError } = await supabase

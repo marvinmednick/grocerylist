@@ -6,7 +6,7 @@ import { useAddToList, useDeleteListItem } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
 
-export function SmartAddItem() {
+export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
   const [query, setQuery] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
@@ -163,17 +163,18 @@ export function SmartAddItem() {
 
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, disabled && { opacity: 0.6 }]}>
       <View style={styles.searchBar}>
         <Search size={20} color="#9ca3af" style={styles.searchIcon} />
         <TextInput
           style={styles.input}
-          placeholder="Add item..."
+          placeholder={disabled ? "Loading household..." : "Add item..."}
           value={query}
           onChangeText={handleSearch}
           placeholderTextColor="#9ca3af"
+          editable={!disabled}
         />
-        {query.length > 0 && (
+        {query.length > 0 && !disabled && (
            <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn}>
              <X size={18} color="#6b7280" />
            </TouchableOpacity>

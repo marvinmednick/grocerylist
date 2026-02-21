@@ -7,12 +7,14 @@ import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, u
 import { useUndo } from '@/api/undoContext';
 import { useMetadata } from '@/api/metadata';
 import { Toast } from '@/components/Toast';
+import { useHousehold } from '@/lib/household';
 
 type FlatListItem =
   | { type: 'header'; id: string; title: string; storeId: string; items: ListItem[] }
   | { type: 'item'; id: string; data: ListItem };
 
 export default function ShoppingListScreen() {
+  const { householdId, isLoading: isHouseholdLoading } = useHousehold();
   const [toast, setToast] = useState({ visible: false, message: '' });
 
   const handleRemoteChange = useCallback((event: string, itemName?: string) => {
@@ -186,7 +188,11 @@ export default function ShoppingListScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionHeaderText}>{item.title}</Text>
           {hasPurchased && (
-            <TouchableOpacity onPress={() => handleEndTrip(item.storeId, item.title)} style={styles.inlineEndTripBtn}>
+            <TouchableOpacity 
+              onPress={() => handleEndTrip(item.storeId, item.title)} 
+              style={[styles.inlineEndTripBtn, isHouseholdLoading && { opacity: 0.5 }]}
+              disabled={isHouseholdLoading}
+            >
               <Archive size={14} color="#2563eb" />
               <Text style={styles.inlineEndTripText}>End Trip</Text>
             </TouchableOpacity>
@@ -232,8 +238,8 @@ export default function ShoppingListScreen() {
           </TouchableOpacity>
         </View>
       </View>
-      <View style={styles.headerContainer}><SmartAddItem /></View>
-      {isLoading ? (
+      <View style={styles.headerContainer}><SmartAddItem disabled={isHouseholdLoading} /></View>
+      {isLoading || isHouseholdLoading ? (
         <View style={styles.center}><ActivityIndicator size="large" color="#0000ff" /></View>
       ) : (
         <View style={{ flex: 1, width: '100%', maxWidth: 600, alignSelf: 'center' }}>
@@ -249,7 +255,11 @@ export default function ShoppingListScreen() {
               const hasAnyPurchased = listItems?.some(item => item.is_purchased);
               if (!hasAnyPurchased) return null;
               return (
-                <TouchableOpacity style={styles.globalEndTripBtn} onPress={() => handleEndTrip()}>
+                <TouchableOpacity 
+                  style={[styles.globalEndTripBtn, isHouseholdLoading && { opacity: 0.5 }]} 
+                  onPress={() => handleEndTrip()}
+                  disabled={isHouseholdLoading}
+                >
                   <Archive size={20} color="white" />
                   <Text style={styles.globalEndTripText}>End All Shopping Trips</Text>
                 </TouchableOpacity>
