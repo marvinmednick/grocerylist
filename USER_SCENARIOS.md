@@ -24,10 +24,16 @@ These scenarios define the expected behavior of the application and should be us
   1. "Dragonfruit" is added to the list under "Whole Foods".
   2. "Dragonfruit" is now available in the "Items" tab and for future autocomplete.
 
-### Scenario 3: Real-time Collaboration
+### Scenario 3: Real-time Collaboration with Toast Notifications
+- **Pre-condition:** User A and User B are in the same household (default in single-household mode).
 - **Action:** User A and User B are both looking at the same Shopping List.
+- **Action:** User A adds "Apples" to the list.
+- **Expected:**
+  1. User A sees "Apples" appear — no toast notification (local mutation suppressed).
+  2. User B sees "Apples" appear and a toast notification: "Apples was added to the list".
+  3. The toast auto-dismisses after 3 seconds.
 - **Action:** User A checks the box for "Apples".
-- **Expected:** User B sees the "Apples" row cross out and move (if sorting is enabled) instantly without refreshing.
+- **Expected:** User B sees "Apples" cross out and a toast: "Apples was updated".
 
 ### Scenario 4: The Cleanup Flow (Store Specific)
 - **Action:** User has "Milk" (Purchased) and "Bread" (Unpurchased) under Safeway.
@@ -86,3 +92,26 @@ These scenarios define the expected behavior of the application and should be us
   2. A unit picker shows "lbs" as selected.
 - **Action:** User types "2-3" in the value field and selects "packages" in the unit picker. Taps Save.
 - **Expected:** The list displays "Ground Beef - 2-3 packages".
+
+### Scenario 11: New User Signup (Single Household Mode)
+- **Pre-condition:** `EXPO_PUBLIC_HOUSEHOLD_MODE=single`. A default household exists in the database.
+- **Action:** User creates a new account via the Sign Up form.
+- **Expected:**
+  1. A `profiles` row is created linking the user to the default household.
+  2. User is redirected to the shopping list.
+  3. User sees all items shared by other household members.
+
+### Scenario 12: Existing User Sign-In (Profile Backfill)
+- **Pre-condition:** A user existed before the household migration and has no `profiles` row.
+- **Action:** User signs in with their existing credentials.
+- **Expected:**
+  1. A `profiles` row is automatically created, assigning the user to the default household.
+  2. User sees all their existing data (items, list items) which were backfilled to the default household.
+
+### Scenario 13: Sign Out and Sign In (Cache Clearing)
+- **Action:** User signs out via the Settings modal.
+- **Expected:**
+  1. All cached data (household_id, shopping list, items) is cleared.
+  2. User is redirected to the auth screen.
+- **Action:** User signs back in.
+- **Expected:** Household ID is re-fetched. Shopping list loads fresh data for their household.

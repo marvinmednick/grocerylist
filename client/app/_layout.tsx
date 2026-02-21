@@ -13,6 +13,7 @@ import { Session } from '@supabase/supabase-js';
 import { View, ActivityIndicator } from 'react-native';
 import { UndoProvider } from '@/api/undoContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { HouseholdProvider } from '@/lib/household';
 
 import { useColorScheme } from '@/components/useColorScheme';
 
@@ -107,13 +108,21 @@ function RootLayoutNav() {
     );
   }
 
+  const stackContent = (
+    <Stack>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="auth" options={{ headerShown: false }} />
+    </Stack>
+  );
+
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="auth" options={{ headerShown: false }} />
-      </Stack>
+      {session ? (
+        <HouseholdProvider>{stackContent}</HouseholdProvider>
+      ) : (
+        stackContent
+      )}
     </ThemeProvider>
   );
 }

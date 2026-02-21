@@ -1,0 +1,22 @@
+{
+  "_comment": [
+    "ROOT package.json — Database & infrastructure tooling ONLY.",
+    "The Expo/React Native app lives in client/ with its own package.json.",
+    "This file exists solely to manage the Supabase CLI for migrations."
+  ],
+  "name": "grocery-infra",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "_comment_scripts": "All db:* scripts source .env for SUPABASE_ACCESS_TOKEN automatically",
+    "db:push": "export $(grep -v '^#' .env | xargs) && npx supabase db push",
+    "db:status": "export $(grep -v '^#' .env | xargs) && npx supabase migration list",
+    "db:new": "npx supabase migration new",
+    "db:reset": "export $(grep -v '^#' .env | xargs) && npx supabase db reset",
+    "db:diff": "export $(grep -v '^#' .env | xargs) && npx supabase db diff",
+    "db:types": "export $(grep -v '^#' .env | xargs) && npx supabase gen types typescript --linked > client/lib/database.types.ts"
+  },
+  "devDependencies": {
+    "supabase": "^2.76.12"
+  }
+}

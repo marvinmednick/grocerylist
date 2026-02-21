@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { useHousehold } from '@/lib/household';
 
 export interface ListItem {
   id: string;
@@ -15,8 +16,19 @@ export interface ListItem {
   category?: { name: string; sort_order: number };
 }
 
+// --- Local mutation tracking ---
+let localMutationCount = 0;
+function incrementLocalMutation() {
+  localMutationCount++;
+}
+function decrementLocalMutation() {
+  setTimeout(() => {
+    localMutationCount = Math.max(0, localMutationCount - 1);
+  }, 500);
+}
+
 // Fetch the active shopping list
-export const useShoppingList = () => {
+export const useShoppingList = (onRemoteChange?: (event: string, itemName?: string) => void) => {
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -29,8 +41,15 @@ export const useShoppingList = () => {
           schema: 'public',
           table: 'list_items',
         },
-        () => {
+        (payload) => {
           queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
+
+          if (localMutationCount === 0 && onRemoteChange) {
+            const eventType = payload.eventType;
+            const record = (payload.new as Record<string, unknown>) || {};
+            const itemName = (record.name as string) || undefined;
+            onRemoteChange(eventType, itemName);
+          }
         }
       )
       .subscribe();
@@ -38,7 +57,7 @@ export const useShoppingList = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, onRemoteChange]);
 
   return useQuery({
     queryKey: ['shopping_list'],
@@ -65,18 +84,23 @@ export const useTogglePurchased = () => {
 
   return useMutation({
     mutationFn: async ({ id, is_purchased }: { id: string; is_purchased: boolean }) => {
-      const { data, error } = await supabase
-        .from('list_items')
-        .update({
-          is_purchased,
-          purchased_at: is_purchased ? new Date().toISOString() : null
-        })
-        .eq('id', id)
-        .select()
-        .single();
+      incrementLocalMutation();
+      try {
+        const { data, error } = await supabase
+          .from('list_items')
+          .update({
+            is_purchased,
+            purchased_at: is_purchased ? new Date().toISOString() : null
+          })
+          .eq('id', id)
+          .select()
+          .single();
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return data;
+      } finally {
+        decrementLocalMutation();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
@@ -95,18 +119,24 @@ export interface ListItemInsert {
 
 export const useAddToList = () => {
   const queryClient = useQueryClient();
+  const { householdId } = useHousehold();
 
   return useMutation({
     mutationFn: async (newItem: ListItemInsert) => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const { data, error } = await supabase
-        .from('list_items')
-        .insert({ ...newItem, added_by: session?.user?.id })
-        .select()
-        .single();
+      incrementLocalMutation();
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const { data, error } = await supabase
+          .from('list_items')
+          .insert({ ...newItem, added_by: session?.user?.id, household_id: householdId })
+          .select()
+          .single();
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return data;
+      } finally {
+        decrementLocalMutation();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
@@ -126,15 +156,20 @@ export const useUpdateListItem = () => {
       store_id?: string | null;
       category_id?: string;
     }) => {
-      const { data, error } = await supabase
-        .from('list_items')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
+      incrementLocalMutation();
+      try {
+        const { data, error } = await supabase
+          .from('list_items')
+          .update(updates)
+          .eq('id', id)
+          .select()
+          .single();
 
-      if (error) throw error;
-      return data;
+        if (error) throw error;
+        return data;
+      } finally {
+        decrementLocalMutation();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
@@ -147,8 +182,13 @@ export const useDeleteListItem = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('list_items').delete().eq('id', id);
-      if (error) throw error;
+      incrementLocalMutation();
+      try {
+        const { error } = await supabase.from('list_items').delete().eq('id', id);
+        if (error) throw error;
+      } finally {
+        decrementLocalMutation();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
@@ -159,38 +199,45 @@ export const useDeleteListItem = () => {
 // End Trip (Create trip record and archive purchased items)
 export const useEndTrip = () => {
   const queryClient = useQueryClient();
+  const { householdId } = useHousehold();
 
   return useMutation({
     mutationFn: async ({ store_id }: { store_id?: string } = {}) => {
-      const { data: trip, error: tripError } = await supabase
-        .from('shopping_trips')
-        .insert({
-          primary_store_id: store_id || null,
-          status: 'completed',
-          ended_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+      incrementLocalMutation();
+      try {
+        const { data: trip, error: tripError } = await supabase
+          .from('shopping_trips')
+          .insert({
+            primary_store_id: store_id || null,
+            status: 'completed',
+            ended_at: new Date().toISOString(),
+            household_id: householdId,
+          })
+          .select()
+          .single();
 
-      if (tripError) throw tripError;
+        if (tripError) throw tripError;
 
-      let query = supabase
-        .from('list_items')
-        .update({ 
-          archived_at: new Date().toISOString(),
-          trip_id: trip.id 
-        })
-        .eq('is_purchased', true)
-        .is('archived_at', null);
+        let query = supabase
+          .from('list_items')
+          .update({
+            archived_at: new Date().toISOString(),
+            trip_id: trip.id
+          })
+          .eq('is_purchased', true)
+          .is('archived_at', null);
 
-      if (store_id) {
-        query = query.eq('store_id', store_id);
+        if (store_id) {
+          query = query.eq('store_id', store_id);
+        }
+
+        const { data: items, error: itemsError } = await query.select();
+        if (itemsError) throw itemsError;
+
+        return { trip, items };
+      } finally {
+        decrementLocalMutation();
       }
-
-      const { data: items, error: itemsError } = await query.select();
-      if (itemsError) throw itemsError;
-
-      return { trip, items };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
@@ -203,13 +250,18 @@ export const useRevertArchival = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ trip_id }: { trip_id: string }) => {
-      const { error: itemsError } = await supabase
-        .from('list_items')
-        .update({ archived_at: null, trip_id: null })
-        .eq('trip_id', trip_id);
-      if (itemsError) throw itemsError;
+      incrementLocalMutation();
+      try {
+        const { error: itemsError } = await supabase
+          .from('list_items')
+          .update({ archived_at: null, trip_id: null })
+          .eq('trip_id', trip_id);
+        if (itemsError) throw itemsError;
 
-      await supabase.from('shopping_trips').delete().eq('id', trip_id);
+        await supabase.from('shopping_trips').delete().eq('id', trip_id);
+      } finally {
+        decrementLocalMutation();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['shopping_list'] });

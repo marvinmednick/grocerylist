@@ -1,15 +1,18 @@
 import { StatusBar } from 'expo-status-bar';
 import { Platform, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 
 import { Text, View } from '@/components/Themed';
 
 export default function ModalScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    queryClient.clear();
     router.replace('/auth');
   };
 

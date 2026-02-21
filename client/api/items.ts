@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useHousehold } from '@/lib/household';
 
 export interface MasterItem {
   id: string;
@@ -73,7 +74,8 @@ export const useAllItems = (searchTerm: string = '') => {
 // Create a new Master Item
 export const useCreateMasterItem = () => {
   const queryClient = useQueryClient();
-  
+  const { householdId } = useHousehold();
+
   return useMutation({
     mutationFn: async (newItem: {
       name: string;
@@ -84,13 +86,13 @@ export const useCreateMasterItem = () => {
       store_ids?: string[];
     }) => {
       const { store_ids, ...itemData } = newItem;
-      
+
       const { data: item, error } = await supabase
         .from('items')
-        .insert(itemData)
+        .insert({ ...itemData, household_id: householdId })
         .select()
         .single();
-        
+
       if (error) throw error;
 
       // Link to multiple stores if provided
@@ -98,7 +100,8 @@ export const useCreateMasterItem = () => {
         const links = store_ids.map(sid => ({
           item_id: item.id,
           store_id: sid,
-          is_preferred: sid === newItem.default_store_id
+          is_preferred: sid === newItem.default_store_id,
+          household_id: householdId,
         }));
         const { error: linkError } = await supabase.from('item_stores').insert(links);
         if (linkError) throw linkError;
@@ -116,6 +119,7 @@ export const useCreateMasterItem = () => {
 // Update an existing Master Item
 export const useUpdateMasterItem = () => {
   const queryClient = useQueryClient();
+  const { householdId } = useHousehold();
 
   return useMutation({
     mutationFn: async ({ id, store_ids, ...updates }: {
@@ -140,12 +144,13 @@ export const useUpdateMasterItem = () => {
       // 2. Sync stores (Delete old, Insert new)
       if (store_ids) {
         await supabase.from('item_stores').delete().eq('item_id', id);
-        
+
         if (store_ids.length > 0) {
           const links = store_ids.map(sid => ({
             item_id: id,
             store_id: sid,
-            is_preferred: sid === updates.default_store_id
+            is_preferred: sid === updates.default_store_id,
+            household_id: householdId,
           }));
           await supabase.from('item_stores').insert(links);
         }

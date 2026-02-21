@@ -10,18 +10,62 @@ export default function AuthScreen() {
   const [message, setMessage] = useState({ text: '', type: '' }); // 'error' or 'success'
   const router = useRouter();
 
+  async function ensureProfile(userId: string) {
+    // Check if profile already exists
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single();
+
+    if (existing) return; // Profile already exists
+
+    const householdMode = process.env.EXPO_PUBLIC_HOUSEHOLD_MODE || 'single';
+
+    if (householdMode === 'single') {
+      const { data: hh } = await supabase
+        .from('households')
+        .select('id')
+        .limit(1)
+        .single();
+
+      if (hh) {
+        await supabase.from('profiles').insert({
+          id: userId,
+          household_id: hh.id,
+          display_name: email,
+        });
+      }
+    } else {
+      const { data: hh } = await supabase
+        .from('households')
+        .insert({ name: 'My Household' })
+        .select()
+        .single();
+
+      if (hh) {
+        await supabase.from('profiles').insert({
+          id: userId,
+          household_id: hh.id,
+          display_name: email,
+        });
+      }
+    }
+  }
+
   async function signInWithEmail() {
     setLoading(true);
     setMessage({ text: '', type: '' });
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
       setMessage({ text: error.message, type: 'error' });
-    } else {
-      // Router will handle redirect via layout
+    } else if (data.session) {
+      // Ensure profile exists (for pre-migration users)
+      await ensureProfile(data.session.user.id);
     }
     setLoading(false);
   }
@@ -42,8 +86,8 @@ export default function AuthScreen() {
     if (error) {
       setMessage({ text: error.message, type: 'error' });
     } else if (data.session) {
-      // Auto-logged in (Email confirmation disabled)
-      // Router will handle redirect
+      // Auto-logged in — create profile + household assignment
+      await ensureProfile(data.session.user.id);
     } else {
       // User created but not logged in (Email confirmation enabled)
       setMessage({ text: 'Account created! Please check your email to verify.', type: 'success' });

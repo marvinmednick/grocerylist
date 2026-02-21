@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, Platform } from 'react-native';
 import { CheckCircle2, Circle, Archive, RotateCcw, RotateCw, Trash2, GripVertical } from 'lucide-react-native';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
@@ -6,13 +6,28 @@ import { SmartAddItem } from '@/components/SmartAddItem';
 import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, useEndTrip, useDeleteListItem, useRevertArchival, ListItem } from '@/api/list';
 import { useUndo } from '@/api/undoContext';
 import { useMetadata } from '@/api/metadata';
+import { Toast } from '@/components/Toast';
 
 type FlatListItem =
   | { type: 'header'; id: string; title: string; storeId: string; items: ListItem[] }
   | { type: 'item'; id: string; data: ListItem };
 
 export default function ShoppingListScreen() {
-  const { data: listItems, isLoading } = useShoppingList();
+  const [toast, setToast] = useState({ visible: false, message: '' });
+
+  const handleRemoteChange = useCallback((event: string, itemName?: string) => {
+    let message = 'List updated';
+    if (event === 'INSERT' && itemName) {
+      message = `${itemName} was added to the list`;
+    } else if (event === 'DELETE' && itemName) {
+      message = `${itemName} was removed from the list`;
+    } else if (event === 'UPDATE' && itemName) {
+      message = `${itemName} was updated`;
+    }
+    setToast({ visible: true, message });
+  }, []);
+
+  const { data: listItems, isLoading } = useShoppingList(handleRemoteChange);
   const { mutateAsync: togglePurchased } = useTogglePurchased();
   const { mutateAsync: updateListItem } = useUpdateListItem();
   const { mutateAsync: addItem } = useAddToList();
@@ -269,6 +284,11 @@ export default function ShoppingListScreen() {
           </View>
         </View>
       </Modal>
+      <Toast
+        message={toast.message}
+        visible={toast.visible}
+        onDismiss={() => setToast({ visible: false, message: '' })}
+      />
     </View>
   );
 }

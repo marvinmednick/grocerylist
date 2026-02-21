@@ -12,19 +12,23 @@
 
 To support both the MVP and the Future Features (Recipes, Trips), we use the following relational schema.
 
+### Household & User Entities
+*   **`households`**: ID, Name. The top-level grouping for shared data. All user-scoped tables reference a `household_id`. In single-household mode (`EXPO_PUBLIC_HOUSEHOLD_MODE=single`), all users join one default household. In multi-household mode, each user gets their own on signup.
+*   **`profiles`**: ID (matches `auth.users.id`), `household_id` (FK), `display_name`. Created during signup/first sign-in via application code in `client/app/auth.tsx`.
+
 ### Core Entities
-*   **`profiles`** (Users)
-    *   `id` (UUID, matches Auth)
-    *   `email`
-*   **`stores`**: ID, Name, Color.
-*   **`categories`**: ID, Name, Sort Order.
+*   **`stores`**: ID, Name, Color. (Global — shared across all households.)
+*   **`categories`**: ID, Name, Sort Order. (Global.)
+*   **`units`**: ID, Name, Abbreviation. (Global.)
 *   **`items`** (Master Dictionary)
     *   `id` (UUID)
-    *   `name` (Text - Unique)
+    *   `name` (Text - Unique per household: `UNIQUE(name, household_id)`)
     *   `default_qty` (Text)
     *   `alternate_qtys` (Array of Strings)
     *   `default_category_id` (FK)
     *   `default_store_id` (FK)
+    *   `household_id` (FK -> households)
+*   **`item_stores`** (Many-to-Many): `item_id`, `store_id`, `is_preferred`, `household_id`.
 
 ### The Shopping List (Active Data)
 *   **`list_items`**
@@ -34,6 +38,9 @@ To support both the MVP and the Future Features (Recipes, Trips), we use the fol
     *   `purchased_at` (Timestamp - set when checked)
     *   `archived_at` (Timestamp - set when Trip Ends)
     *   `trip_id` (FK -> shopping_trips)
+    *   `household_id` (FK -> households)
+    *   `added_by` (UUID -> auth.users.id)
+*   **`shopping_trips`**: `id`, `started_at`, `ended_at`, `primary_store_id`, `status`, `household_id`.
 
 ## 3. Core System Patterns
 
@@ -65,7 +72,19 @@ To prevent accidental duplicates and manage list clutter, the "Add" workflow wil
     3.  **Cancel:** Abort the addition.
 - **Cross-Store Detection:** If the item exists in a *different* store, the system will highlight this to the user during the merge/duplicate choice.
 
-### E. Quantity Units System
+### E. Household-Scoped RLS
+All user-generated data (items, list_items, item_stores, shopping_trips) is scoped to the user's household via Row Level Security.
+- **Helper Function:** `get_my_household_id()` — a `SECURITY DEFINER` SQL function that looks up `profiles.household_id` for the current `auth.uid()`.
+- **Policy Pattern:** Every policy on household-scoped tables uses `household_id = get_my_household_id()` in both `USING` and `WITH CHECK` clauses.
+- **Global Tables:** `stores`, `categories`, `units`, and `households` remain globally readable by all authenticated users (household data itself isn't sensitive — the isolation happens on the child tables).
+
+### F. Realtime Toast Notifications
+When another household member modifies the shopping list, the app shows a toast notification.
+- **Local Mutation Tracking:** A module-level counter (`localMutationCount`) in `api/list.ts` increments before each mutation and decrements 500ms after. This prevents self-triggered toasts.
+- **Remote Change Detection:** The Supabase realtime channel callback checks `localMutationCount === 0` before invoking the `onRemoteChange` callback.
+- **Toast Component:** `components/Toast.tsx` — an absolutely positioned, animated (fade in/out) notification at the bottom of the screen that auto-dismisses after 3 seconds.
+
+### G. Quantity Units System
 To standardize quantity entry while preserving flexibility, the system will support a formal Units dictionary.
 - **`units` Table:** Stores standardized unit names (e.g., "Pounds", "Ounces", "Count", "Cans").
 - **Master Item Defaults:** Items can specify a `default_unit_id`.

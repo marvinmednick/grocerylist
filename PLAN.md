@@ -20,26 +20,28 @@
 - [x] **Active Selection Search:** Configure quantity and store via inline pills before adding to list.
 - [x] **Multi-Store Management:** Link items to multiple stores and designate defaults in the Master Library.
 - [x] **Visual Polish:** Consistent `Description - Quantity` formatting and centered mobile-responsive layout.
+- [x] **Household Infrastructure:** `households` and `profiles` tables with `household_id` on all user-scoped tables. Single-household mode (`EXPO_PUBLIC_HOUSEHOLD_MODE=single`) assigns all users to one default household. Household-scoped RLS policies via `get_my_household_id()` helper function. Profile creation on signup and first sign-in.
+- [x] **Household-Scoped RLS:** All user data (items, list_items, item_stores, shopping_trips) protected by household-scoped RLS policies. Global tables (stores, categories, units) remain shared.
+- [x] **Realtime Toast Notifications:** Remote changes from other household members trigger animated toast notifications. Local mutation tracking prevents self-triggered toasts.
+- [x] **Sign-Out Cache Clear:** `queryClient.clear()` on sign-out wipes cached household_id and all stale data.
 
 ## 🚀 Current Focus (Next Steps)
 1.  **Recipes & Bundles:**
     - Ability to define a "Recipe" (group of items).
     - "Staging" UI: Select a recipe, check/uncheck ingredients, then add all to list at once.
-2.  **Database Security (RLS):**
-    - Finalize Supabase RLS policies to ensure user privacy and multi-tenancy.
-3.  **Fuzzy Matching:**
+2.  **Fuzzy Matching:**
     - Improve search logic with Levenshtein distance for "Did you mean?" suggestions.
-4.  **Duplicate Entry Handling:**
+3.  **Duplicate Entry Handling:**
     - Detect when an item being added is already on the active list.
     - Scenarios: Same store match, different store match, quantity variations.
     - User Options: "Update/Merge Quantities", "Add as Duplicate", or "Cancel".
-5.  **Quantity Units System:**
+4.  **Quantity Units System:**
     - Create a master list of common units (lbs, oz, cans, bags, etc.).
     - Allow items to define a default unit (e.g., Ground Beef defaults to 'lbs').
     - UI: Provide a picker for units while still allowing free-form text for the quantity value (e.g., "2-2.5").
 
 ## 🛠 Future Features (Backlog)
-- [ ] **Family Sharing:** Invite another user to a shared list/household.
+- [ ] **Multi-Household Management:** Invite/join UI for switching households. Infrastructure already in place — only needs `EXPO_PUBLIC_HOUSEHOLD_MODE=multi` and a UI for entering household codes or accepting invites.
 - [ ] **Sorting & Reordering:** Manual drag-and-drop or category-based sorting within stores.
 - [ ] **Aisle/Store Mapping:** Order items based on store layout.
 - [ ] **Price Tracking:** Log prices per item/store for total trip estimation.
