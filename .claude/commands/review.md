@@ -49,3 +49,25 @@ Provide an overall assessment and a prioritized list of issues to fix, separated
 - Blocking (must fix before use — includes any failing tests)
 - Non-blocking (should fix but won't break things)
 - Suggestions (optional improvements)
+
+## After the review:
+
+**Update the GitHub Issue:**
+If a feature ID is known (from the spec or $ARGUMENTS), run:
+```bash
+gh issue comment [N] --body "## Review complete\n**Result:** [Pass/Needs fixes]\n\n**Blocking:**\n[list]\n\n**Non-blocking:**\n[list]"
+```
+If review passes, add the `in-review` label and note it's ready to merge:
+```bash
+gh issue edit [N] --add-label "in-review"
+```
+
+**Append non-blocking items to BACKLOG.md:**
+For each non-blocking finding and suggestion, append to BACKLOG.md under "Found in Review":
+```
+- [ ] [Description] — (found in F[NNN] review)
+```
+
+**Update PLAN.md status:**
+If the implementation passed review, update the feature's Status column from `In Progress` to `In Review`.
+If it needs fixes, keep it as `In Progress`.

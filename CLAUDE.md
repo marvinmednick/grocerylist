@@ -14,6 +14,22 @@ When producing specs, reference `DESIGN.md` and relevant `docs/design/` files. S
 
 **Test ownership:** Claude specifies what to test (in the Tests to Write section of each spec). Gemini implements the tests and is responsible for all tests passing. Claude can verify test quality and coverage during `/review`.
 
+## Tracking System
+
+| File | Purpose |
+|------|---------|
+| `PLAN.md` | Feature registry — ID, status, spec link, GitHub issue link |
+| `specs/F[NNN]-[slug].md` | Full implementation spec for each feature |
+| `BACKLOG.md` | Small deferred items and non-blocking review findings |
+| GitHub Issues | Formal record; linked to commits via `closes #N` in commit messages |
+
+**Statuses:** `Backlog` → `Specced` → `In Progress` → `In Review` → `Done`
+
+When a feature ships, update its status in `PLAN.md` to `Done` and close the GitHub Issue:
+```bash
+gh issue close [N] --comment "Implemented and reviewed."
+```
+
 ## Project Overview
 
 A cross-platform (iOS/Android/Web) collaborative grocery shopping list app. React Native (Expo) frontend, Supabase (PostgreSQL + Realtime) backend.
