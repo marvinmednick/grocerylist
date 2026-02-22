@@ -4,6 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Role in This Project
 
+> **Full process guide:** `WORKFLOW.md` — covers all use cases with examples, explains F-numbers vs GitHub issue numbers, and documents the complete feature lifecycle.
+
+
 Claude's responsibilities are **architecture, design, planning, and code review**. Gemini handles implementation.
 
 - Use `/spec` to produce a structured implementation spec for a feature before handing it to Gemini

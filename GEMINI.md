@@ -4,6 +4,9 @@ This file provides guidance for implementing code in this repository. Architectu
 
 ## Running a Spec
 
+> **Full process guide:** `WORKFLOW.md` — if you need to understand the overall workflow, how specs are created, or how to report back after implementation.
+
+
 Specs are written by Claude and saved to `specs/[feature-slug].md`. Each spec contains everything needed to implement a feature — files to modify, query shapes, patterns to follow, and specific test cases.
 
 ### Gemini CLI
