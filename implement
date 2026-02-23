@@ -1,0 +1,142 @@
+#!/usr/bin/env bash
+# implement — Start an implementation session for a feature spec
+#
+# Usage: ./implement F001 [--tool gemini|aider] [--model <model>] [--plan] [--plan-approved]
+#
+# Defaults to Gemini CLI if --tool is not specified.
+# For aider, AGENT.md and CODING.md are auto-loaded via .aider.conf.yml.
+# For Gemini CLI, GEMINI.md/AGENT.md/CODING.md are auto-loaded via .gemini/settings.json.
+
+set -euo pipefail
+
+FEATURE_ID=""
+TOOL="gemini"
+MODEL=""
+PLAN_MODE=false
+PLAN_APPROVED=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    F[0-9]*)        FEATURE_ID="$1"; shift;;
+    --tool)         TOOL="$2"; shift 2;;
+    --model)        MODEL="$2"; shift 2;;
+    --plan)         PLAN_MODE=true; shift;;
+    --plan-approved) PLAN_APPROVED=true; shift;;
+    -h|--help)      echo "Usage: ./implement F001 [--tool gemini|aider] [--model <model>] [--plan] [--plan-approved]"; exit 0;;
+    *)              echo "Unknown argument: $1"; echo "Usage: ./implement F001 [--tool gemini|aider] [--model <model>] [--plan] [--plan-approved]"; exit 1;;
+  esac
+done
+
+if [[ -z "$FEATURE_ID" ]]; then
+  echo "Usage: ./implement F001 [--tool gemini|aider] [--model <model>] [--plan] [--plan-approved]"
+  exit 1
+fi
+
+# Find the spec file
+SPEC_FILE=$(find specs -name "${FEATURE_ID}-*.md" 2>/dev/null | head -1)
+if [[ -z "$SPEC_FILE" ]]; then
+  echo "Error: No spec file found for ${FEATURE_ID} in specs/"
+  echo "Available specs:"
+  ls specs/F*.md 2>/dev/null | sed 's/^/  /' || echo "  (none)"
+  exit 1
+fi
+
+PLAN_FILE="plans/${FEATURE_ID}-plan.md"
+
+# Validate --plan-approved: plan file must exist
+if [[ "$PLAN_APPROVED" == true ]]; then
+  if [[ ! -f "$PLAN_FILE" ]]; then
+    echo "Error: --plan-approved requires ${PLAN_FILE} to exist."
+    echo "Run ./implement ${FEATURE_ID} --plan first."
+    exit 1
+  fi
+fi
+
+# Extract review level from spec header
+REVIEW_LEVEL=$(grep -oP '(?<=\*\*Review Level:\*\* )\S+' "$SPEC_FILE" 2>/dev/null | head -1 || true)
+
+echo "Spec:  $SPEC_FILE"
+echo "Tool:  $TOOL${MODEL:+ (model: $MODEL)}"
+if [[ -n "$REVIEW_LEVEL" ]]; then
+  if [[ "$REVIEW_LEVEL" == "Full" ]] && [[ "$PLAN_MODE" == false ]] && [[ "$PLAN_APPROVED" == false ]]; then
+    echo "Review Level: Full — run --plan first (or --plan-approved if plan already approved)"
+  else
+    echo "Review Level: $REVIEW_LEVEL"
+  fi
+fi
+echo ""
+
+# Ensure plans/ directory exists for plan mode
+if [[ "$PLAN_MODE" == true ]]; then
+  mkdir -p plans
+fi
+
+case "$TOOL" in
+  gemini)
+    # GEMINI.md, AGENT.md, and CODING.md are auto-loaded via .gemini/settings.json
+    if [[ "$PLAN_MODE" == true ]]; then
+      PROMPT="Read $SPEC_FILE. Write an implementation plan to $PLAN_FILE using the Plan Mode section format in AGENT.md. Do not write any code. After writing the plan, output a summary and wait for my approval. Type \"approved\" to proceed with implementation."
+    elif [[ "$PLAN_APPROVED" == true ]]; then
+      PROMPT="The plan in $PLAN_FILE has been reviewed and approved. Implement $SPEC_FILE following that plan. Run npm test from client/ when done. List all files changed and paste the full test output."
+    else
+      PROMPT="Implement $SPEC_FILE. Run npm test from client/ when done. List all files changed and paste the full test output."
+    fi
+    echo "Running: gemini \"$PROMPT\""
+    echo ""
+    gemini "$PROMPT"
+    ;;
+
+  aider)
+    # AGENT.md and CODING.md are auto-loaded via .aider.conf.yml
+    CMD_ARGS=()
+    if [[ -n "$MODEL" ]]; then
+      CMD_ARGS+=(--model "$MODEL")
+    fi
+    CMD_ARGS+=(--read "$SPEC_FILE")
+
+    if [[ "$PLAN_MODE" == true ]]; then
+      # Plan mode: write plan file only, no code changes
+      # plans/F[NNN]-plan.md is an editable file so aider can write it
+      CMD_ARGS+=("$PLAN_FILE")
+      CMD_ARGS+=(--message "Read $SPEC_FILE. Write an implementation plan to $PLAN_FILE using the Plan Mode section format in AGENT.md. Do not write any code. After writing the plan, summarize it and wait for approval before proceeding with implementation.")
+      echo "Running: aider ${CMD_ARGS[*]}"
+      echo ""
+      aider "${CMD_ARGS[@]}"
+    else
+      # Normal or plan-approved: extract file paths from spec
+      FILES=$(grep -oP '(?<=\*\*`)[^`]+(?=`\*\*)' "$SPEC_FILE" | grep '^client/' | sort -u)
+
+      if [[ -z "$FILES" ]]; then
+        echo "Error: No client/ file paths found in spec."
+        echo "Check the Files to Modify and New Files sections use the format: **\`client/path/file.tsx\`**"
+        exit 1
+      fi
+
+      echo "Files from spec:"
+      echo "$FILES" | sed 's/^/  /'
+      echo ""
+
+      if [[ "$PLAN_APPROVED" == true ]]; then
+        CMD_ARGS+=(--read "$PLAN_FILE")
+      fi
+
+      while IFS= read -r f; do
+        CMD_ARGS+=("$f")
+      done <<< "$FILES"
+
+      if [[ "$PLAN_APPROVED" == true ]]; then
+        CMD_ARGS+=(--message "The plan in $PLAN_FILE has been reviewed and approved. Implement $SPEC_FILE following that plan. Run npm test from client/ when done. List all files changed and paste the full test output.")
+      fi
+
+      echo "Running: aider ${CMD_ARGS[*]}"
+      echo ""
+      aider "${CMD_ARGS[@]}"
+    fi
+    ;;
+
+  *)
+    echo "Unknown tool: $TOOL"
+    echo "Use --tool gemini or --tool aider"
+    exit 1
+    ;;
+esac

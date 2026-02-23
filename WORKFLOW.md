@@ -4,12 +4,12 @@ This document describes the end-to-end development process for this project, inc
 
 ## Philosophy
 
-This project uses two AI assistants with distinct roles:
+This project uses two distinct roles:
 
-- **Claude** — architecture, design, planning, and code review. Claude understands intent, makes decisions about structure, and specifies exactly what Gemini should build and test.
-- **Gemini** — implementation and testing. Gemini writes code and tests to spec and reports back when all tests pass.
+- **Claude** — architecture, design, planning, and code review. Claude understands intent, makes decisions about structure, and specifies exactly what the implementor should build and test.
+- **Implementor** (Gemini, aider, or similar tool) — implementation and testing. The implementor writes code and tests to spec and reports back when all tests pass.
 
-The clean separation matters: Gemini is a capable coder but works best with precise instructions. Claude provides those instructions in the form of specs. This prevents architectural drift, keeps patterns consistent, and ensures nothing falls through the cracks.
+The clean separation matters: implementation tools work best with precise instructions. Claude provides those instructions in the form of specs. This prevents architectural drift, keeps patterns consistent, and ensures nothing falls through the cracks.
 
 ---
 
@@ -22,7 +22,9 @@ Four files and one external service work together:
 | `PLAN.md` | Feature registry — every feature has a row with ID, status, spec link, and GitHub issue link | Claude (during `/spec`, `/review`, and ship) |
 | `specs/F[NNN]-[slug].md` | Full implementation spec — everything Gemini needs to build a feature | Claude (via `/spec`) |
 | `BACKLOG.md` | Small deferred tasks and non-blocking findings — items too small for a spec | Claude (during `/spec` and `/review`) |
-| `GEMINI.md` | Coding conventions and patterns — Gemini's reference for every implementation | Claude (when new patterns are established) |
+| `CODING.md` | Coding conventions and patterns — the implementor's reference for every implementation | Claude (when new patterns are established) |
+| `GEMINI.md` | Gemini-specific invocation guide | Claude (when Gemini workflow changes) |
+| `AGENT.md` | Behavioral rules for all implementation agents | Claude (when scope discipline changes) |
 | GitHub Issues | Formal record linked to commits — audit trail and commit cross-referencing | Claude (via `gh` CLI, automated in commands) |
 
 ### Feature IDs vs GitHub Issue Numbers
@@ -86,7 +88,7 @@ Claude will:
 5. Update `PLAN.md` row from `Backlog` to `Specced`
 6. Append any deferred items to `BACKLOG.md`
 
-**Hand to Gemini** using `specs/F002-multi-user-trips.md` + `GEMINI.md` (see [Handing Off to Gemini](#handing-off-to-gemini)).
+**Hand to implementor** using `specs/F002-multi-user-trips.md` + `AGENT.md` + `CODING.md` (see [Handing Off to the Implementor](#handing-off-to-the-implementor)).
 
 ---
 
@@ -110,27 +112,117 @@ Claude writes `docs/design/price-tracking.md` first, then produces the spec.
 
 ---
 
-### 3. Handing Off to Gemini
+### 3. Handing Off to the Implementor
 
-**If using Gemini CLI:**
-```bash
-gemini "Read GEMINI.md and specs/F001-list-interactions.md, then implement
-the spec. Run npm test from client/ before reporting back."
+#### Review Levels
+
+Each spec has a `**Review Level:**` header — **Light** or **Full**. The spec author sets this; you don't need to judge it yourself.
+
+| | Light | Full |
+|---|---|---|
+| **When** | 1–2 files, no new files, no schema changes, existing patterns only | 3+ files, new files, schema changes, or new patterns |
+| **Flow** | Implement → tests → `/review` → commit | Plan → (optional Claude review) → implement → tests → `/review` → commit |
+
+**Light workflow:**
+```
+./implement F001
+  ↓
+Tests pass
+  ↓
+Claude /review F001
+  ↓
+Commit
 ```
 
-**If using copy-paste (AI Studio or similar):**
+**Full workflow — same-session path:**
+```
+./implement F001 --plan          # implementor writes plan, waits for "approved"
+  ↓
+Read plan (optionally paste plans/F001-plan.md to Claude: "review this against the spec")
+  ↓
+Type "approved" in the chat → implementor proceeds with implementation
+  ↓
+Tests pass → Claude /review F001 → commit
+```
+
+**Full workflow — new-session path:**
+```
+./implement F001 --plan          # writes plans/F001-plan.md, then exit
+  ↓
+Review plans/F001-plan.md (optionally paste to Claude: "review this against the spec")
+  ↓
+./implement F001 --plan-approved # fresh session using the approved plan
+  ↓
+Tests pass → Claude /review F001 → commit
+```
+
+#### Automated (recommended)
+
+Use the `implement` script from the project root — it finds the spec, extracts the file list, and runs the right command:
+
+```bash
+./implement F001                        # Gemini CLI (default) — Light level
+./implement F001 --plan                 # Full level: write plan first
+./implement F001 --plan-approved        # Full level: implement with approved plan
+./implement F001 --tool aider           # aider (interactive)
+./implement F001 --tool aider --model claude-sonnet-4-5
+```
+
+#### Tool Selection
+
+| Tool | Best when |
+|------|-----------|
+| **Gemini CLI** | Quick, hands-off run; context auto-loaded via `.gemini/settings.json` |
+| **aider** | Incremental watching, model switching, or mid-spec resume |
+| **Copy-paste** | Web interfaces (AI Studio) where no CLI is available |
+
+#### Manual Gemini CLI
+
+`GEMINI.md`, `AGENT.md`, and `CODING.md` are auto-loaded via `.gemini/settings.json`. Just point at the spec:
+
+```bash
+gemini "Implement specs/F001-list-interactions.md. Run npm test from client/ when done. List all files changed and paste the test output."
+```
+
+#### Manual aider
+
+`AGENT.md` and `CODING.md` are auto-loaded via `.aider.conf.yml`. Pass the spec as `--read` and list the files to edit:
+
+```bash
+aider --model <model-flag> \
+  --read specs/F001-list-interactions.md \
+  client/app/(tabs)/index.tsx \
+  client/lib/household.tsx
+```
+
+See `AIDER.md` for full setup and model selection.
+
+#### Copy-paste (web UI only — not needed for CLI tools)
+
 Paste in this order:
-1. Full contents of `GEMINI.md`
-2. Full contents of `specs/F[NNN]-[slug].md`
-3. Contents of the specific files the spec says to modify (prevents hallucination on existing code)
+1. Full contents of `AGENT.md`
+2. Full contents of `CODING.md`
+3. Full contents of `specs/F[NNN]-[slug].md`
+4. Contents of the specific files the spec says to modify
 
 End with:
-> "Implement the spec following the conventions in GEMINI.md. Run all tests and confirm they pass. List every file you changed and include the full diff or final file contents."
+> "Implement the spec following the conventions in AGENT.md and CODING.md. Run all tests and confirm they pass. List every file you changed."
 
-**What Gemini should return:**
+**What the implementor should return:**
 - Every changed file (diff or full contents)
 - Test output confirming all tests pass
 - Any spec sections that couldn't be implemented as written, with explanation
+
+#### Mid-Implementation Handoff
+
+If implementation stops mid-spec (context limit, model switch, or session break):
+
+1. The implementor makes a WIP commit:
+   ```bash
+   git commit -m "wip: F[NNN] [description] — partial ([files done] done, [files remaining] remaining)"
+   ```
+2. To resume: start a new session, read the WIP commit message and spec to identify where to continue
+3. The `/review` step happens only after the full spec is complete — not on WIP commits
 
 ---
 
@@ -191,7 +283,7 @@ Bugs don't get F-numbers or spec files — they're too small and usually don't r
    gh issue create --title "Avatar menu doesn't close on web" --label "bug"
    ```
 
-2. If the fix is simple, describe it to Gemini directly with `GEMINI.md` as context (no spec needed).
+2. If the fix is simple, describe it to the implementor directly with `AGENT.md` + `CODING.md` as context (no spec needed).
 
 3. Commit referencing the issue:
    ```bash
@@ -207,7 +299,7 @@ Bugs don't get F-numbers or spec files — they're too small and usually don't r
 Items in `BACKLOG.md` are tasks too small for a spec. Handle them by:
 
 1. Pick an item from `BACKLOG.md`
-2. Describe it to Gemini with `GEMINI.md` as context
+2. Describe it to the implementor with `AGENT.md` + `CODING.md` as context
 3. Commit with a reference to what it came from:
    ```bash
    git commit -m "chore: remove dead modal.tsx (deferred from F001)"
@@ -236,9 +328,9 @@ No GitHub issue needed for backlog items — they're lightweight by design.
 
 ---
 
-### 9. Updating GEMINI.md
+### 9. Updating CODING.md
 
-When a new coding pattern is established that Gemini needs to follow on future features, update `GEMINI.md` to document it. This typically happens when:
+When a new coding pattern is established that implementors need to follow on future features, update `CODING.md` to document it. This typically happens when:
 - A new mandatory pattern is introduced (e.g. a new provider that must be wrapped)
 - A new React Query key convention is added
 - A pattern is deprecated or changed
@@ -246,10 +338,10 @@ When a new coding pattern is established that Gemini needs to follow on future f
 Tell Claude:
 ```
 We've established that all new screens need to wrap with FooProvider.
-Can you add that to GEMINI.md?
+Can you add that to CODING.md?
 ```
 
-Claude will add it to the Mandatory Coding Patterns section so all future specs and Gemini sessions pick it up.
+Claude will add it to the Mandatory Coding Patterns section so all future specs and implementation sessions pick it up.
 
 ---
 
@@ -258,13 +350,14 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | Task | Do this |
 |------|---------|
 | Spec a new feature | `/spec [feature name]` in Claude |
-| Hand off to Gemini | Paste `GEMINI.md` + spec file into Gemini |
-| Review Gemini's code | `/review [feature ID or paste diff]` in Claude |
+| Hand off to implementor (Light) | `./implement F001` (or `--tool aider`, `--model <model>`) |
+| Hand off to implementor (Full) | `./implement F001 --plan`, then `--plan-approved` after review |
+| Review implementation | `/review [feature ID or paste diff]` in Claude |
 | Ship a feature | Commit with `closes #N`, run `gh issue close N`, update PLAN.md |
 | File a bug | `gh issue create --label "bug"` |
-| Handle a backlog item | Describe to Gemini directly, commit, check off in BACKLOG.md |
+| Handle a backlog item | Describe to implementor directly with `AGENT.md` + `CODING.md` as context |
 | Promote backlog to feature | `/spec [description]` in Claude |
-| Update coding conventions | Ask Claude to update `GEMINI.md` |
+| Update coding conventions | Ask Claude to update `CODING.md` |
 | See all features and status | Open `PLAN.md` |
 | See small deferred items | Open `BACKLOG.md` |
 | See GitHub issues | `gh issue list` or https://github.com/marvinmednick/grocerylist/issues |
@@ -277,7 +370,10 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 |------|-----------|
 | `WORKFLOW.md` | Learning or explaining the process (this file) |
 | `CLAUDE.md` | Starting a Claude session — project guidance and architecture |
-| `GEMINI.md` | Starting a Gemini session — coding conventions and patterns |
+| `AGENT.md` | Starting any implementation session — behavioral rules for all tools |
+| `CODING.md` | Starting any implementation session — coding conventions and patterns |
+| `GEMINI.md` | Starting a Gemini session — Gemini-specific invocation |
+| `AIDER.md` | Starting an aider session — aider setup and model selection |
 | `PLAN.md` | Checking feature status or finding the right spec |
 | `BACKLOG.md` | Looking for small tasks to clean up |
 | `specs/F[NNN]-*.md` | Implementing or reviewing a specific feature |

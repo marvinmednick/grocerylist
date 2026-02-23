@@ -1,0 +1,12 @@
+---
+### 2026-02-22 21:49 - Implement Light/Full review levels
+- **Completed**: Added review level system across 7 files:
+  - `implement` — added --plan, --plan-approved flags; review level reminder display
+  - `AGENT.md` — added Plan Mode section with plan file format and approval flow
+  - `specs/F001-list-interactions.md` — added Review Level: Full header + Full-level Implementation Commands
+  - `.claude/commands/spec.md` — added review level criteria + both level Implementation Commands templates
+  - `WORKFLOW.md` — added Light/Full comparison table + both approval paths in section 3
+  - `GEMINI.md` — added note on --plan and --plan-approved flags
+  - `plans/` directory created (empty, ready for plan files)
+- **Tests**: No tests — workflow/config changes only
+- **Next**: Verify plan step works end-to-end when running F001
