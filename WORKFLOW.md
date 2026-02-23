@@ -138,9 +138,9 @@ Commit
 ```
 ./implement F001 --plan          # implementor writes plan, waits for "approved"
   ↓
-Read plan (optionally paste plans/F001-plan.md to Claude: "review this against the spec")
+Optionally: ask Claude Code "Review plans/F001-plan.md against the spec"
   ↓
-Type "approved" in the chat → implementor proceeds with implementation
+Type "approved" in the implementor's chat to proceed with implementation
   ↓
 Tests pass → Claude /review F001 → commit
 ```
@@ -149,12 +149,45 @@ Tests pass → Claude /review F001 → commit
 ```
 ./implement F001 --plan          # writes plans/F001-plan.md, then exit
   ↓
-Review plans/F001-plan.md (optionally paste to Claude: "review this against the spec")
+Optionally: ask Claude Code "Review plans/F001-plan.md against the spec"
   ↓
 ./implement F001 --plan-approved # fresh session using the approved plan
   ↓
 Tests pass → Claude /review F001 → commit
 ```
+
+#### Reviewing the Plan (Full Level)
+
+After `./implement F[NNN] --plan` writes `plans/F[NNN]-plan.md`, ask Claude Code to review it before approving:
+
+```
+Review plans/F001-plan.md against the spec
+```
+
+Claude will read both files and check:
+- **Scope**: correct files listed? no extras beyond spec?
+- **Patterns**: Realtime Mutation Tracking, Household Guard, Undo Registration correctly identified?
+- **Constraints**: nothing contradicts the "What the Implementor Should NOT Change" section?
+- **Ambiguities**: any questions the implementor flagged that need answering before implementation starts?
+
+**Example:**
+```
+You: Review plans/F001-plan.md against the spec
+
+Claude: ✅ Files: all 4 files from spec listed, no extras
+        ✅ New files: UserAvatar.tsx listed with correct purpose
+        ✅ Patterns: Household Guard N/A (no new inserts), Undo N/A (local state + sign-out)
+        ✅ Constraints: modal.tsx correctly excluded
+        ⚠️  Ambiguity flagged: implementor asked about backdrop z-index — answer before approving
+```
+
+**This is scope/approach only — not a code review.** Claude is checking the plan matches the spec, not the code. The full pattern and test check happens later with `/review`.
+
+**To approve after plan review:**
+- Same-session: type `approved` in the implementor's chat window
+- New-session: `./implement F001 --plan-approved`
+
+---
 
 #### Automated (recommended)
 
@@ -226,17 +259,19 @@ If implementation stops mid-spec (context limit, model switch, or session break)
 
 ---
 
-### 4. Reviewing Gemini's Implementation
+### 4. Reviewing the Implementation
 
-Bring Gemini's output back to Claude and run:
+> **This is post-code review** — it happens after the implementor reports back with passing tests, not during the plan step. For plan review, see [Reviewing the Plan](#reviewing-the-plan-full-level) above.
+
+Once the implementor reports back (all tests passing, files listed), run in Claude Code:
 
 ```
 /review F001
 ```
 
-Or paste the diff/changed files directly:
+Or with the diff/output pasted directly:
 ```
-/review [paste Gemini's output here]
+/review [paste implementor's output here]
 ```
 
 Claude will:
@@ -352,7 +387,8 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | Spec a new feature | `/spec [feature name]` in Claude |
 | Hand off to implementor (Light) | `./implement F001` (or `--tool aider`, `--model <model>`) |
 | Hand off to implementor (Full) | `./implement F001 --plan`, then `--plan-approved` after review |
-| Review implementation | `/review [feature ID or paste diff]` in Claude |
+| Review the plan (Full level) | Ask Claude Code: `Review plans/F[NNN]-plan.md against the spec` |
+| Review the implementation | `/review F001` in Claude Code (after tests pass) |
 | Ship a feature | Commit with `closes #N`, run `gh issue close N`, update PLAN.md |
 | File a bug | `gh issue create --label "bug"` |
 | Handle a backlog item | Describe to implementor directly with `AGENT.md` + `CODING.md` as context |

@@ -157,7 +157,7 @@ The avatar menu uses a `Pressable` backdrop for dismissal. `onLongPress` for the
 ./implement F001 --plan
 ./implement F001 --tool aider --plan --model <model-flag>
 
-# In the session: review plan, optionally paste plans/F001-plan.md to Claude
+# In the session: optionally ask Claude Code: "Review plans/F001-plan.md against the spec"
 # Type "approved" in the chat to proceed with implementation
 ```
 
@@ -166,7 +166,7 @@ The avatar menu uses a `Pressable` backdrop for dismissal. `onLongPress` for the
 # Step 1: Start plan session (exit after plan is written)
 ./implement F001 --plan
 
-# Step 2: Review plans/F001-plan.md (paste to Claude if desired)
+# Step 2: Optionally ask Claude Code: "Review plans/F001-plan.md against the spec"
 
 # Step 3: Implement with approved plan
 ./implement F001 --plan-approved
