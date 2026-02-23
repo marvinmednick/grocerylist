@@ -1,6 +1,6 @@
 Review the code changes described or shown (use recent git diff if no specific code is provided): $ARGUMENTS
 
-Check the implementation against the patterns in GEMINI.md and the architecture in DESIGN.md.
+Check the implementation against the patterns in CODING.md and the architecture in DESIGN.md.
 
 Evaluate each of the following and report pass / fail / not-applicable with a brief explanation:
 

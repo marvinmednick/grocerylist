@@ -1,0 +1,13 @@
+# aider project configuration
+# See AIDER.md for full setup and model selection guide.
+
+# Always read these files for context (but don't edit them)
+read:
+  - AGENT.md
+  - CODING.md
+
+# Don't auto-commit — let the user review changes first
+auto-commits: false
+
+# Show diffs after each change
+show-diffs: true

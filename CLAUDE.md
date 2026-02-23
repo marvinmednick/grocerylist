@@ -7,15 +7,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > **Full process guide:** `WORKFLOW.md` — covers all use cases with examples, explains F-numbers vs GitHub issue numbers, and documents the complete feature lifecycle.
 
 
-Claude's responsibilities are **architecture, design, planning, and code review**. Gemini handles implementation.
+Claude's responsibilities are **architecture, design, planning, and code review**. Implementation is handled by a separate tool (Gemini, aider, or similar).
 
-- Use `/spec` to produce a structured implementation spec for a feature before handing it to Gemini
-- Use `/review` to review code Gemini has written against architectural principles
-- `GEMINI.md` (project root) is the coding reference Gemini works from — keep it up to date when patterns change
+- Use `/spec` to produce a structured implementation spec before handing off to an implementor
+- Use `/review` to review implementation output against architectural principles
+- `CODING.md` (project root) is the coding reference all implementors use — keep it up to date when patterns change
+- `AGENT.md` (project root) contains behavioral rules for all implementation agents
 
-When producing specs, reference `DESIGN.md` and relevant `docs/design/` files. Specs should include: files to modify, patterns to follow, Supabase query shapes, undo actions to register, household scoping requirements, and a **Tests to Write** section with specific test cases and assertions.
+When producing specs, reference `DESIGN.md` and relevant `docs/design/` files. Specs should include: files to modify, patterns to follow, Supabase query shapes, undo actions to register, household scoping requirements, a **Tests to Write** section with specific test cases and assertions, and an **Implementation Commands** section with pre-built invocation for each tool.
 
-**Test ownership:** Claude specifies what to test (in the Tests to Write section of each spec). Gemini implements the tests and is responsible for all tests passing. Claude can verify test quality and coverage during `/review`.
+**Test ownership:** Claude specifies what to test (in the Tests to Write section of each spec). The implementor writes the tests and is responsible for all tests passing. Claude can verify test quality and coverage during `/review`.
 
 ## Tracking System
 

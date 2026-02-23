@@ -34,3 +34,5 @@ yarn-error.log*
 .idea
 *.swp
 *.swo
+.aider*
+!.aider.conf.yml
