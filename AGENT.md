@@ -37,8 +37,32 @@ Do not make the following changes without an explicit spec section covering them
 1. Read the full spec before writing any code
 2. Read the files listed in "Files to Modify" to understand existing code
 3. Implement changes file by file, in the order listed in the spec
+   - After completing each file, append a progress entry to `plans/F[NNN]-progress.md` (see Progress Logging below)
 4. Run `npm test` from `client/` and confirm all tests pass
 5. Report back (see Reporting Back below)
+
+## Progress Logging
+
+After completing each file, and whenever you stop, append to (or update) the `## Progress Log` section in `plans/F[NNN]-progress.md`. Create the file if it doesn't exist. This file is separate from the plan file and exists for both Light and Full level specs.
+
+### Format
+
+```markdown
+## Progress Log
+
+### Files
+- ✅ `client/path/file.tsx` — brief description of what was done
+- 🔄 `client/path/file.tsx` — in progress: what's done, what remains within this file
+- ⏳ `client/path/file.tsx` — not started
+
+### Issues
+- [Blockers, unexpected patterns, deviations from spec — or "None"]
+
+### Status
+[Complete | In progress — N/M files done | Paused — N/M files done]
+```
+
+Keep the Issues section current — flag anything that needs Claude's attention before the next session or before `/review`.
 
 ## Plan Mode
 
@@ -74,18 +98,17 @@ Save the plan to `plans/F[NNN]-plan.md` using this format:
 
 ### After approval
 
-When the user types `"approved"` (same-session path), implement the spec following the approved plan. When invoked with `--plan-approved` (new-session path), read `plans/F[NNN]-plan.md` as the approved plan and implement accordingly.
+When the user types `"approved"` (same-session path) or when invoked with `--plan-approved` (new-session path), implement the spec following the approved plan. If resuming a paused session, check `plans/F[NNN]-progress.md` first — read the actual file contents of any completed files to confirm their state, then continue with remaining files. Maintain the progress log throughout.
 
 ## Mid-Implementation Pause
 
-If you need to stop mid-implementation (context limit, model switch, or session break), make a WIP commit:
+If you need to stop mid-implementation (context limit, model switch, or session break):
 
-```bash
-git add [files changed so far]
-git commit -m "wip: F[NNN] [description] — partial ([files done] done, [files remaining] remaining)"
-```
+1. Update `plans/F[NNN]-progress.md` with current state — mark any in-progress file as 🔄 and note exactly what's done and what remains within it; set Status to `Paused — N/M files done`
+2. Display the progress log contents on screen so the user can see the current state
+3. Do not commit anything
 
-The next session should read this commit message and the spec to understand where to resume.
+**Resuming:** The next session reads `plans/F[NNN]-progress.md` to see what's done, reads the actual file contents of completed files to confirm their state, then continues with remaining files. No input from the user is needed to orient the new session.
 
 ## Reporting Back
 

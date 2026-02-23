@@ -42,6 +42,10 @@ if [[ -z "$SPEC_FILE" ]]; then
 fi
 
 PLAN_FILE="plans/${FEATURE_ID}-plan.md"
+PROGRESS_FILE="plans/${FEATURE_ID}-progress.md"
+
+# Always ensure plans/ directory exists
+mkdir -p plans
 
 # Validate --plan-approved: plan file must exist
 if [[ "$PLAN_APPROVED" == true ]]; then
@@ -66,10 +70,6 @@ if [[ -n "$REVIEW_LEVEL" ]]; then
 fi
 echo ""
 
-# Ensure plans/ directory exists for plan mode
-if [[ "$PLAN_MODE" == true ]]; then
-  mkdir -p plans
-fi
 
 case "$TOOL" in
   gemini)
@@ -77,9 +77,9 @@ case "$TOOL" in
     if [[ "$PLAN_MODE" == true ]]; then
       PROMPT="Read $SPEC_FILE. Write an implementation plan to $PLAN_FILE using the Plan Mode section format in AGENT.md. Do not write any code. After writing the plan, output a summary and wait for my approval. Type \"approved\" to proceed with implementation."
     elif [[ "$PLAN_APPROVED" == true ]]; then
-      PROMPT="The plan in $PLAN_FILE has been reviewed and approved. Implement $SPEC_FILE following that plan. Run npm test from client/ when done. List all files changed and paste the full test output."
+      PROMPT="The plan in $PLAN_FILE has been reviewed and approved. Check $PROGRESS_FILE for a progress log — if present, read the completed files to confirm their state and continue from where the previous session left off; otherwise start fresh. Maintain $PROGRESS_FILE throughout: append a progress entry after each file and display its contents when stopping. Run npm test from client/ when done. List all files changed and paste the full test output."
     else
-      PROMPT="Implement $SPEC_FILE. Run npm test from client/ when done. List all files changed and paste the full test output."
+      PROMPT="Implement $SPEC_FILE. Maintain $PROGRESS_FILE throughout: append a progress entry after completing each file and display its contents when stopping. Run npm test from client/ when done. List all files changed and paste the full test output."
     fi
     echo "Running: gemini \"$PROMPT\""
     echo ""
@@ -124,8 +124,11 @@ case "$TOOL" in
         CMD_ARGS+=("$f")
       done <<< "$FILES"
 
+      # Progress file is always editable so aider can write to it
+      CMD_ARGS+=("$PROGRESS_FILE")
+
       if [[ "$PLAN_APPROVED" == true ]]; then
-        CMD_ARGS+=(--message "The plan in $PLAN_FILE has been reviewed and approved. Implement $SPEC_FILE following that plan. Run npm test from client/ when done. List all files changed and paste the full test output.")
+        CMD_ARGS+=(--message "The plan in $PLAN_FILE has been reviewed and approved. Check $PROGRESS_FILE for a progress log — if present, read the completed files to confirm their state and continue from where the previous session left off; otherwise start fresh. Maintain $PROGRESS_FILE throughout: append a progress entry after each file and display its contents when stopping. Run npm test from client/ when done. List all files changed and paste the full test output.")
       fi
 
       echo "Running: aider ${CMD_ARGS[*]}"

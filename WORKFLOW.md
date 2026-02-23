@@ -250,12 +250,11 @@ End with:
 
 If implementation stops mid-spec (context limit, model switch, or session break):
 
-1. The implementor makes a WIP commit:
-   ```bash
-   git commit -m "wip: F[NNN] [description] — partial ([files done] done, [files remaining] remaining)"
-   ```
-2. To resume: start a new session, read the WIP commit message and spec to identify where to continue
-3. The `/review` step happens only after the full spec is complete — not on WIP commits
+1. The implementor updates `plans/F[NNN]-progress.md` with current state and displays it
+2. To resume, run the same `./implement` command — the new session reads `plans/F[NNN]-progress.md` and self-orients; no user guidance needed
+3. The `/review` step happens only after the full spec is complete
+
+You can optionally make a WIP commit to save partial work, but this doesn't affect how the implementor resumes.
 
 ---
 
