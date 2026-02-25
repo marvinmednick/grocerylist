@@ -17,6 +17,27 @@ export OPENROUTER_API_KEY=...       # OpenRouter models (QWEN, Llama, etc.)
 export GEMINI_API_KEY=...           # Gemini models via aider
 ```
 
+## Edit Format
+
+aider uses different formats for how the model returns file changes:
+
+| Format | How it works | When used |
+|--------|-------------|-----------|
+| `diff` | Model outputs only the changed lines as a unified diff | Default for all recognized capable models |
+| `udiff` | Variant of diff with extra context | Some Claude versions |
+| `whole` | Model outputs the complete file for each change | Fallback for unrecognized models |
+
+**This project sets `edit-format: diff` in `.aider.conf.yml`.** This is important because:
+- Azure-hosted or unrecognized models fall back to `whole` format by default
+- In whole-edit format, some models return a narrative summary instead of actual file content — aider detects no edits and writes nothing to disk
+- `diff` format works correctly with all modern capable models and is more token-efficient
+
+If you need to override for a specific model run:
+```bash
+./implement F001 --tool aider --model <model> --edit-format udiff
+aider --model <model> --edit-format whole ...   # only if diff is failing for a specific model
+```
+
 ## Model Selection
 
 aider does not have a default model set in `.aider.conf.yml` — choose at runtime based on the task:

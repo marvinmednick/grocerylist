@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+# check-tests — Run the test suite and validate against the known-failures baseline
+#
+# Usage:
+#   ./check-tests                     # Run tests; fail if any unexpected failures
+#   ./check-tests --show-known        # Also print known failures that were observed
+#   ./check-tests --show-all          # Print a full failure report regardless of baseline
+#
+# Exit codes:
+#   0 — All failures are in the known list (or there are no failures)
+#   1 — At least one unexpected failure detected
+#   2 — Usage error
+
+set -euo pipefail
+
+SHOW_KNOWN=false
+SHOW_ALL=false
+STALE_DAYS=30
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --show-known) SHOW_KNOWN=true; shift;;
+    --show-all)   SHOW_ALL=true; shift;;
+    -h|--help)
+      echo "Usage: ./check-tests [--show-known] [--show-all]"
+      echo ""
+      echo "  --show-known   Also print known failures that were observed"
+      echo "  --show-all     Print full failure list regardless of baseline"
+      exit 0;;
+    *) echo "Unknown argument: $1"; exit 2;;
+  esac
+done
+
+KNOWN_FILE="client/known-test-failures.txt"
+TMPDIR_BASE=$(mktemp -d)
+trap 'rm -rf "$TMPDIR_BASE"' EXIT
+
+RAW_OUTPUT="$TMPDIR_BASE/test-output.txt"
+FAILURES_FILE="$TMPDIR_BASE/failures.txt"
+
+echo "Running tests..."
+# Run tests; capture output regardless of exit code
+npm --prefix client test -- --watchAll=false 2>&1 | tee "$RAW_OUTPUT" || true
+
+echo ""
+
+# Extract failures from Jest output.
+# Jest formats individual test failures as:
+#   ● <suite-name> › <test-name>
+# And suite-level failures (can't parse/run) as:
+#   ● Test suite failed to run
+# We capture both in context with their suite file.
+python3 - "$RAW_OUTPUT" "$FAILURES_FILE" << 'PYEOF'
+import sys, re
+
+raw_file = sys.argv[1]
+out_file  = sys.argv[2]
+
+with open(raw_file) as f:
+    lines = f.readlines()
+
+current_suite = None
+failures = []
+
+for i, line in enumerate(lines):
+    # FAIL line names the suite file
+    m = re.match(r'^(FAIL|PASS)\s+(.+)$', line.strip())
+    if m:
+        current_suite = m.group(2).strip()
+
+    # Individual test failure — must match "● SuiteName › testName" pattern
+    m2 = re.match(r'^\s+● (.+)$', line)
+    if m2 and current_suite:
+        test_name = m2.group(1).strip()
+        if test_name == 'Test suite failed to run':
+            failures.append(f'[SUITE_RUN_FAILURE] {current_suite}')
+        elif ' › ' in test_name:
+            # Only genuine test case failures (contain the › separator)
+            failures.append(f'[SUITE] {current_suite} | {test_name}')
+
+with open(out_file, 'w') as f:
+    for failure in failures:
+        f.write(failure + '\n')
+PYEOF
+
+# Load known failures (ignore blank lines and comments)
+declare -A KNOWN_MAP
+if [[ -f "$KNOWN_FILE" ]]; then
+  while IFS= read -r line; do
+    # Skip blank lines and comments
+    [[ -z "$line" || "$line" =~ ^# ]] && continue
+    # Strip inline comments
+    entry="${line%%#*}"
+    entry="${entry%"${entry##*[![:space:]]}"}"  # rtrim
+    [[ -n "$entry" ]] && KNOWN_MAP["$entry"]=1
+  done < "$KNOWN_FILE"
+fi
+
+# Check for stale entries (entries in known file not seen in this run)
+SEEN_FAILURES=()
+while IFS= read -r failure; do
+  [[ -n "$failure" ]] && SEEN_FAILURES+=("$failure")
+done < "$FAILURES_FILE"
+
+# Categorize
+UNEXPECTED=()
+KNOWN_SEEN=()
+KNOWN_NOT_SEEN=()
+
+for failure in "${SEEN_FAILURES[@]}"; do
+  if [[ -n "${KNOWN_MAP[$failure]+_}" ]]; then
+    KNOWN_SEEN+=("$failure")
+  else
+    UNEXPECTED+=("$failure")
+  fi
+done
+
+for known in "${!KNOWN_MAP[@]}"; do
+  found=false
+  for seen in "${SEEN_FAILURES[@]}"; do
+    [[ "$seen" == "$known" ]] && found=true && break
+  done
+  $found || KNOWN_NOT_SEEN+=("$known")
+done
+
+# Report
+if [[ ${#UNEXPECTED[@]} -gt 0 ]]; then
+  echo "UNEXPECTED FAILURES (${#UNEXPECTED[@]}):"
+  for f in "${UNEXPECTED[@]}"; do
+    echo "  ✗ $f"
+  done
+  echo ""
+fi
+
+if $SHOW_KNOWN || $SHOW_ALL; then
+  if [[ ${#KNOWN_SEEN[@]} -gt 0 ]]; then
+    echo "KNOWN FAILURES (${#KNOWN_SEEN[@]}) — in baseline, not blocking:"
+    for f in "${KNOWN_SEEN[@]}"; do
+      echo "  ~ $f"
+    done
+    echo ""
+  fi
+fi
+
+if [[ ${#KNOWN_NOT_SEEN[@]} -gt 0 ]]; then
+  echo "STALE BASELINE ENTRIES (${#KNOWN_NOT_SEEN[@]}) — in known-test-failures.txt but not failing:"
+  for f in "${KNOWN_NOT_SEEN[@]}"; do
+    echo "  ? $f"
+  done
+  echo "  → Consider removing these from $KNOWN_FILE if the issue is fixed."
+  echo ""
+fi
+
+# Summary line
+TOTAL_FAILURES=${#SEEN_FAILURES[@]}
+TOTAL_UNEXPECTED=${#UNEXPECTED[@]}
+TOTAL_KNOWN=${#KNOWN_SEEN[@]}
+
+if [[ $TOTAL_FAILURES -eq 0 ]]; then
+  echo "✓ All tests passed."
+elif [[ $TOTAL_UNEXPECTED -eq 0 ]]; then
+  echo "✓ No unexpected failures. ($TOTAL_KNOWN known failure(s) in baseline)"
+else
+  echo "✗ $TOTAL_UNEXPECTED unexpected failure(s) detected. ($TOTAL_KNOWN known, $TOTAL_FAILURES total)"
+  exit 1
+fi

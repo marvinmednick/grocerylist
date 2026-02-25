@@ -34,9 +34,13 @@ Do not make the following changes without an explicit spec section covering them
 
 ## Workflow
 
-1. Read the full spec before writing any code
+1. Read the full spec before writing any code. Specs begin with a `<!-- Tracking metadata -->` HTML
+   comment containing the feature ID, GitHub issue number, and status — this is for project tracking
+   only; skip it. The GitHub issue number is not needed for implementation.
 2. Read the files listed in "Files to Modify" to understand existing code
 3. Implement changes file by file, in the order listed in the spec
+   - **Implement all source files before writing or fixing test files.** Tests depend on the
+     components they exercise — writing tests before the source causes false failures.
    - After completing each file, append a progress entry to `plans/F[NNN]-progress.md` (see Progress Logging below)
 4. Run `npm test` from `client/` and confirm all tests pass
 5. Report back (see Reporting Back below)
@@ -76,11 +80,30 @@ Save the plan to `plans/F[NNN]-plan.md` using this format:
 # Implementation Plan: F[NNN] [Feature Name]
 
 ## Files to Modify
-- `client/path/file.tsx` — specific change description
-- ...
+
+When a file has multiple distinct changes, use numbered sub-sections so each change can be
+verified independently. For UI element additions, state what the element is, where it appears
+in the layout (position relative to siblings), and what triggers it — "Add icon" or "show
+conditionally" alone is not sufficient. End each file entry with an "Ensure" block listing
+any existing behavior that must remain untouched.
+
+- `client/path/file.tsx` —
+  1. **Change One** — description with position/trigger for any UI element
+  2. **Change Two** — description
+  3. **Ensure:** list any logic, handlers, or behavior in this file that must not be modified.
+
+- `client/path/simple-file.tsx` — description (use a single line when there is only one change)
 
 ## New Files
+
+List ALL new files the spec requires — component files, test files, AND migration files.
+Omitting any category means those files will be missing from the implementation.
+
 - `client/path/newfile.tsx` — purpose and key behaviors
+- `client/path/__tests__/newfile-test.tsx` — what it tests; list each test case from the spec's
+  Tests to Write section; list all mocks required
+- `supabase/migrations/[timestamp]-description.sql` — what schema changes it applies (if spec
+  has Database/Schema Changes)
 
 ## Patterns Applying
 - Realtime Mutation Tracking: Yes/No — reason
@@ -94,7 +117,12 @@ Save the plan to `plans/F[NNN]-plan.md` using this format:
 ### Rules
 
 - Do not write any code
-- After writing the plan file, output a summary and wait for the user to type `"approved"` before proceeding
+- The plan must account for every section of the spec: Files to Modify, New Files (components + tests
+  + migrations), and Tests to Write. Any section left unaddressed risks being skipped during
+  implementation.
+- After writing the plan file, output a summary and wait for the user to type `"approved"` before
+  proceeding (same-session interactive mode). If invoked via `--plan` in a scripted context the
+  session will exit after writing — implementation runs separately via `--plan-approved`.
 
 ### After approval
 

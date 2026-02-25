@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # implement — Start an implementation session for a feature spec
 #
-# Usage: ./implement F001 [--tool gemini|aider] [--model <model>] [--plan] [--plan-approved]
+# Usage: ./implement F001 [--tool gemini|aider] [--model <model>] [--plan [--force]] [--plan-approved] [--implement-only]
 #
 # Defaults to Gemini CLI if --tool is not specified.
 # For aider, AGENT.md and CODING.md are auto-loaded via .aider.conf.yml.
 # For Gemini CLI, GEMINI.md/AGENT.md/CODING.md are auto-loaded via .gemini/settings.json.
+#
+# --implement-only  Skip auto-test loop; implement code only. Use when you want to
+#                   review the implementation before running tests (e.g. via /review),
+#                   or when running ./check-tests separately.
 
 set -euo pipefail
 
@@ -14,21 +18,30 @@ TOOL="gemini"
 MODEL=""
 PLAN_MODE=false
 PLAN_APPROVED=false
+FORCE=false
+IMPLEMENT_ONLY=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    F[0-9]*)        FEATURE_ID="$1"; shift;;
-    --tool)         TOOL="$2"; shift 2;;
-    --model)        MODEL="$2"; shift 2;;
-    --plan)         PLAN_MODE=true; shift;;
+    F[0-9]*)         FEATURE_ID="$1"; shift;;
+    --tool)          TOOL="$2"; shift 2;;
+    --model)         MODEL="$2"; shift 2;;
+    --plan)          PLAN_MODE=true; shift;;
     --plan-approved) PLAN_APPROVED=true; shift;;
-    -h|--help)      echo "Usage: ./implement F001 [--tool gemini|aider] [--model <model>] [--plan] [--plan-approved]"; exit 0;;
-    *)              echo "Unknown argument: $1"; echo "Usage: ./implement F001 [--tool gemini|aider] [--model <model>] [--plan] [--plan-approved]"; exit 1;;
+    --force)         FORCE=true; shift;;
+    --implement-only) IMPLEMENT_ONLY=true; shift;;
+    -h|--help)
+      echo "Usage: ./implement F001 [--tool gemini|aider] [--model <model>] [--plan [--force]] [--plan-approved] [--implement-only]"
+      exit 0;;
+    *)
+      echo "Unknown argument: $1"
+      echo "Usage: ./implement F001 [--tool gemini|aider] [--model <model>] [--plan [--force]] [--plan-approved] [--implement-only]"
+      exit 1;;
   esac
 done
 
 if [[ -z "$FEATURE_ID" ]]; then
-  echo "Usage: ./implement F001 [--tool gemini|aider] [--model <model>] [--plan] [--plan-approved]"
+  echo "Usage: ./implement F001 [--tool gemini|aider] [--model <model>] [--plan [--force]] [--plan-approved] [--implement-only]"
   exit 1
 fi
 
@@ -42,16 +55,34 @@ if [[ -z "$SPEC_FILE" ]]; then
 fi
 
 PLAN_FILE="plans/${FEATURE_ID}-plan.md"
+APPROVED_PLAN_FILE="plans/${FEATURE_ID}-plan-approved.md"
 PROGRESS_FILE="plans/${FEATURE_ID}-progress.md"
 
 # Always ensure plans/ directory exists
 mkdir -p plans
 
-# Validate --plan-approved: plan file must exist
+# Guard: if a non-empty plan already exists and --force was not passed, stop and guide the user.
+# This prevents silently overwriting a plan that may have been carefully reviewed.
+if [[ "$PLAN_MODE" == true ]] && [[ "$FORCE" == false ]]; then
+  if [[ -f "$PLAN_FILE" ]] && [[ -s "$PLAN_FILE" ]]; then
+    echo "Plan already exists: $PLAN_FILE"
+    echo ""
+    # Timestamp check: warn if the spec is newer than the plan
+    if [[ "$SPEC_FILE" -nt "$PLAN_FILE" ]]; then
+      echo "  ⚠  Spec is newer than the plan — the spec may have changed since the plan was written."
+      echo "     Consider regenerating with --force to pick up spec changes."
+    fi
+    echo "Next step:  /review-plan ${FEATURE_ID} in Claude Code to review, iterate, and approve."
+    echo "Regenerate: ./implement ${FEATURE_ID} --plan --force  (overwrites existing plan)"
+    exit 0
+  fi
+fi
+
+# Validate --plan-approved: approved plan file (written by /review-plan) must exist
 if [[ "$PLAN_APPROVED" == true ]]; then
-  if [[ ! -f "$PLAN_FILE" ]]; then
-    echo "Error: --plan-approved requires ${PLAN_FILE} to exist."
-    echo "Run ./implement ${FEATURE_ID} --plan first."
+  if [[ ! -f "$APPROVED_PLAN_FILE" ]]; then
+    echo "Error: --plan-approved requires ${APPROVED_PLAN_FILE} to exist."
+    echo "Run /review-plan ${FEATURE_ID} in Claude Code to review and approve the plan."
     exit 1
   fi
 fi
@@ -70,6 +101,25 @@ if [[ -n "$REVIEW_LEVEL" ]]; then
 fi
 echo ""
 
+# Capture test baseline before implementation begins (skip during plan-only mode)
+if [[ "$PLAN_MODE" == false ]]; then
+  if [[ -f "./check-tests" ]]; then
+    echo "Capturing test baseline before implementation..."
+    # Run check-tests; if there are unexpected failures, warn but don't block.
+    # The implementor should know the baseline state before changing code.
+    if ! ./check-tests 2>&1; then
+      echo ""
+      echo "⚠  Unexpected test failures exist before implementation starts."
+      echo "   Run /fix-baseline in Claude Code to resolve pre-existing failures first,"
+      echo "   or add them to client/known-test-failures.txt if they are acceptable."
+      echo "   Continuing anyway — the implementor will see these in their test run."
+      echo ""
+    else
+      echo ""
+    fi
+  fi
+fi
+
 
 case "$TOOL" in
   gemini)
@@ -77,7 +127,7 @@ case "$TOOL" in
     if [[ "$PLAN_MODE" == true ]]; then
       PROMPT="Read $SPEC_FILE. Write an implementation plan to $PLAN_FILE using the Plan Mode section format in AGENT.md. Do not write any code. After writing the plan, output a summary and wait for my approval. Type \"approved\" to proceed with implementation."
     elif [[ "$PLAN_APPROVED" == true ]]; then
-      PROMPT="The plan in $PLAN_FILE has been reviewed and approved. Check $PROGRESS_FILE for a progress log — if present, read the completed files to confirm their state and continue from where the previous session left off; otherwise start fresh. Maintain $PROGRESS_FILE throughout: append a progress entry after each file and display its contents when stopping. Run npm test from client/ when done. List all files changed and paste the full test output."
+      PROMPT="The approved plan in $APPROVED_PLAN_FILE has been reviewed and approved by Claude and the user. Check $PROGRESS_FILE for a progress log — if present, read the completed files to confirm their state and continue from where the previous session left off; otherwise start fresh. Maintain $PROGRESS_FILE throughout: append a progress entry after each file and display its contents when stopping. Run npm test from client/ when done. List all files changed and paste the full test output."
     else
       PROMPT="Implement $SPEC_FILE. Maintain $PROGRESS_FILE throughout: append a progress entry after completing each file and display its contents when stopping. Run npm test from client/ when done. List all files changed and paste the full test output."
     fi
@@ -88,27 +138,43 @@ case "$TOOL" in
 
   aider)
     # AGENT.md and CODING.md are auto-loaded via .aider.conf.yml
-    CMD_ARGS=()
+    # --yes: auto-accept all file-addition prompts (no interactive confirmations)
+    CMD_ARGS=(--yes)
     if [[ -n "$MODEL" ]]; then
       CMD_ARGS+=(--model "$MODEL")
     fi
-    CMD_ARGS+=(--read "$SPEC_FILE")
 
     if [[ "$PLAN_MODE" == true ]]; then
-      # Plan mode: write plan file only, no code changes
-      # plans/F[NNN]-plan.md is an editable file so aider can write it
+      # Plan mode: write plan file only, no code changes.
+      # Inline the spec content in the message rather than using --read so that
+      # aider does not recognise the spec's file paths as repo files and prompt
+      # to add them to the chat (which interferes with the plan-file write).
+      touch "$PLAN_FILE"
       CMD_ARGS+=("$PLAN_FILE")
-      CMD_ARGS+=(--message "Read $SPEC_FILE. Write an implementation plan to $PLAN_FILE using the Plan Mode section format in AGENT.md. Do not write any code. After writing the plan, summarize it and wait for approval before proceeding with implementation.")
-      echo "Running: aider ${CMD_ARGS[*]}"
+      CMD_ARGS+=(--message "$(printf 'Feature spec for %s:\n\n%s\n\nTask: Write an implementation plan to %s following the Plan Mode format in AGENT.md.\nRules:\n- Write ONLY to %s\n- Do NOT add any other files to the chat\n- Do NOT write any implementation code\n- After writing the plan file, print a one-paragraph summary and stop' \
+        "$FEATURE_ID" "$(< "$SPEC_FILE")" "$PLAN_FILE" "$PLAN_FILE")")
+      echo "Running: aider (plan mode — spec inlined, writing to $PLAN_FILE)"
       echo ""
       aider "${CMD_ARGS[@]}"
     else
-      # Normal or plan-approved: extract file paths from spec
-      FILES=$(grep -oP '(?<=\*\*`)[^`]+(?=`\*\*)' "$SPEC_FILE" | grep '^client/' | sort -u)
+      # Implementation mode: load spec as read-only context for the model
+      CMD_ARGS+=(--read "$SPEC_FILE")
+
+      # Load SmartAddItem test as read-only context so the model understands
+      # the existing test patterns (mocking conventions, render helpers, etc.)
+      SMART_ADD_TEST="client/components/__tests__/SmartAddItem-test.tsx"
+      if [[ -f "$SMART_ADD_TEST" ]]; then
+        CMD_ARGS+=(--read "$SMART_ADD_TEST")
+      fi
+
+      # Extract all backtick-quoted client/ and supabase/migrations/ paths from the spec
+      # (covers Files to Modify, New Files, Tests to Write, and Database/Schema Changes
+      # sections regardless of surrounding formatting)
+      FILES=$(grep -oP '`(client|supabase/migrations)/[^`]+`' "$SPEC_FILE" | tr -d '`' | sort -u)
 
       if [[ -z "$FILES" ]]; then
         echo "Error: No client/ file paths found in spec."
-        echo "Check the Files to Modify and New Files sections use the format: **\`client/path/file.tsx\`**"
+        echo "Check Files to Modify, New Files, and Tests to Write sections use backtick-quoted paths."
         exit 1
       fi
 
@@ -116,9 +182,16 @@ case "$TOOL" in
       echo "$FILES" | sed 's/^/  /'
       echo ""
 
-      if [[ "$PLAN_APPROVED" == true ]]; then
-        CMD_ARGS+=(--read "$PLAN_FILE")
-      fi
+      # Pre-create any files that don't exist yet so aider can open them without prompting
+      while IFS= read -r f; do
+        if [[ ! -f "$f" ]]; then
+          mkdir -p "$(dirname "$f")"
+          touch "$f"
+          echo "  Created (empty): $f"
+        fi
+      done <<< "$FILES"
+      touch "$PROGRESS_FILE"
+      echo ""
 
       while IFS= read -r f; do
         CMD_ARGS+=("$f")
@@ -127,8 +200,21 @@ case "$TOOL" in
       # Progress file is always editable so aider can write to it
       CMD_ARGS+=("$PROGRESS_FILE")
 
+      # Test integration: aider runs tests after each edit set and feeds failures back to the
+      # model automatically. --auto-test triggers after each model response, not per-file write.
+      # Use --implement-only to skip this loop (e.g. for a code-only review pass first).
+      if [[ "$IMPLEMENT_ONLY" == false ]]; then
+        CMD_ARGS+=(--test-cmd "npm --prefix client test --watchAll=false")
+        CMD_ARGS+=(--auto-test)
+      fi
+
       if [[ "$PLAN_APPROVED" == true ]]; then
-        CMD_ARGS+=(--message "The plan in $PLAN_FILE has been reviewed and approved. Check $PROGRESS_FILE for a progress log — if present, read the completed files to confirm their state and continue from where the previous session left off; otherwise start fresh. Maintain $PROGRESS_FILE throughout: append a progress entry after each file and display its contents when stopping. Run npm test from client/ when done. List all files changed and paste the full test output.")
+        # Inline the approved plan content directly in the message rather than using --read.
+        # With whole-edit format, --read files are not treated as authoritative across turns,
+        # causing the model to ask for the plan to be re-pasted. Inlining makes it part of
+        # the authoritative prompt and avoids this confusion.
+        CMD_ARGS+=(--message "$(printf 'The following implementation plan has been reviewed and approved by Claude and the user. Follow it exactly. Proceed directly — do not ask for confirmation.\n\n---BEGIN APPROVED PLAN---\n%s\n---END APPROVED PLAN---\n\nCheck %s for a progress log — if present, read the completed files to confirm their state and continue from where the previous session left off; otherwise start fresh. Maintain %s throughout: append a progress entry after each file and display its contents when stopping. When all tests pass, list all files changed.' \
+          "$(< "$APPROVED_PLAN_FILE")" "$PROGRESS_FILE" "$PROGRESS_FILE")")
       fi
 
       echo "Running: aider ${CMD_ARGS[*]}"

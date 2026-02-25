@@ -121,71 +121,72 @@ Each spec has a `**Review Level:**` header — **Light** or **Full**. The spec a
 | | Light | Full |
 |---|---|---|
 | **When** | 1–2 files, no new files, no schema changes, existing patterns only | 3+ files, new files, schema changes, or new patterns |
-| **Flow** | Implement → tests → `/review` → commit | Plan → (optional Claude review) → implement → tests → `/review` → commit |
+| **Flow** | Implement → `/review` → tests → commit | Plan → Claude plan review → implement → `/review` → tests → commit |
 
 **Light workflow:**
 ```
-./implement F001
+./implement F001 --implement-only   # implement code only, no auto-test
   ↓
-Tests pass
+Claude /review F001                 # review code before running tests
   ↓
-Claude /review F001
+./check-tests                       # run tests; fix any unexpected failures
   ↓
 Commit
 ```
 
-**Full workflow — same-session path:**
+**Full workflow — new-session path (recommended — works with both Gemini and aider):**
 ```
-./implement F001 --plan          # implementor writes plan, waits for "approved"
+./implement F001 --plan             # implementor writes plans/F001-plan.md, then exits
   ↓
-Optionally: ask Claude Code "Review plans/F001-plan.md against the spec"
+/review-plan F001                   # Claude reviews, fixes gaps, iterates with you, writes
+                                    # plans/F001-plan-approved.md when both parties approve
   ↓
-Type "approved" in the implementor's chat to proceed with implementation
+./implement F001 --plan-approved --implement-only  # implement code only
   ↓
-Tests pass → Claude /review F001 → commit
+Claude /review F001                 # review code before running tests
+  ↓
+./check-tests                       # run tests; fix any unexpected failures
+  ↓
+Commit
 ```
 
-**Full workflow — new-session path:**
+**Full workflow — same-session path (Gemini only — stays in interactive loop):**
 ```
-./implement F001 --plan          # writes plans/F001-plan.md, then exit
+./implement F001 --plan             # Gemini writes plan and stays in session
   ↓
-Optionally: ask Claude Code "Review plans/F001-plan.md against the spec"
+/review-plan F001                   # Claude reviews in a separate Claude Code session;
+                                    # writes plans/F001-plan-approved.md when approved
   ↓
-./implement F001 --plan-approved # fresh session using the approved plan
+./implement F001 --plan-approved --implement-only  # fresh session with approved plan
   ↓
-Tests pass → Claude /review F001 → commit
+Claude /review F001 → ./check-tests → commit
 ```
+
+**When to use auto-test (omit `--implement-only`):** If you want aider to fix test failures
+automatically in the same session, drop `--implement-only`. The tradeoff is that aider may make
+additional code changes beyond the spec to satisfy tests — review these carefully before committing.
 
 #### Reviewing the Plan (Full Level)
 
-After `./implement F[NNN] --plan` writes `plans/F[NNN]-plan.md`, ask Claude Code to review it before approving:
+After `./implement F[NNN] --plan` writes `plans/F[NNN]-plan.md`, run in Claude Code:
 
 ```
-Review plans/F001-plan.md against the spec
+/review-plan F001
 ```
 
-Claude will read both files and check:
-- **Scope**: correct files listed? no extras beyond spec?
-- **Patterns**: Realtime Mutation Tracking, Household Guard, Undo Registration correctly identified?
-- **Constraints**: nothing contradicts the "What the Implementor Should NOT Change" section?
-- **Ambiguities**: any questions the implementor flagged that need answering before implementation starts?
+Claude will:
+1. Read the plan and spec
+2. **Leave `plans/F[NNN]-plan.md` unmodified** — the original draft is preserved for comparison
+3. Report gaps found and flag anything needing your input
+4. Iterate with you until both parties are satisfied
+5. Write the corrected plan to **`plans/F[NNN]-plan-approved.md`** — this is what the implementor uses
 
-**Example:**
-```
-You: Review plans/F001-plan.md against the spec
+The original draft and the approved file can be diffed at any time to see exactly what the review process changed.
 
-Claude: ✅ Files: all 4 files from spec listed, no extras
-        ✅ New files: UserAvatar.tsx listed with correct purpose
-        ✅ Patterns: Household Guard N/A (no new inserts), Undo N/A (local state + sign-out)
-        ✅ Constraints: modal.tsx correctly excluded
-        ⚠️  Ambiguity flagged: implementor asked about backdrop z-index — answer before approving
-```
+**This is scope/approach only — not a code review.** Claude checks the plan matches the spec and fixes it; the full pattern and test check happens later with `/review`.
 
-**This is scope/approach only — not a code review.** Claude is checking the plan matches the spec, not the code. The full pattern and test check happens later with `/review`.
-
-**To approve after plan review:**
-- Same-session: type `approved` in the implementor's chat window
-- New-session: `./implement F001 --plan-approved`
+**`--plan-approved` requires `plans/F[NNN]-plan-approved.md` to exist.** Running
+`./implement F001 --plan-approved` without first completing `/review-plan F001` will error.
 
 ---
 
@@ -194,10 +195,11 @@ Claude: ✅ Files: all 4 files from spec listed, no extras
 Use the `implement` script from the project root — it finds the spec, extracts the file list, and runs the right command:
 
 ```bash
-./implement F001                        # Gemini CLI (default) — Light level
-./implement F001 --plan                 # Full level: write plan first
-./implement F001 --plan-approved        # Full level: implement with approved plan
-./implement F001 --tool aider           # aider (interactive)
+./implement F001                                  # Gemini CLI (default) — with auto-test
+./implement F001 --implement-only                 # code only, no auto-test (recommended)
+./implement F001 --plan                           # Full level: write plan first
+./implement F001 --plan-approved --implement-only # Full level: implement with approved plan
+./implement F001 --tool aider                     # aider (interactive)
 ./implement F001 --tool aider --model claude-sonnet-4-5
 ```
 
@@ -208,6 +210,8 @@ Use the `implement` script from the project root — it finds the spec, extracts
 | **Gemini CLI** | Quick, hands-off run; context auto-loaded via `.gemini/settings.json` |
 | **aider** | Incremental watching, model switching, or mid-spec resume |
 | **Copy-paste** | Web interfaces (AI Studio) where no CLI is available |
+
+**aider edit format:** `diff` is set as the project default in `.aider.conf.yml`. This is required for Azure-hosted or other unrecognized models — without it, aider falls back to `whole` format, which causes some models to return narrative summaries instead of writing actual file edits. See `AIDER.md` for details.
 
 #### Manual Gemini CLI
 
@@ -258,9 +262,47 @@ You can optionally make a WIP commit to save partial work, but this doesn't affe
 
 ---
 
-### 4. Reviewing the Implementation
+### 4. Running Tests and Managing the Baseline
 
-> **This is post-code review** — it happens after the implementor reports back with passing tests, not during the plan step. For plan review, see [Reviewing the Plan](#reviewing-the-plan-full-level) above.
+#### The Baseline System
+
+The project keeps a record of acknowledged pre-existing test failures in `client/known-test-failures.txt`. This separates signal from noise: new failures caused by a feature implementation stand out from pre-existing issues.
+
+**`./check-tests`** runs the full test suite and categorizes results:
+- **Unexpected failures** — not in the known list → exits 1, blocks the workflow
+- **Known failures** — in the known list → noted but not blocking
+- **Stale entries** — in the known list but not currently failing → prompts cleanup
+
+```bash
+./check-tests                 # run tests, fail on unexpected failures
+./check-tests --show-known    # also show known failures that were observed
+./check-tests --show-all      # show all failures regardless of baseline
+```
+
+The `implement` script automatically runs `./check-tests` before starting implementation, so you can see the baseline state before any code changes.
+
+#### Fixing a Dirty Baseline
+
+If `./check-tests` reports unexpected failures before you start a feature, address them first with `/fix-baseline`:
+
+```
+/fix-baseline
+```
+
+Claude will:
+1. Run `./check-tests` and read the failures
+2. Diagnose each failure as: **Fix**, **Add to known list**, or **Escalate**
+3. **Present the full diagnosis to you and wait for your approval before doing anything**
+4. After approval: apply fixes directly or via aider, update `known-test-failures.txt`, file escalations in `BACKLOG.md`
+5. Re-run `./check-tests` to confirm the baseline is clean
+
+This workflow can be used independently of any feature implementation — run it any time the baseline has accumulated failures that need addressing.
+
+---
+
+### 5. Reviewing the Implementation
+
+> **This is post-code review** — it happens after the implementor reports back, not during the plan step. For plan review, see [Reviewing the Plan](#reviewing-the-plan-full-level) above.
 
 Once the implementor reports back (all tests passing, files listed), run in Claude Code:
 
@@ -286,7 +328,7 @@ Claude will:
 
 ---
 
-### 5. Shipping a Feature
+### 6. Shipping a Feature
 
 Once review passes:
 
@@ -308,7 +350,7 @@ Once review passes:
 
 ---
 
-### 6. Bug Fix
+### 7. Bug Fix
 
 Bugs don't get F-numbers or spec files — they're too small and usually don't require architectural decisions.
 
@@ -328,7 +370,7 @@ Bugs don't get F-numbers or spec files — they're too small and usually don't r
 
 ---
 
-### 7. Small Cleanup or Deferred Task
+### 8. Small Cleanup or Deferred Task
 
 Items in `BACKLOG.md` are tasks too small for a spec. Handle them by:
 
@@ -349,7 +391,7 @@ Then run `/spec Settings Screen` and it becomes F007 (or whatever is next).
 
 ---
 
-### 8. Adding an Item to the Backlog Directly
+### 9. Adding an Item to the Backlog Directly
 
 When you notice something that should be fixed but doesn't need immediate attention, add it to `BACKLOG.md` manually:
 
@@ -362,7 +404,7 @@ No GitHub issue needed for backlog items — they're lightweight by design.
 
 ---
 
-### 9. Updating CODING.md
+### 10. Updating CODING.md
 
 When a new coding pattern is established that implementors need to follow on future features, update `CODING.md` to document it. This typically happens when:
 - A new mandatory pattern is introduced (e.g. a new provider that must be wrapped)
@@ -384,10 +426,12 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | Task | Do this |
 |------|---------|
 | Spec a new feature | `/spec [feature name]` in Claude |
-| Hand off to implementor (Light) | `./implement F001` (or `--tool aider`, `--model <model>`) |
-| Hand off to implementor (Full) | `./implement F001 --plan`, then `--plan-approved` after review |
-| Review the plan (Full level) | Ask Claude Code: `Review plans/F[NNN]-plan.md against the spec` |
-| Review the implementation | `/review F001` in Claude Code (after tests pass) |
+| Hand off to implementor (Light) | `./implement F001 --implement-only` (or `--tool aider`, `--model <model>`) |
+| Hand off to implementor (Full) | `./implement F001 --plan`, then `/review-plan F001`, then `--plan-approved --implement-only` |
+| Review the plan (Full level) | `/review-plan F001` in Claude Code (preserves draft, writes approved file) |
+| Review the implementation | `/review F001` in Claude Code (before running tests) |
+| Run tests after review | `./check-tests` |
+| Fix a dirty baseline | `/fix-baseline` in Claude Code (diagnose → propose → confirm → fix) |
 | Ship a feature | Commit with `closes #N`, run `gh issue close N`, update PLAN.md |
 | File a bug | `gh issue create --label "bug"` |
 | Handle a backlog item | Describe to implementor directly with `AGENT.md` + `CODING.md` as context |
@@ -411,6 +455,7 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | `AIDER.md` | Starting an aider session — aider setup and model selection |
 | `PLAN.md` | Checking feature status or finding the right spec |
 | `BACKLOG.md` | Looking for small tasks to clean up |
+| `client/known-test-failures.txt` | Reviewing or updating acknowledged pre-existing test failures |
 | `specs/F[NNN]-*.md` | Implementing or reviewing a specific feature |
 | `DESIGN.md` | Understanding full system architecture before designing a feature |
 | `docs/design/[feature].md` | Deep dive on a specific feature's design |
