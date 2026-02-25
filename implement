@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 # implement — Start an implementation session for a feature or bug spec
 #
-# Usage: ./implement <ID> [--tool gemini|aider] [--model <model>] [--plan [--force]] [--auto-test]
+# Usage: ./implement <ID> [--tool gemini|aider] [--model <model>] [--plan [--force]]
 #
 #   <ID>          Feature ID (F001) or bug ID (B004 = GitHub issue #4)
 #   --plan        Stage 1: write implementation plan only, no code
 #   --force       Overwrite existing plan (use with --plan)
-#   --auto-test   Opt-in: aider runs tests after each edit and self-fixes failures.
-#                 Default is code-only; run ./check-tests separately after /review.
 #   --tool        gemini (default) or aider
-#   --model       Model flag passed to aider (e.g. claude-sonnet-4-5)
+#   --model       Model flag passed to aider (e.g. claude-sonnet-4-6)
 #
 # Stages:
 #   1. Plan:      ./implement F001 --plan
@@ -18,7 +16,8 @@
 #   2. Implement: ./implement F001
 #                 → if plans/F001-plan-approved.md exists, uses it automatically
 #                 → Full-level spec without an approved plan is blocked
-#   3. Test:      ./check-tests  (always a separate step)
+#                 → implementor runs tests and fixes failures as part of the session
+#   3. Verify:    ./check-tests  (pre-commit sanity check after /review)
 #
 # For aider, AGENT.md and CODING.md are auto-loaded via .aider.conf.yml.
 # For Gemini CLI, GEMINI.md/AGENT.md/CODING.md are auto-loaded via .gemini/settings.json.
@@ -30,7 +29,6 @@ TOOL="gemini"
 MODEL=""
 PLAN_MODE=false
 FORCE=false
-AUTO_TEST=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -39,24 +37,22 @@ while [[ $# -gt 0 ]]; do
     --model)     MODEL="$2"; shift 2;;
     --plan)      PLAN_MODE=true; shift;;
     --force)     FORCE=true; shift;;
-    --auto-test) AUTO_TEST=true; shift;;
     -h|--help)
-      echo "Usage: ./implement <ID> [--tool gemini|aider] [--model <model>] [--plan [--force]] [--auto-test]"
+      echo "Usage: ./implement <ID> [--tool gemini|aider] [--model <model>] [--plan [--force]]"
       echo ""
       echo "  ID         F001 (feature) or B004 (bug — matches GitHub issue #4)"
       echo "  --plan     Stage 1: write plan only (no code)"
       echo "  --force    Overwrite existing plan"
-      echo "  --auto-test  aider self-fixes test failures (default: code-only)"
       exit 0;;
     *)
       echo "Unknown argument: $1"
-      echo "Usage: ./implement <ID> [--tool gemini|aider] [--model <model>] [--plan [--force]] [--auto-test]"
+      echo "Usage: ./implement <ID> [--tool gemini|aider] [--model <model>] [--plan [--force]]"
       exit 1;;
   esac
 done
 
 if [[ -z "$SPEC_ID" ]]; then
-  echo "Usage: ./implement <ID> [--tool gemini|aider] [--model <model>] [--plan [--force]] [--auto-test]"
+  echo "Usage: ./implement <ID> [--tool gemini|aider] [--model <model>] [--plan [--force]]"
   echo ""
   echo "  ID must be a feature ID (F001) or bug ID (B004)"
   exit 1
@@ -147,9 +143,9 @@ case "$TOOL" in
     if [[ "$PLAN_MODE" == true ]]; then
       PROMPT="Read $SPEC_FILE. Write an implementation plan to $PLAN_FILE using the Plan Mode section format in AGENT.md. Do not write any code. After writing the plan, output a summary and wait for my approval. Type \"approved\" to proceed with implementation."
     elif [[ "$HAS_APPROVED_PLAN" == true ]]; then
-      PROMPT="The approved plan in $APPROVED_PLAN_FILE has been reviewed and approved by Claude and the user. Check $PROGRESS_FILE for a progress log — if present, read the completed files to confirm their state and continue from where the previous session left off; otherwise start fresh. Maintain $PROGRESS_FILE throughout: append a progress entry after each file and display its contents when stopping. List all files changed when done."
+      PROMPT="The approved plan in $APPROVED_PLAN_FILE has been reviewed and approved by Claude and the user. Check $PROGRESS_FILE for a progress log — if present, read the completed files to confirm their state and continue from where the previous session left off; otherwise start fresh. Maintain $PROGRESS_FILE throughout: append a progress entry after each file. After all files are implemented, run 'npm --prefix client test --watchAll=false' and fix any failing tests (run again to confirm all pass). List all files changed and paste the final test output when done."
     else
-      PROMPT="Implement $SPEC_FILE. Maintain $PROGRESS_FILE throughout: append a progress entry after completing each file and display its contents when stopping. List all files changed when done."
+      PROMPT="Implement $SPEC_FILE. Maintain $PROGRESS_FILE throughout: append a progress entry after completing each file. After all files are implemented, run 'npm --prefix client test --watchAll=false' and fix any failing tests (run again to confirm all pass). List all files changed and paste the final test output when done."
     fi
     echo "Running: gemini \"$PROMPT\""
     echo ""
@@ -177,11 +173,9 @@ case "$TOOL" in
       echo ""
       aider "${CMD_ARGS[@]}"
     else
-      # Implementation mode: load spec as read-only context for the model
+      # Implementation mode: interactive session
+      # Load spec and SmartAddItem test as read-only context
       CMD_ARGS+=(--read "$SPEC_FILE")
-
-      # Load SmartAddItem test as read-only context so the model understands
-      # the existing test patterns (mocking conventions, render helpers, etc.)
       SMART_ADD_TEST="client/components/__tests__/SmartAddItem-test.tsx"
       if [[ -f "$SMART_ADD_TEST" ]]; then
         CMD_ARGS+=(--read "$SMART_ADD_TEST")
@@ -218,21 +212,21 @@ case "$TOOL" in
       # Progress file is always editable so aider can write to it
       CMD_ARGS+=("$PROGRESS_FILE")
 
-      # Auto-test is opt-in: aider runs tests after each edit and self-fixes failures.
-      # Default is code-only — run ./check-tests separately after /review.
-      if [[ "$AUTO_TEST" == true ]]; then
-        CMD_ARGS+=(--test-cmd "npm --prefix client test --watchAll=false")
-        CMD_ARGS+=(--auto-test)
+      # Build the implementation prompt and print it for the user to paste into aider
+      if [[ "$HAS_APPROVED_PLAN" == true ]]; then
+        IMPL_PROMPT=$(printf 'The following implementation plan has been reviewed and approved by Claude and the user. Follow it exactly. Proceed directly — do not ask for confirmation.\n\n---BEGIN APPROVED PLAN---\n%s\n---END APPROVED PLAN---\n\nCheck %s for a progress log — if present, read the completed files to confirm their state and continue from where the previous session left off; otherwise start fresh. Maintain %s throughout: append a progress entry after each file. After all files are implemented, run '"'"'npm --prefix client test --watchAll=false'"'"' and fix any failing tests (run again to confirm all pass). List all files changed and paste the final test output when done.' \
+          "$(< "$APPROVED_PLAN_FILE")" "$PROGRESS_FILE" "$PROGRESS_FILE")
+      else
+        IMPL_PROMPT=$(printf 'Implement the spec provided in context (read-only). Maintain %s throughout: append a progress entry after completing each file. After all files are implemented, run '"'"'npm --prefix client test --watchAll=false'"'"' and fix any failing tests (run again to confirm all pass). List all files changed and paste the final test output when done.' \
+          "$PROGRESS_FILE")
       fi
 
-      if [[ "$HAS_APPROVED_PLAN" == true ]]; then
-        # Inline the approved plan content directly in the message rather than using --read.
-        # With whole-edit format, --read files are not treated as authoritative across turns,
-        # causing the model to ask for the plan to be re-pasted. Inlining makes it part of
-        # the authoritative prompt and avoids this confusion.
-        CMD_ARGS+=(--message "$(printf 'The following implementation plan has been reviewed and approved by Claude and the user. Follow it exactly. Proceed directly — do not ask for confirmation.\n\n---BEGIN APPROVED PLAN---\n%s\n---END APPROVED PLAN---\n\nCheck %s for a progress log — if present, read the completed files to confirm their state and continue from where the previous session left off; otherwise start fresh. Maintain %s throughout: append a progress entry after each file and display its contents when stopping. List all files changed when done.' \
-          "$(< "$APPROVED_PLAN_FILE")" "$PROGRESS_FILE" "$PROGRESS_FILE")")
-      fi
+      echo "====== PASTE THIS INTO AIDER WHEN IT STARTS ======"
+      echo ""
+      echo "$IMPL_PROMPT"
+      echo ""
+      echo "==================================================="
+      echo ""
 
       echo "Running: aider ${CMD_ARGS[*]}"
       echo ""

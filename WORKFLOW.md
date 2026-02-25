@@ -125,11 +125,11 @@ Each spec has a `**Review Level:**` header — **Light** or **Full**. The spec a
 
 **Light workflow:**
 ```
-./implement F001                    # implement code only (no auto-test by default)
+./implement F001                    # implementor writes code, runs tests, fixes failures
   ↓
-Claude /review F001                 # review code before running tests
+Claude /review                      # review code and test quality
   ↓
-./check-tests                       # run tests; fix any unexpected failures
+./check-tests                       # pre-commit baseline verify
   ↓
 Commit
 ```
@@ -141,19 +141,18 @@ Commit
 /review-plan F001                   # Claude reviews, fixes gaps, iterates with you, writes
                                     # plans/F001-plan-approved.md when both parties approve
   ↓
-./implement F001                    # auto-detects plans/F001-plan-approved.md and uses it
+./implement F001                    # implementor runs full session: code + tests + fixes
   ↓
-Claude /review F001                 # review code before running tests
+Claude /review                      # review code and test quality
   ↓
-./check-tests                       # run tests; fix any unexpected failures
+./check-tests                       # pre-commit baseline verify
   ↓
 Commit
 ```
 
-**When to use `--auto-test`:** Add this flag if you want aider to run tests and self-fix
-failures in the same session. Default is code-only — tests are always run separately via
-`./check-tests` after `/review`. The tradeoff with `--auto-test` is that aider may make
-additional changes beyond the spec to satisfy tests — review these carefully before committing.
+Running and fixing tests is part of the implementation session — the implementor does not
+hand off until all tests pass. `/review` checks code quality and test coverage; `./check-tests`
+is a final sanity check that the baseline is clean before committing.
 
 #### Reviewing the Plan (Full Level)
 
@@ -187,9 +186,8 @@ Use the `implement` script from the project root — it finds the spec, extracts
 ```bash
 ./implement F001                        # implement (auto-detects approved plan if present)
 ./implement F001 --plan                 # write plan only (Full level, step 1)
-./implement F001 --auto-test            # opt-in: aider self-fixes test failures
-./implement F001 --tool aider           # use aider instead of Gemini
-./implement F001 --tool aider --model claude-sonnet-4-5
+./implement F001 --tool aider           # use aider instead of Gemini (interactive)
+./implement F001 --tool aider --model claude-sonnet-4-6
 ./implement B042                        # bug fix spec (B-number = GitHub issue number)
 ```
 
@@ -197,8 +195,8 @@ Use the `implement` script from the project root — it finds the spec, extracts
 
 | Tool | Best when |
 |------|-----------|
-| **Gemini CLI** | Quick, hands-off run; context auto-loaded via `.gemini/settings.json` |
-| **aider** | Incremental watching, model switching, or mid-spec resume |
+| **Gemini CLI** | Default — interactive session, runs to completion including tests |
+| **aider** | When you prefer to drive the session interactively; script prints the prompt to paste |
 | **Copy-paste** | Web interfaces (AI Studio) where no CLI is available |
 
 **aider edit format:** `diff` is set as the project default in `.aider.conf.yml`. This is required for Azure-hosted or other unrecognized models — without it, aider falls back to `whole` format, which causes some models to return narrative summaries instead of writing actual file edits. See `AIDER.md` for details.
@@ -452,8 +450,8 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | Hand off to implementor (Light) | `./implement F001` (or `--tool aider`, `--model <model>`) |
 | Hand off to implementor (Full) | `./implement F001 --plan`, then `/review-plan F001`, then `./implement F001` |
 | Review the plan (Full level) | `/review-plan F001` in Claude Code (preserves draft, writes approved file) |
-| Review the implementation | `/review F001` in Claude Code (before running tests) |
-| Run tests after review | `./check-tests` |
+| Review the implementation | `/review F001` in Claude Code (after implementor reports tests passing) |
+| Verify tests before commit | `./check-tests` |
 | Fix a dirty baseline | `/fix-baseline` in Claude Code (diagnose → propose → confirm → fix) |
 | Ship a feature | Commit with `closes #N`, run `gh issue close N`, update PLAN.md |
 | Investigate and fix a bug | `/bugfix <description or issue#>` in Claude Code |
