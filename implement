@@ -212,7 +212,9 @@ case "$TOOL" in
       # Progress file is always editable so aider can write to it
       CMD_ARGS+=("$PROGRESS_FILE")
 
-      # Build the implementation prompt and print it for the user to paste into aider
+      # Build the implementation prompt — sent as --message to kick off the session.
+      # Aider processes the message and then stays in interactive mode.
+      # Type 'continue' after each response to proceed with remaining files.
       if [[ "$HAS_APPROVED_PLAN" == true ]]; then
         IMPL_PROMPT=$(printf 'The following implementation plan has been reviewed and approved by Claude and the user. Follow it exactly. Proceed directly — do not ask for confirmation.\n\n---BEGIN APPROVED PLAN---\n%s\n---END APPROVED PLAN---\n\nCheck %s for a progress log — if present, read the completed files to confirm their state and continue from where the previous session left off; otherwise start fresh. Maintain %s throughout: append a progress entry after each file. After all files are implemented, run '"'"'npm --prefix client test --watchAll=false'"'"' and fix any failing tests (run again to confirm all pass). List all files changed and paste the final test output when done.' \
           "$(< "$APPROVED_PLAN_FILE")" "$PROGRESS_FILE" "$PROGRESS_FILE")
@@ -221,14 +223,12 @@ case "$TOOL" in
           "$PROGRESS_FILE")
       fi
 
-      echo "====== PASTE THIS INTO AIDER WHEN IT STARTS ======"
-      echo ""
-      echo "$IMPL_PROMPT"
-      echo ""
-      echo "==================================================="
-      echo ""
+      CMD_ARGS+=(--message "$IMPL_PROMPT")
 
-      echo "Running: aider ${CMD_ARGS[*]}"
+      echo "NOTE: Aider will process the initial message then stay interactive."
+      echo "      Type 'continue' after each response to proceed with remaining files."
+      echo ""
+      echo "Running: aider (interactive, initial message set)"
       echo ""
       aider "${CMD_ARGS[@]}"
     fi

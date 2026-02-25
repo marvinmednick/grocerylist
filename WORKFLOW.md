@@ -196,7 +196,7 @@ Use the `implement` script from the project root — it finds the spec, extracts
 | Tool | Best when |
 |------|-----------|
 | **Gemini CLI** | Default — interactive session, runs to completion including tests |
-| **aider** | When you prefer to drive the session interactively; script prints the prompt to paste |
+| **aider** | Interactive session; initial prompt sent via `--message`, type `continue` to proceed through remaining files |
 | **Copy-paste** | Web interfaces (AI Studio) where no CLI is available |
 
 **aider edit format:** `diff` is set as the project default in `.aider.conf.yml`. This is required for Azure-hosted or other unrecognized models — without it, aider falls back to `whole` format, which causes some models to return narrative summaries instead of writing actual file edits. See `AIDER.md` for details.
