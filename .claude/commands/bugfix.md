@@ -5,7 +5,7 @@ or a plain-text description of the behavior (a new issue will be created first).
 
 **If $ARGUMENTS is a number** — fetch the existing issue:
 ```bash
-gh issue view $ARGUMENTS
+gh issue view $ARGUMENTS --json number,title,body,labels 2>/dev/null
 ```
 
 **If $ARGUMENTS is a description** — create the issue first:
