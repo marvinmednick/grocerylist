@@ -51,11 +51,21 @@ jest.mock('expo-router', () => ({
   },
 }));
 
-// Silence the warning from react-native-draggable-flatlist using the old JSX transform.
+// Fail tests on unexpected console.warn or console.error output.
+// Known third-party noise is explicitly allowed below; everything else throws so
+// it shows up as a test failure rather than silent output.
+//
+// To allow a new warning: add an args[0].includes('...') guard above the throw.
 const originalWarn = console.warn;
 console.warn = (...args) => {
+  // react-native-draggable-flatlist uses the old JSX transform
   if (typeof args[0] === 'string' && args[0].includes('outdated JSX transform')) return;
-  originalWarn(...args);
+  throw new Error(`Unexpected console.warn: ${String(args[0])}`);
+};
+
+const originalError = console.error;
+console.error = (...args) => {
+  throw new Error(`Unexpected console.error: ${String(args[0])}`);
 };
 
 // Silence the warning: Animated: `useNativeDriver` is not supported because the native animated module is missing.
