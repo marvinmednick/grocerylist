@@ -4,12 +4,14 @@
 
 | ID | Feature | Status | Spec | Issue |
 |----|---------|--------|------|-------|
-| F001 | List Interaction Modes & Header Consolidation | In Review | [specs/F001-list-interactions.md](specs/F001-list-interactions.md) | [#1](https://github.com/marvinmednick/grocerylist/issues/1) |
-| F002 | Multi-User Trip Management | Backlog | [docs/design/multi-user-trips.md](docs/design/multi-user-trips.md) | — |
-| F003 | Recipes & Bundles | Backlog | — | — |
-| F004 | Fuzzy Matching | Backlog | — | — |
-| F005 | Duplicate Entry Handling | Backlog | — | — |
-| F006 | Quantity Units System | Backlog | — | — |
+| F002 | Multi-User Trip Management | Backlog | [docs/design/multi-user-trips.md](docs/design/multi-user-trips.md) | [#4](https://github.com/marvinmednick/grocerylist/issues/4) |
+| F003 | Recipes & Bundles | Backlog | — | [#5](https://github.com/marvinmednick/grocerylist/issues/5) |
+| F004 | Fuzzy Matching | Backlog | — | [#6](https://github.com/marvinmednick/grocerylist/issues/6) |
+| F005 | Duplicate Entry Handling | Backlog | — | [#7](https://github.com/marvinmednick/grocerylist/issues/7) |
+| F006 | Quantity Units System | Backlog | — | [#8](https://github.com/marvinmednick/grocerylist/issues/8) |
+| F007 | Settings Screen | Backlog | — | [#9](https://github.com/marvinmednick/grocerylist/issues/9) |
+| F008 | Enhanced Shopping Mode (Store Focus) | Backlog | — | [#10](https://github.com/marvinmednick/grocerylist/issues/10) |
+| F009 | Trip History View | Backlog | — | [#11](https://github.com/marvinmednick/grocerylist/issues/11) |
 
 **Statuses:** `Backlog` → `Specced` → `In Progress` → `In Review` → `Done`
 
@@ -25,6 +27,7 @@
 
 ## Completed
 
+- F001 — List Interaction Modes & Header Consolidation ([#1](https://github.com/marvinmednick/grocerylist/issues/1), [spec](specs/F001-list-interactions.md))
 - Project scaffolding (Expo + TypeScript + StyleSheet)
 - Database schema (items, stores, categories, list_items, trips)
 - Authentication (Supabase Auth, route protection, session persistence)

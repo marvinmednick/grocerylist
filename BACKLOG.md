@@ -8,7 +8,14 @@ When an item grows in scope, promote it to a feature in PLAN.md and open a GitHu
 
 ## Deferred from Specs
 
-- [ ] Delete `app/modal.tsx` — dead code after F001 ships; kept for potential future Settings screen reuse. (deferred from F001)
+- [ ] Delete `app/modal.tsx` — dead code after F001 ships; kept for potential future Settings screen reuse. Now that F007 is planned, delete this once F007 ships. (deferred from F001)
+
+## Small Enhancements (from design docs — too small for a full feature spec)
+
+- [ ] Haptic feedback on long press in shopping mode (mobile only) — from `docs/design/list-interactions.md` Future Considerations
+- [ ] Auto-mode switching: auto-switch to shopping mode when first item is checked off, back to planning when list is empty — from `docs/design/list-interactions.md` Future Considerations
+- [ ] Per-tab mode memory: Items tab could remember its own interaction mode independently — from `docs/design/list-interactions.md` Future Considerations
+- [ ] Items tab header consolidation: apply the same `headerShown: false` + custom header treatment to the Items tab — from `docs/design/list-interactions.md`
 
 ## Found in Review
 
