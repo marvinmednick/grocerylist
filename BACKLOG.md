@@ -12,7 +12,11 @@ When an item grows in scope, promote it to a feature in PLAN.md and open a GitHu
 
 ## Found in Review
 
-- [ ] Fix test wrapper in `client/components/__tests__/SmartAddItem-test.tsx` — missing `UndoProvider` and `HouseholdProvider`; current wrapper only has `QueryClientProvider`. (found during /init review)
+- [x] Fix test wrapper in `client/components/__tests__/SmartAddItem-test.tsx` — missing `UndoProvider` and `HouseholdProvider`; current wrapper only has `QueryClientProvider`. (found during /init review) — fixed in B2
+- [x] Add missing `UserAvatar-test.tsx` test: `it('uses default color #2563eb when avatarColor is null')` — fixed post-review. (found in F001 review)
+- [x] Add missing `UserAvatar-test.tsx` test: `it('closes menu when backdrop is pressed')` — fixed post-review. (found in F001 review)
+- [ ] Update `index-interactions-test.tsx` mock for `useHousehold` to include `displayName`, `displayNameShort`, `avatarColor` fields. (found in F001 review)
+- [ ] Update `specs/F001-list-interactions.md` Implementation Commands — still references removed `--plan-approved` flag. (found in F001 review)
 
 ## Tech Debt
 

@@ -4,35 +4,49 @@ import { supabase } from '@/lib/supabase';
 
 interface HouseholdContextType {
   householdId: string | null;
+  displayName: string | null;
+  displayNameShort: string | null;
+  avatarColor: string | null;
   isLoading: boolean;
 }
 
 const HouseholdContext = createContext<HouseholdContextType>({
   householdId: null,
+  displayName: null,
+  displayNameShort: null,
+  avatarColor: null,
   isLoading: true,
 });
 
 export const HouseholdProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { data: householdId = null, isLoading } = useQuery({
-    queryKey: ['household_id'],
+  const { data: profile = null, isLoading } = useQuery({
+    queryKey: ['my_profile'],
     queryFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return null;
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('household_id')
+        .select('household_id, display_name, display_name_short, color')
         .eq('id', session.user.id)
         .single();
 
       if (error) throw error;
-      return data.household_id as string;
+      return data;
     },
     staleTime: Infinity,
   });
 
   return (
-    <HouseholdContext.Provider value={{ householdId, isLoading }}>
+    <HouseholdContext.Provider
+      value={{
+        householdId: profile?.household_id ?? null,
+        displayName: profile?.display_name ?? null,
+        displayNameShort: profile?.display_name_short ?? null,
+        avatarColor: profile?.color ?? null,
+        isLoading,
+      }}
+    >
       {children}
     </HouseholdContext.Provider>
   );

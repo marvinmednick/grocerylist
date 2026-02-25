@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, Platform } from 'react-native';
-import { CheckCircle2, Circle, Archive, RotateCcw, RotateCw, Trash2, GripVertical } from 'lucide-react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, Platform, Pressable } from 'react-native';
+import { CheckCircle2, Circle, Archive, RotateCcw, RotateCw, Trash2, GripVertical, ShoppingCart, Pencil } from 'lucide-react-native';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { SmartAddItem } from '@/components/SmartAddItem';
 import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, useEndTrip, useDeleteListItem, useRevertArchival, ListItem } from '@/api/list';
@@ -8,6 +8,7 @@ import { useUndo } from '@/api/undoContext';
 import { useMetadata } from '@/api/metadata';
 import { Toast } from '@/components/Toast';
 import { useHousehold } from '@/lib/household';
+import { UserAvatar } from '@/components/UserAvatar';
 
 type FlatListItem =
   | { type: 'header'; id: string; title: string; storeId: string; items: ListItem[] }
@@ -16,6 +17,7 @@ type FlatListItem =
 export default function ShoppingListScreen() {
   const { householdId, isLoading: isHouseholdLoading } = useHousehold();
   const [toast, setToast] = useState({ visible: false, message: '' });
+  const [interactionMode, setInteractionMode] = useState<'shopping' | 'planning'>('shopping');
 
   const handleRemoteChange = useCallback((event: string, itemName?: string) => {
     let message = 'List updated';
@@ -201,13 +203,57 @@ export default function ShoppingListScreen() {
       );
     }
     const listItem = item.data;
+
+    if (interactionMode === 'shopping') {
+      return (
+        <ScaleDecorator>
+          <View style={[styles.itemRow, isActive && styles.itemRowActive]}>
+            <Pressable 
+              style={styles.shoppingPressable}
+              onPress={() => handleToggle(listItem)}
+              onLongPress={() => openEditModal(listItem)}
+              testID={`item-pressable-${listItem.id}`}
+            >
+              <View style={styles.colCheckbox}>
+                {listItem.is_purchased ? <CheckCircle2 size={24} color="#10b981" /> : <Circle size={24} color="#d1d5db" />}
+              </View>
+              <View style={styles.colName}>
+                <Text style={[styles.nameText, listItem.is_purchased && styles.strikethrough]} numberOfLines={1}>
+                  {listItem.name}{listItem.quantity ? ` - ${listItem.quantity}` : ''}
+                </Text>
+              </View>
+              <View style={styles.colCategory}>
+                <Text style={styles.categoryText} numberOfLines={1}>{listItem.category?.name || '—'}</Text>
+              </View>
+              <View style={styles.colEditIcon}>
+                <View testID="pencil-icon">
+                  <Pencil size={14} color="#9ca3af" />
+                </View>
+              </View>
+            </Pressable>
+            <TouchableOpacity onLongPress={drag} delayLongPress={50} style={styles.dragHandle}>
+              <GripVertical size={20} color="#d1d5db" />
+            </TouchableOpacity>
+          </View>
+        </ScaleDecorator>
+      );
+    }
+
     return (
       <ScaleDecorator>
         <View style={[styles.itemRow, isActive && styles.itemRowActive]}>
-          <TouchableOpacity style={styles.colCheckbox} onPress={() => handleToggle(listItem)}>
+          <TouchableOpacity 
+            style={styles.colCheckbox} 
+            onPress={() => handleToggle(listItem)}
+            testID={`checkbox-${listItem.id}`}
+          >
             {listItem.is_purchased ? <CheckCircle2 size={24} color="#10b981" /> : <Circle size={24} color="#d1d5db" />}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.colName} onPress={() => openEditModal(listItem)}>
+          <TouchableOpacity 
+            style={styles.colName} 
+            onPress={() => openEditModal(listItem)}
+            testID={`name-${listItem.id}`}
+          >
             <Text style={[styles.nameText, listItem.is_purchased && styles.strikethrough]} numberOfLines={1}>
               {listItem.name}{listItem.quantity ? ` - ${listItem.quantity}` : ''}
             </Text>
@@ -228,7 +274,22 @@ export default function ShoppingListScreen() {
       <View style={styles.globalHeader}>
         <Text style={styles.globalTitle}>Shopping List</Text>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={undoLastAction} disabled={!canUndo} style={[styles.headerActionBtn, !canUndo && { opacity: 0.3 }]}>
+          <TouchableOpacity 
+            onPress={() => setInteractionMode(interactionMode === 'shopping' ? 'planning' : 'shopping')}
+            style={styles.headerActionBtn}
+            testID="mode-toggle"
+          >
+            {interactionMode === 'shopping' ? (
+              <View testID="cart-icon-container">
+                <ShoppingCart size={20} color="#2563eb" />
+              </View>
+            ) : (
+              <View testID="pencil-icon-toggle-container">
+                <Pencil size={20} color="#2563eb" />
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={undoLastAction} disabled={!canUndo} style={[styles.headerActionBtn, !canUndo && { opacity: 0.3 }, { marginLeft: 12 }]}>
             <RotateCcw size={20} color={canUndo ? "#2563eb" : "#9ca3af"} />
             {undoStack.length > 0 && <View style={[styles.badge, styles.undoBadge]}><Text style={styles.badgeText}>{undoStack.length}</Text></View>}
           </TouchableOpacity>
@@ -236,6 +297,9 @@ export default function ShoppingListScreen() {
             <RotateCw size={20} color={canRedo ? "#2563eb" : "#9ca3af"} />
             {redoStack.length > 0 && <View style={[styles.badge, styles.redoBadge]}><Text style={styles.badgeText}>{redoStack.length}</Text></View>}
           </TouchableOpacity>
+          <View style={{ marginLeft: 12 }}>
+            <UserAvatar />
+          </View>
         </View>
       </View>
       <View style={styles.headerContainer}><SmartAddItem disabled={isHouseholdLoading} /></View>
@@ -320,12 +384,14 @@ const styles = StyleSheet.create({
   sectionHeaderText: { fontSize: 12, fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5 },
   itemRow: { height: 48, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#f9fafb', backgroundColor: '#ffffff', width: '100%' },
   itemRowActive: { backgroundColor: '#eff6ff', elevation: 5, zIndex: 100 },
+  shoppingPressable: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   colCheckbox: { marginRight: 12, width: 24, alignItems: 'center' },
   colName: { flex: 1, marginRight: 8 },
   nameText: { fontSize: 16, fontWeight: '500', color: '#111827' },
   strikethrough: { textDecorationLine: 'line-through', color: '#9ca3af' },
   colCategory: { width: 80, alignItems: 'flex-end' },
   categoryText: { fontSize: 12, color: '#9ca3af' },
+  colEditIcon: { width: 24, alignItems: 'center', marginLeft: 4 },
   dragHandle: { paddingHorizontal: 8, justifyContent: 'center' },
   inlineEndTripBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#bfdbfe' },
   inlineEndTripText: { fontSize: 11, fontWeight: '700', color: '#2563eb', marginLeft: 4 },

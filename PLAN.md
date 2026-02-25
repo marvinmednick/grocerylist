@@ -4,7 +4,7 @@
 
 | ID | Feature | Status | Spec | Issue |
 |----|---------|--------|------|-------|
-| F001 | List Interaction Modes & Header Consolidation | Specced | [specs/F001-list-interactions.md](specs/F001-list-interactions.md) | [#1](https://github.com/marvinmednick/grocerylist/issues/1) |
+| F001 | List Interaction Modes & Header Consolidation | In Review | [specs/F001-list-interactions.md](specs/F001-list-interactions.md) | [#1](https://github.com/marvinmednick/grocerylist/issues/1) |
 | F002 | Multi-User Trip Management | Backlog | [docs/design/multi-user-trips.md](docs/design/multi-user-trips.md) | — |
 | F003 | Recipes & Bundles | Backlog | — | — |
 | F004 | Fuzzy Matching | Backlog | — | — |
