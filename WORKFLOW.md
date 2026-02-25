@@ -318,25 +318,18 @@ Claude will:
 
 ### 6. Shipping a Feature
 
-Once review passes:
+Once review passes, run in Claude Code:
 
-1. Commit the implementation with the GitHub issue number:
-   ```bash
-   git commit -m "feat: implement list interaction modes and header consolidation (closes #1)"
-   ```
+```
+/complete F001
+```
 
-2. Close the issue and update PLAN.md:
-   ```bash
-   gh issue close 1 --comment "Implemented and reviewed."
-   ```
-   Then update the PLAN.md row status from `In Review` to `Done`.
-
-3. Push:
-   ```bash
-   git push
-   ```
-
-4. **Triage BACKLOG.md** — review every open item and handle it before moving on (see [Backlog Triage](#backlog-triage) below).
+Claude will:
+1. Confirm `./check-tests` is clean
+2. Show the diff, suggest a commit message, and commit (with `closes #N`)
+3. Close the GitHub issue and update PLAN.md to `Done`
+4. Triage BACKLOG.md — propose fix-now / promote / discard for each open item, then execute after your confirmation
+5. Push
 
 ---
 
@@ -386,12 +379,13 @@ git commit -m "fix: ... (closes #42)"
 
 #### Commit and close
 
-```bash
-git commit -m "fix: close avatar menu on backdrop press on web (closes #42)"
-gh issue close 42 --comment "Fixed and reviewed."
+Once the fix is verified, run in Claude Code:
+
+```
+/complete B42
 ```
 
-Then **triage BACKLOG.md** — same step as after a feature ship (see [Backlog Triage](#backlog-triage) below).
+Same steps as feature shipping: verify tests, commit, close issue, triage BACKLOG.md, push.
 
 ---
 
@@ -460,10 +454,10 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | Review the implementation | `/review F001` in Claude Code (after implementor reports tests passing) |
 | Verify tests before commit | `./check-tests` |
 | Fix a dirty baseline | `/fix-baseline` in Claude Code (diagnose → propose → confirm → fix) |
-| Ship a feature | Commit with `closes #N`, `gh issue close N`, update PLAN.md, then triage BACKLOG.md |
+| Ship a feature | `/complete F001` in Claude Code |
 | Investigate and fix a bug | `/bugfix <description or issue#>` in Claude Code |
-| Ship a bug fix | Commit with `closes #N`, `gh issue close N`, then triage BACKLOG.md |
-| Triage backlog | After each commit: fix now, `gh issue create` to promote, or discard each item |
+| Ship a bug fix | `/complete B003` in Claude Code |
+| Triage backlog | Happens automatically as part of `/complete` |
 | Promote backlog to feature | `/spec [description]` in Claude |
 | Update coding conventions | Ask Claude to update `CODING.md` |
 | See all features and status | Open `PLAN.md` |
