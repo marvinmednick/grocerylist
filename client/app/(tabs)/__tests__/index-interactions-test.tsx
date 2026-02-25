@@ -8,6 +8,7 @@ import { useHousehold } from '@/lib/household';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UndoProvider } from '@/api/undoContext';
 import { HouseholdProvider } from '@/lib/household';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Mock all the hooks
 jest.mock('@/api/list');
@@ -51,12 +52,16 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });
 
+const safeAreaMetrics = { insets: { top: 44, bottom: 34, left: 0, right: 0 }, frame: { x: 0, y: 0, width: 390, height: 844 } };
+
 const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>
-    <UndoProvider>
-      <HouseholdProvider>{children}</HouseholdProvider>
-    </UndoProvider>
-  </QueryClientProvider>
+  <SafeAreaProvider initialMetrics={safeAreaMetrics}>
+    <QueryClientProvider client={queryClient}>
+      <UndoProvider>
+        <HouseholdProvider>{children}</HouseholdProvider>
+      </UndoProvider>
+    </QueryClientProvider>
+  </SafeAreaProvider>
 );
 
 describe('ShoppingListScreen Interactions', () => {

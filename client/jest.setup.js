@@ -51,6 +51,13 @@ jest.mock('expo-router', () => ({
   },
 }));
 
+// Silence the warning from react-native-draggable-flatlist using the old JSX transform.
+const originalWarn = console.warn;
+console.warn = (...args) => {
+  if (typeof args[0] === 'string' && args[0].includes('outdated JSX transform')) return;
+  originalWarn(...args);
+};
+
 // Silence the warning: Animated: `useNativeDriver` is not supported because the native animated module is missing.
 jest.mock('react-native-reanimated', () => {
   const Reanimated = require('react-native-reanimated/mock');

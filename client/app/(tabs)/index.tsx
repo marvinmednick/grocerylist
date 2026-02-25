@@ -9,12 +9,14 @@ import { useMetadata } from '@/api/metadata';
 import { Toast } from '@/components/Toast';
 import { useHousehold } from '@/lib/household';
 import { UserAvatar } from '@/components/UserAvatar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type FlatListItem =
   | { type: 'header'; id: string; title: string; storeId: string; items: ListItem[] }
   | { type: 'item'; id: string; data: ListItem };
 
 export default function ShoppingListScreen() {
+  const insets = useSafeAreaInsets();
   const { householdId, isLoading: isHouseholdLoading } = useHousehold();
   const [toast, setToast] = useState({ visible: false, message: '' });
   const [interactionMode, setInteractionMode] = useState<'shopping' | 'planning'>('shopping');
@@ -271,7 +273,7 @@ export default function ShoppingListScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.globalHeader}>
+      <View style={[styles.globalHeader, { paddingTop: insets.top || 20 }]}>
         <Text style={styles.globalTitle}>Shopping List</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity 
@@ -369,7 +371,7 @@ export default function ShoppingListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#ffffff' },
-  globalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10 },
+  globalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 10 },
   globalTitle: { fontSize: 28, fontWeight: '800', color: '#111827' },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
   headerActionBtn: { padding: 8, backgroundColor: '#eff6ff', borderRadius: 12, position: 'relative' },
