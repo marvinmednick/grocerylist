@@ -125,7 +125,7 @@ Each spec has a `**Review Level:**` header — **Light** or **Full**. The spec a
 
 **Light workflow:**
 ```
-./implement F001 --implement-only   # implement code only, no auto-test
+./implement F001                    # implement code only (no auto-test by default)
   ↓
 Claude /review F001                 # review code before running tests
   ↓
@@ -134,14 +134,14 @@ Claude /review F001                 # review code before running tests
 Commit
 ```
 
-**Full workflow — new-session path (recommended — works with both Gemini and aider):**
+**Full workflow:**
 ```
 ./implement F001 --plan             # implementor writes plans/F001-plan.md, then exits
   ↓
 /review-plan F001                   # Claude reviews, fixes gaps, iterates with you, writes
                                     # plans/F001-plan-approved.md when both parties approve
   ↓
-./implement F001 --plan-approved --implement-only  # implement code only
+./implement F001                    # auto-detects plans/F001-plan-approved.md and uses it
   ↓
 Claude /review F001                 # review code before running tests
   ↓
@@ -150,21 +150,10 @@ Claude /review F001                 # review code before running tests
 Commit
 ```
 
-**Full workflow — same-session path (Gemini only — stays in interactive loop):**
-```
-./implement F001 --plan             # Gemini writes plan and stays in session
-  ↓
-/review-plan F001                   # Claude reviews in a separate Claude Code session;
-                                    # writes plans/F001-plan-approved.md when approved
-  ↓
-./implement F001 --plan-approved --implement-only  # fresh session with approved plan
-  ↓
-Claude /review F001 → ./check-tests → commit
-```
-
-**When to use auto-test (omit `--implement-only`):** If you want aider to fix test failures
-automatically in the same session, drop `--implement-only`. The tradeoff is that aider may make
-additional code changes beyond the spec to satisfy tests — review these carefully before committing.
+**When to use `--auto-test`:** Add this flag if you want aider to run tests and self-fix
+failures in the same session. Default is code-only — tests are always run separately via
+`./check-tests` after `/review`. The tradeoff with `--auto-test` is that aider may make
+additional changes beyond the spec to satisfy tests — review these carefully before committing.
 
 #### Reviewing the Plan (Full Level)
 
@@ -185,8 +174,9 @@ The original draft and the approved file can be diffed at any time to see exactl
 
 **This is scope/approach only — not a code review.** Claude checks the plan matches the spec and fixes it; the full pattern and test check happens later with `/review`.
 
-**`--plan-approved` requires `plans/F[NNN]-plan-approved.md` to exist.** Running
-`./implement F001 --plan-approved` without first completing `/review-plan F001` will error.
+**`./implement F001` auto-detects the approved plan.** Once `/review-plan F001` writes
+`plans/F001-plan-approved.md`, the next `./implement F001` picks it up automatically.
+Running `./implement F001` on a Full-level spec without an approved plan will error with guidance.
 
 ---
 
@@ -195,12 +185,12 @@ The original draft and the approved file can be diffed at any time to see exactl
 Use the `implement` script from the project root — it finds the spec, extracts the file list, and runs the right command:
 
 ```bash
-./implement F001                                  # Gemini CLI (default) — with auto-test
-./implement F001 --implement-only                 # code only, no auto-test (recommended)
-./implement F001 --plan                           # Full level: write plan first
-./implement F001 --plan-approved --implement-only # Full level: implement with approved plan
-./implement F001 --tool aider                     # aider (interactive)
+./implement F001                        # implement (auto-detects approved plan if present)
+./implement F001 --plan                 # write plan only (Full level, step 1)
+./implement F001 --auto-test            # opt-in: aider self-fixes test failures
+./implement F001 --tool aider           # use aider instead of Gemini
 ./implement F001 --tool aider --model claude-sonnet-4-5
+./implement B042                        # bug fix spec (B-number = GitHub issue number)
 ```
 
 #### Tool Selection
@@ -352,21 +342,54 @@ Once review passes:
 
 ### 7. Bug Fix
 
-Bugs don't get F-numbers or spec files — they're too small and usually don't require architectural decisions.
+Run `/bugfix` in Claude Code with either a description or an existing issue number:
 
-1. File a GitHub issue directly:
-   ```bash
-   gh issue create --title "Avatar menu doesn't close on web" --label "bug"
-   ```
+```
+/bugfix Avatar menu doesn't close on web
+/bugfix 42
+```
 
-2. If the fix is simple, describe it to the implementor directly with `AGENT.md` + `CODING.md` as context (no spec needed).
+Bugs use **B-numbers** tied to their GitHub issue number — B42 = issue #42, spec file
+`specs/B042-avatar-menu-dismiss.md`. This means no separate counter to manage.
 
-3. Commit referencing the issue:
-   ```bash
-   git commit -m "fix: close avatar menu on backdrop press on web (closes #4)"
-   ```
+#### What `/bugfix` does
 
-4. If investigating the bug reveals a design decision is needed, escalate to Claude before handing to Gemini.
+Claude runs a three-phase investigation before deciding anything:
+
+**Phase 1 — Locate:** Maps the described behavior to the code path using architecture docs,
+grep, and file reads.
+
+**Phase 2 — Diagnose:** Reads the located files in depth to identify root cause and fix.
+Phase 2 can also fail if static analysis is inconclusive — runtime state or platform
+behavior may be responsible.
+
+**Phase 3 — Blast radius** *(only if Phase 2 succeeds):* Checks whether the fix changes
+any exported interface, greps for callers, and assesses whether a new test file is needed.
+
+#### Outcomes
+
+| Outcome | What happens |
+|---------|-------------|
+| Fix is contained, no new test file | Claude applies fix directly, runs `./check-tests`, asks to commit |
+| Callers in many/large unread files, or new test file needed | Claude writes `specs/B[N]-slug.md` → `./implement B[N]` |
+| Phase 2 fails (runtime/state-dependent) | Claude writes spec with suspected area + investigation instructions |
+| Phase 1 fails (can't locate from static analysis) | Claude writes spec with full investigate-and-fix instructions |
+| Fix has architectural implications | Claude escalates — design conversation before any spec |
+
+#### When a spec is written
+
+```bash
+./implement B042                  # implement the bug fix spec
+./check-tests                     # verify after /review
+git commit -m "fix: ... (closes #42)"
+```
+
+#### Commit and close
+
+```bash
+git commit -m "fix: close avatar menu on backdrop press on web (closes #42)"
+gh issue close 42 --comment "Fixed and reviewed."
+```
 
 ---
 
@@ -426,14 +449,15 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | Task | Do this |
 |------|---------|
 | Spec a new feature | `/spec [feature name]` in Claude |
-| Hand off to implementor (Light) | `./implement F001 --implement-only` (or `--tool aider`, `--model <model>`) |
-| Hand off to implementor (Full) | `./implement F001 --plan`, then `/review-plan F001`, then `--plan-approved --implement-only` |
+| Hand off to implementor (Light) | `./implement F001` (or `--tool aider`, `--model <model>`) |
+| Hand off to implementor (Full) | `./implement F001 --plan`, then `/review-plan F001`, then `./implement F001` |
 | Review the plan (Full level) | `/review-plan F001` in Claude Code (preserves draft, writes approved file) |
 | Review the implementation | `/review F001` in Claude Code (before running tests) |
 | Run tests after review | `./check-tests` |
 | Fix a dirty baseline | `/fix-baseline` in Claude Code (diagnose → propose → confirm → fix) |
 | Ship a feature | Commit with `closes #N`, run `gh issue close N`, update PLAN.md |
-| File a bug | `gh issue create --label "bug"` |
+| Investigate and fix a bug | `/bugfix <description or issue#>` in Claude Code |
+| Ship a bug fix | Commit with `closes #N`, run `gh issue close N` |
 | Handle a backlog item | Describe to implementor directly with `AGENT.md` + `CODING.md` as context |
 | Promote backlog to feature | `/spec [description]` in Claude |
 | Update coding conventions | Ask Claude to update `CODING.md` |

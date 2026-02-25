@@ -127,24 +127,18 @@ List any files or patterns that are out of scope for this implementation.
 
 ## Implementation Commands
 
-**If Review Level is Full — new-session path (recommended, works with both Gemini and aider):**
+**If Review Level is Full:**
 ```bash
-# Step 1: Write the plan (session exits after writing)
+# Step 1: Write the plan
 ./implement F[NNN] --plan
 ./implement F[NNN] --tool aider --plan --model <model-flag>
 
-# Step 2: Optionally ask Claude Code: "Review plans/F[NNN]-plan.md against the spec"
+# Step 2: Review and approve the plan in Claude Code
+# /review-plan F[NNN]
 
-# Step 3: Implement with approved plan
-./implement F[NNN] --plan-approved
-./implement F[NNN] --tool aider --plan-approved --model <model-flag>
-```
-
-**If Review Level is Full — same-session path (Gemini only — stays in interactive loop):**
-```bash
-./implement F[NNN] --plan
-# In Gemini's chat: optionally ask Claude Code "Review plans/F[NNN]-plan.md against the spec"
-# Type "approved" in Gemini's chat to proceed with implementation
+# Step 3: Implement (auto-detects plans/F[NNN]-plan-approved.md)
+./implement F[NNN]
+./implement F[NNN] --tool aider --model <model-flag>
 ```
 
 **If Review Level is Light:**
