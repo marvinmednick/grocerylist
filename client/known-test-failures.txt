@@ -12,7 +12,3 @@
 #
 # Added: 2026-02-24
 
-# SmartAddItem is missing UndoProvider wrapper in its test setup.
-# The component calls useUndo() which requires UndoProvider in the tree.
-# Fix: wrap the render call in SmartAddItem-test.tsx with <UndoProvider>.
-[SUITE] components/__tests__/SmartAddItem-test.tsx | SmartAddItem › renders the search input
