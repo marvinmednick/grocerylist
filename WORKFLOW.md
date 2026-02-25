@@ -21,7 +21,7 @@ Four files and one external service work together:
 |----------|---------|------------|
 | `PLAN.md` | Feature registry — every feature has a row with ID, status, spec link, and GitHub issue link | Claude (during `/spec`, `/review`, and ship) |
 | `specs/F[NNN]-[slug].md` | Full implementation spec — everything Gemini needs to build a feature | Claude (via `/spec`) |
-| `BACKLOG.md` | Small deferred tasks and non-blocking findings — items too small for a spec | Claude (during `/spec` and `/review`) |
+| `BACKLOG.md` | Short-lived inbox — items land here during `/spec` and `/review`, then are triaged to GitHub Issues (or discarded) right after each commit | Claude (during `/spec`, `/review`, and post-commit triage) |
 | `CODING.md` | Coding conventions and patterns — the implementor's reference for every implementation | Claude (when new patterns are established) |
 | `GEMINI.md` | Gemini-specific invocation guide | Claude (when Gemini workflow changes) |
 | `AGENT.md` | Behavioral rules for all implementation agents | Claude (when scope discipline changes) |
@@ -336,6 +336,8 @@ Once review passes:
    git push
    ```
 
+4. **Triage BACKLOG.md** — review every open item and handle it before moving on (see [Backlog Triage](#backlog-triage) below).
+
 ---
 
 ### 7. Bug Fix
@@ -389,39 +391,44 @@ git commit -m "fix: close avatar menu on backdrop press on web (closes #42)"
 gh issue close 42 --comment "Fixed and reviewed."
 ```
 
----
-
-### 8. Small Cleanup or Deferred Task
-
-Items in `BACKLOG.md` are tasks too small for a spec. Handle them by:
-
-1. Pick an item from `BACKLOG.md`
-2. Describe it to the implementor with `AGENT.md` + `CODING.md` as context
-3. Commit with a reference to what it came from:
-   ```bash
-   git commit -m "chore: remove dead modal.tsx (deferred from F001)"
-   ```
-4. Check the item off in `BACKLOG.md`
-
-If a backlog item turns out to be larger than expected, promote it:
-```
-This modal.tsx cleanup actually needs a full Settings screen.
-Can you spec that out as a new feature?
-```
-Then run `/spec Settings Screen` and it becomes F007 (or whatever is next).
+Then **triage BACKLOG.md** — same step as after a feature ship (see [Backlog Triage](#backlog-triage) below).
 
 ---
 
-### 9. Adding an Item to the Backlog Directly
+### 8. Backlog Triage
 
-When you notice something that should be fixed but doesn't need immediate attention, add it to `BACKLOG.md` manually:
+`BACKLOG.md` is a short-lived inbox, not a permanent list. Items land there during `/spec` and `/review` because it's not the right moment to stop and handle them. The triage step (run after every feature ship or bug fix commit) clears the inbox.
+
+For each open item, choose one action:
+
+**Fix now** — if it's a 1–5 minute change with no risk, apply it in the same session and commit:
+```bash
+git commit -m "chore: remove dead modal.tsx (deferred from F001)"
+```
+
+**Promote to GitHub Issue** — for anything that needs more thought or is non-trivial, create an issue and remove it from BACKLOG.md. Use labels to signal the type:
+```bash
+gh issue create --title "Update useHousehold mock in index-interactions-test" --label "test-quality"
+gh issue create --title "Haptic feedback on long press in shopping mode" --label "enhancement"
+```
+
+**Discard** — if the item is no longer relevant, just delete it from BACKLOG.md with a brief note in the commit message.
+
+The goal is an empty (or near-empty) BACKLOG.md after every triage. If items accumulate across multiple sessions, that's a signal triage is being skipped.
+
+#### Adding items to BACKLOG.md mid-session
+
+When you notice something during `/spec` or `/review` that shouldn't interrupt the current task, add it to `BACKLOG.md` and come back to it at the next triage:
 
 ```markdown
-## Tech Debt
-- [ ] Migrate items screen to use same consolidated header pattern as F001
+- [ ] Migrate items screen to use same consolidated header pattern as F001 (noticed during F002 spec)
 ```
 
-No GitHub issue needed for backlog items — they're lightweight by design.
+Items that grow in scope during triage can be promoted to a full feature:
+```
+This modal.tsx cleanup actually needs a full Settings screen — can you spec that?
+```
+Then run `/spec Settings Screen` and it becomes a new F-number.
 
 ---
 
@@ -453,10 +460,10 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | Review the implementation | `/review F001` in Claude Code (after implementor reports tests passing) |
 | Verify tests before commit | `./check-tests` |
 | Fix a dirty baseline | `/fix-baseline` in Claude Code (diagnose → propose → confirm → fix) |
-| Ship a feature | Commit with `closes #N`, run `gh issue close N`, update PLAN.md |
+| Ship a feature | Commit with `closes #N`, `gh issue close N`, update PLAN.md, then triage BACKLOG.md |
 | Investigate and fix a bug | `/bugfix <description or issue#>` in Claude Code |
-| Ship a bug fix | Commit with `closes #N`, run `gh issue close N` |
-| Handle a backlog item | Describe to implementor directly with `AGENT.md` + `CODING.md` as context |
+| Ship a bug fix | Commit with `closes #N`, `gh issue close N`, then triage BACKLOG.md |
+| Triage backlog | After each commit: fix now, `gh issue create` to promote, or discard each item |
 | Promote backlog to feature | `/spec [description]` in Claude |
 | Update coding conventions | Ask Claude to update `CODING.md` |
 | See all features and status | Open `PLAN.md` |
