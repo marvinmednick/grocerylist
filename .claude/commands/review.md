@@ -65,7 +65,7 @@ gh issue edit [N] --add-label "in-review"
 **Append non-blocking items to BACKLOG.md:**
 For each non-blocking finding and suggestion, append to BACKLOG.md under "Found in Review":
 ```
-- [ ] [Description] — (found in F[NNN] review)
+- [ ] [Description] — (found in F[N] review)
 ```
 
 **Update PLAN.md status:**

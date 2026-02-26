@@ -1,5 +1,6 @@
-Investigate and fix a bug. Input ($ARGUMENTS) is either a GitHub issue number (e.g. `42`)
-or a plain-text description of the behavior (a new issue will be created first).
+Resolve a non-feature GitHub issue. Input ($ARGUMENTS) is either a GitHub issue number (e.g. `42`) or a plain-text description of the problem (a new issue will be created first).
+
+Issues use their GitHub issue number as the identifier. If a spec file is needed, it is named `specs/I[N]-[slug].md` (e.g. `specs/I42-avatar-menu-dismiss.md`).
 
 ## Setup
 
@@ -13,14 +14,20 @@ gh issue view $ARGUMENTS --json number,title,body,labels 2>/dev/null
 gh issue create --title "$ARGUMENTS" --label "bug"
 ```
 
-Record the assigned issue number — this becomes the B-number.
-B42 corresponds to GitHub issue #42. The spec file will be `specs/B042-[slug].md`.
+Record the assigned issue number — this is the I-number used for any spec or progress files.
 
-Read `DESIGN.md` and `CLAUDE.md` for architecture context before investigating.
+Read the issue labels to determine the path:
+- `bug` → run the full three-phase investigation below
+- `cleanup`, `test-quality`, `docs`, `enhancement` → skip investigation; read the issue and apply the fix directly
+- `feature` → stop and tell the user: this should go through `/spec` first to get an F-number and full implementation spec
+
+Read `DESIGN.md` and `CLAUDE.md` for architecture context before investigating or fixing.
 
 ---
 
-## Phase 1: Locate
+## Path A — Bug Investigation (label: `bug`)
+
+### Phase 1: Locate
 
 Map the described behavior to a code path:
 - Identify which screen, component, hook, or API call is involved in the reported behavior
@@ -35,7 +42,7 @@ static analysis.
 
 ---
 
-## Phase 2: Diagnose
+### Phase 2: Diagnose
 
 Read the located files in depth:
 - Trace the specific failure path through the code
@@ -46,12 +53,10 @@ cause must involve runtime state, interaction effects, platform-specific behavio
 or user data that cannot be observed from reading the code.
 
 → If Phase 2 fails: write a **Type 2 spec** (see Spec Formats) and stop. Report to the user.
-  Phase 1 gave us a location, so the spec tells the implementor *where* to focus — they are
-  not starting from scratch.
 
 ---
 
-## Phase 3: Assess Blast Radius
+### Phase 3: Assess Blast Radius
 
 *Only reached when Phase 2 successfully identifies the root cause and fix.*
 
@@ -76,13 +81,24 @@ Run `./check-tests --show-known` to verify. Report the result and ask whether to
 
 ---
 
+## Path B — Direct Fix (labels: `cleanup`, `test-quality`, `docs`, `enhancement`)
+
+Read the issue body carefully, then apply the fix directly:
+- No investigation phases needed
+- Make the change, run `./check-tests --show-known` to verify nothing broke
+- Report the result and ask whether to commit via `/complete [N]`
+
+If the fix turns out to be larger or more complex than the issue described, stop and report rather than expanding scope unilaterally.
+
+---
+
 ## Spec Formats
 
-All specs go in `specs/` named `B[zero-padded-issue-number]-[short-description].md`
-(e.g. `specs/B042-avatar-menu-dismiss.md`).
+All specs go in `specs/` named `I[zero-padded-3-digit-issue-number]-[short-description].md`
+(e.g. `specs/I042-avatar-menu-dismiss.md`).
 
-Bug specs omit sections not relevant to bugs (Undo/Redo, Household Scoping, Realtime
-Tracking, React Query Keys) unless the fix specifically involves them.
+Issue specs omit sections not relevant to the issue type (Undo/Redo, Household Scoping,
+Realtime Tracking, React Query Keys) unless the fix specifically involves them.
 
 ---
 
@@ -90,7 +106,7 @@ Tracking, React Query Keys) unless the fix specifically involves them.
 *Used when: Phase 3 found callers in large unread files, or a new test file is needed.*
 
 ```markdown
-# Bug Fix: #[N] [Issue title]
+# Issue Fix: #[N] [Issue title]
 <!-- GitHub: #[N] | Status: Specced -->
 
 ## Root Cause
@@ -100,7 +116,7 @@ Tracking, React Query Keys) unless the fix specifically involves them.
 [Same format as feature specs — file path, numbered changes, Ensure block for invariants]
 
 ## New Files
-[Test files only, if a new test file is needed to cover this bug]
+[Test files only, if a new test file is needed to cover this issue]
 
 ## Fix Description
 [Exactly what to change and why — sufficient detail that the implementor does not need
@@ -113,7 +129,7 @@ to re-derive the diagnosis]
 [Guard against scope creep — list files and behaviors that are off-limits]
 
 ## Implementation Commands
-./implement B[N]
+./implement I[N]
 ```
 
 ---
@@ -122,7 +138,7 @@ to re-derive the diagnosis]
 *Used when: Phase 1 succeeded (location found) but Phase 2 failed (static analysis inconclusive).*
 
 ```markdown
-# Bug Fix: #[N] [Issue title]
+# Issue Fix: #[N] [Issue title]
 <!-- GitHub: #[N] | Status: Specced -->
 
 ## Suspected Area
@@ -135,9 +151,9 @@ re-checking the same dead ends]
 ## Investigation Required
 The root cause cannot be determined from static analysis alone.
 
-1. Reproduce the bug: [reproduction steps from the issue]
+1. Reproduce the issue: [reproduction steps from the issue]
 2. Focus investigation on: [specific area identified in Phase 1]
-3. Record findings in `plans/B[N]-progress.md` under an "Investigation" heading
+3. Record findings in `plans/I[N]-progress.md` under an "Investigation" heading
    before writing any fix code
 4. Once root cause is confirmed, implement the fix in the same session
 
@@ -145,7 +161,7 @@ The root cause cannot be determined from static analysis alone.
 [Guard against scope creep]
 
 ## Implementation Commands
-./implement B[N]
+./implement I[N]
 ```
 
 ---
@@ -154,7 +170,7 @@ The root cause cannot be determined from static analysis alone.
 *Used when: Phase 1 failed (no code path identifiable from static analysis).*
 
 ```markdown
-# Bug Fix: #[N] [Issue title]
+# Issue Fix: #[N] [Issue title]
 <!-- GitHub: #[N] | Status: Specced -->
 
 ## Behavior Description
@@ -166,10 +182,10 @@ The root cause cannot be determined from static analysis alone.
 ## Investigation Required
 The code path responsible for this behavior could not be identified from static analysis.
 
-1. Reproduce the bug following the steps above
+1. Reproduce the issue following the steps above
 2. Identify which component/hook/API call is involved
 3. Trace to root cause
-4. Record findings in `plans/B[N]-progress.md` under an "Investigation" heading
+4. Record findings in `plans/I[N]-progress.md` under an "Investigation" heading
    before writing any fix code
 5. Implement the fix in the same session
 
@@ -177,7 +193,7 @@ The code path responsible for this behavior could not be identified from static 
 [Guard against scope creep — list any known boundaries even without a located root cause]
 
 ## Implementation Commands
-./implement B[N]
+./implement I[N]
 ```
 
 ---
@@ -188,7 +204,7 @@ Stop and report to the user (do not write a spec) when:
 
 - The fix requires architectural decisions or changes to protected patterns
   (`api/undoContext.tsx`, `api/list.ts` mutation patterns, root provider tree in `app/_layout.tsx`)
-- The bug reveals a missing feature rather than broken behavior
+- The issue reveals a missing feature rather than broken behavior — suggest `/spec` instead
 - The reproduction steps in the issue are too vague to act on — ask the user to clarify first
 - Phase 3 shows the blast radius is large enough to warrant a design conversation
 

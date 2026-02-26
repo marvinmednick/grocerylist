@@ -23,7 +23,7 @@ When producing specs, reference `DESIGN.md` and relevant `docs/design/` files. S
 | File | Purpose |
 |------|---------|
 | `PLAN.md` | Feature registry — ID, status, spec link, GitHub issue link |
-| `specs/F[NNN]-[slug].md` | Full implementation spec for each feature |
+| `specs/F[N]-[slug].md` | Full implementation spec for each feature |
 | `BACKLOG.md` | Small deferred items and non-blocking review findings |
 | GitHub Issues | Formal record; linked to commits via `closes #N` in commit messages |
 

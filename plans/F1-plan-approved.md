@@ -1,14 +1,14 @@
-# Implementation Plan: F001 List Interaction Modes & Header Consolidation
+# Implementation Plan: F1 List Interaction Modes & Header Consolidation
 
 ## Files to Modify
 
-- `client/app/(tabs)/_layout.tsx` —  
+- `client/app/(tabs)/_layout.tsx` —
   - In the `Tabs.Screen` configuration for `name="index"`:
     - Add `headerShown: false` to `options` to remove the Expo tab header.
     - Remove the entire `headerRight` property (the `Link` to `/modal`, its `Pressable`, and the `FontAwesome info-circle` icon).
   - Leave the `items` tab configuration unchanged.
 
-- `client/app/(tabs)/index.tsx` —  
+- `client/app/(tabs)/index.tsx` —
   1. **Header Consolidation**
      - Replace the existing `globalHeader` (currently title + undo/redo) with a new consolidated header containing:
        - Left: `Text` title `"Shopping List"`.
@@ -58,7 +58,7 @@
      - Undo registration in `handleToggle`, `handleSaveEdit`, `handleDelete`, and `onDragEnd` is untouched.
      - `handleEndTrip` logic is untouched.
 
-- `client/lib/household.tsx` —  
+- `client/lib/household.tsx` —
   1. Update `HouseholdContextType` to:
      ```ts
      interface HouseholdContextType {
@@ -91,7 +91,7 @@
 
 ## New Files
 
-- `client/components/UserAvatar.tsx` —  
+- `client/components/UserAvatar.tsx` —
   - Uses `useHousehold()` to read:
     - `displayName`
     - `displayNameShort`
@@ -120,7 +120,7 @@
     - `router.replace('/auth')`
   - Styling via `StyleSheet.create()` only.
 
-- `client/components/__tests__/UserAvatar-test.tsx` —  
+- `client/components/__tests__/UserAvatar-test.tsx` —
   Tests:
   - Renders first letter of `displayNameShort`.
   - Falls back to first letter of `displayName`.
@@ -135,7 +135,7 @@
     - `useQueryClient`
     - `useRouter`
 
-- `client/app/(tabs)/__tests__/index-interactions-test.tsx` —  
+- `client/app/(tabs)/__tests__/index-interactions-test.tsx` —
   Tests:
   - Defaults to shopping mode (cart icon active).
   - Mode toggle switches to planning (pencil icon active).
@@ -160,7 +160,7 @@
     - `useHousehold`
   - Wrap with `QueryClientProvider`, `UndoProvider`, and `HouseholdProvider`.
 
-- `client/lib/__tests__/household-test.ts` —  
+- `client/lib/__tests__/household-test.tsx` —
   Tests:
   - Mock Supabase `from('profiles').select().eq().single()` returning:
     - `household_id`
@@ -174,7 +174,7 @@
     - `avatarColor`
   - Confirm query key is `['my_profile']`.
 
-- `supabase/migrations/20260223000000_add_profile_display_fields.sql` —  
+- `supabase/migrations/20260223000000_add_profile_display_fields.sql` —
   ```sql
   ALTER TABLE profiles
     ADD COLUMN IF NOT EXISTS display_name_short TEXT,

@@ -34,7 +34,7 @@ Present your full diagnosis to the user as a numbered list:
    Fix: Wrap render call in <UndoProvider> in SmartAddItem-test.tsx.
 
 2. [Add to known] lib/__tests__/household-test.tsx | useHousehold › exposes profile fields
-   Reason: household.tsx hasn't been updated for F001 yet; will be fixed during F001 implementation.
+   Reason: household.tsx hasn't been updated for F1 yet; will be fixed during F1 implementation.
    Entry to add to known-test-failures.txt: ...
 
 3. ...

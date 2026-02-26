@@ -1,14 +1,12 @@
-Complete and ship a feature or bug fix. Input ($ARGUMENTS) is a feature ID (F001), bug number (B003), or GitHub issue number (42).
+Complete and ship a feature or non-feature issue. Input ($ARGUMENTS) is a feature ID (F1) or GitHub issue number (42).
 
 ## Setup
 
-Determine the issue number and type from $ARGUMENTS:
+Determine the type from $ARGUMENTS:
 
-**Feature ID (F[NNN]):** Look up the GitHub issue number from the PLAN.md row for this feature. This is a feature completion — PLAN.md will need updating.
+**Feature ID (F[N]):** Look up the GitHub issue number from the PLAN.md row for this feature. This is a feature completion — PLAN.md will need updating.
 
-**Bug number (B[NNN]):** The issue number is the numeric part (B003 → issue #3). No PLAN.md row to update.
-
-**Plain number:** Treat as the GitHub issue number directly. Check PLAN.md to determine if it corresponds to a feature row.
+**GitHub issue number:** Treat as a non-feature issue (bug, cleanup, task, etc.). No PLAN.md row to update.
 
 Fetch the issue for context:
 ```bash
@@ -41,7 +39,7 @@ git diff
 If there are no uncommitted changes (already committed): skip to Step 3.
 
 Otherwise, review all changes and draft a commit message:
-- Use `feat:` for features, `fix:` for bug fixes, `chore:` for cleanup
+- Use `feat:` for features, `fix:` for bugs, `chore:` for cleanup/tasks
 - Include `closes #[N]` to cross-reference the GitHub issue
 - Summarize *what* was implemented, not just "closes issue"
 - Subject line under 72 characters; use a body for meaningful detail
@@ -61,10 +59,10 @@ Close the GitHub issue with a brief closing comment:
 gh issue close [N] --comment "Implemented and reviewed."
 ```
 
-**If this is a feature (F-number):**
+**If this is a feature (F[N]):**
 Update the feature's Status in PLAN.md from `In Review` to `Done`.
 
-**If this is a bug (B-number):**
+**If this is a non-feature issue:**
 No PLAN.md update needed.
 
 ---
@@ -86,7 +84,7 @@ Present the full triage plan to the user before taking any action. Once confirme
 1. Apply any "fix now" items, then commit them together:
    ```bash
    git add [specific files]
-   git commit -m "chore: [description] (backlog triage after [F/B ID])"
+   git commit -m "chore: [description] (backlog triage after [ID])"
    ```
 
 2. Create GitHub issues for promoted items:
@@ -101,7 +99,7 @@ Present the full triage plan to the user before taking any action. Once confirme
    Commit the BACKLOG.md update (combine with fix-now commit if there is one, otherwise standalone):
    ```bash
    git add BACKLOG.md
-   git commit -m "chore: triage backlog after [F/B ID]"
+   git commit -m "chore: triage backlog after [ID]"
    ```
 
 ---

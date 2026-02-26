@@ -1,4 +1,4 @@
-Review the implementation plan for $ARGUMENTS (e.g. `F001`) against its spec. This is an
+Review the implementation plan for $ARGUMENTS (e.g. `F1`) against its spec. This is an
 iterative Claude + user session — the goal is a correct, complete plan that both parties have
 approved, written out as `plans/$ARGUMENTS-plan-approved.md` for the implementor to execute.
 

@@ -41,13 +41,13 @@ Do not make the following changes without an explicit spec section covering them
 3. Implement changes file by file, in the order listed in the spec
    - **Implement all source files before writing or fixing test files.** Tests depend on the
      components they exercise — writing tests before the source causes false failures.
-   - After completing each file, append a progress entry to `plans/F[NNN]-progress.md` (see Progress Logging below)
+   - After completing each file, append a progress entry to `plans/F[N]-progress.md` (see Progress Logging below)
 4. Run `npm test` from `client/` and confirm all tests pass
 5. Report back (see Reporting Back below)
 
 ## Progress Logging
 
-After completing each file, and whenever you stop, append to (or update) the `## Progress Log` section in `plans/F[NNN]-progress.md`. Create the file if it doesn't exist. This file is separate from the plan file and exists for both Light and Full level specs.
+After completing each file, and whenever you stop, append to (or update) the `## Progress Log` section in `plans/F[N]-progress.md`. Create the file if it doesn't exist. This file is separate from the plan file and exists for both Light and Full level specs.
 
 ### Format
 
@@ -74,10 +74,10 @@ When invoked with `--plan`, write an implementation plan before writing any code
 
 ### What to write
 
-Save the plan to `plans/F[NNN]-plan.md` using this format:
+Save the plan to `plans/F[N]-plan.md` using this format:
 
 ```markdown
-# Implementation Plan: F[NNN] [Feature Name]
+# Implementation Plan: F[N] [Feature Name]
 
 ## Files to Modify
 
@@ -126,17 +126,17 @@ Omitting any category means those files will be missing from the implementation.
 
 ### After approval
 
-When the user types `"approved"` (same-session path) or when invoked with `--plan-approved` (new-session path), implement the spec following the approved plan. If resuming a paused session, check `plans/F[NNN]-progress.md` first — read the actual file contents of any completed files to confirm their state, then continue with remaining files. Maintain the progress log throughout.
+When the user types `"approved"` (same-session path) or when invoked with `--plan-approved` (new-session path), implement the spec following the approved plan. If resuming a paused session, check `plans/F[N]-progress.md` first — read the actual file contents of any completed files to confirm their state, then continue with remaining files. Maintain the progress log throughout.
 
 ## Mid-Implementation Pause
 
 If you need to stop mid-implementation (context limit, model switch, or session break):
 
-1. Update `plans/F[NNN]-progress.md` with current state — mark any in-progress file as 🔄 and note exactly what's done and what remains within it; set Status to `Paused — N/M files done`
+1. Update `plans/F[N]-progress.md` with current state — mark any in-progress file as 🔄 and note exactly what's done and what remains within it; set Status to `Paused — N/M files done`
 2. Display the progress log contents on screen so the user can see the current state
 3. Do not commit anything
 
-**Resuming:** The next session reads `plans/F[NNN]-progress.md` to see what's done, reads the actual file contents of completed files to confirm their state, then continues with remaining files. No input from the user is needed to orient the new session.
+**Resuming:** The next session reads `plans/F[N]-progress.md` to see what's done, reads the actual file contents of completed files to confirm their state, then continues with remaining files. No input from the user is needed to orient the new session.
 
 ## Reporting Back
 

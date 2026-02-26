@@ -1,7 +1,7 @@
-# F001 Progress Log
+# F1 Progress Log
 
 ## Started
-- Beginning implementation of F001 List Interaction Modes & Header Consolidation.
+- Beginning implementation of F1 List Interaction Modes & Header Consolidation.
 
 ## Updated
 - ✅ Updated `client/app/(tabs)/_layout.tsx`

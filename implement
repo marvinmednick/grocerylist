@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# implement — Start an implementation session for a feature or bug spec
+# implement — Start an implementation session for a feature or issue spec
 #
 # Usage: ./implement <ID> [--tool gemini|aider] [--model <model>] [--plan [--force]]
 #
-#   <ID>          Feature ID (F001) or bug ID (B004 = GitHub issue #4)
+#   <ID>          Feature ID (F1) or issue ID (I4 = GitHub issue #4)
 #   --plan        Stage 1: write implementation plan only, no code
 #   --force       Overwrite existing plan (use with --plan)
 #   --tool        gemini (default) or aider
 #   --model       Model flag passed to aider (e.g. claude-sonnet-4-6)
 #
 # Stages:
-#   1. Plan:      ./implement F001 --plan
-#                 → writes plans/F001-plan.md, then exits
-#                 → run /review-plan F001 in Claude Code to review and approve
-#   2. Implement: ./implement F001
-#                 → if plans/F001-plan-approved.md exists, uses it automatically
+#   1. Plan:      ./implement F1 --plan
+#                 → writes plans/F1-plan.md, then exits
+#                 → run /review-plan F1 in Claude Code to review and approve
+#   2. Implement: ./implement F1
+#                 → if plans/F1-plan-approved.md exists, uses it automatically
 #                 → Full-level spec without an approved plan is blocked
 #                 → implementor runs tests and fixes failures as part of the session
 #   3. Verify:    ./check-tests  (pre-commit sanity check after /review)
@@ -32,7 +32,7 @@ FORCE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    [FB][0-9]*)  SPEC_ID="$1"; shift;;
+    [FI][0-9]*)  SPEC_ID="$1"; shift;;
     --tool)      TOOL="$2"; shift 2;;
     --model)     MODEL="$2"; shift 2;;
     --plan)      PLAN_MODE=true; shift;;
@@ -40,7 +40,7 @@ while [[ $# -gt 0 ]]; do
     -h|--help)
       echo "Usage: ./implement <ID> [--tool gemini|aider] [--model <model>] [--plan [--force]]"
       echo ""
-      echo "  ID         F001 (feature) or B004 (bug — matches GitHub issue #4)"
+      echo "  ID         F1 (feature) or I4 (issue — matches GitHub issue #4)"
       echo "  --plan     Stage 1: write plan only (no code)"
       echo "  --force    Overwrite existing plan"
       exit 0;;
@@ -54,7 +54,7 @@ done
 if [[ -z "$SPEC_ID" ]]; then
   echo "Usage: ./implement <ID> [--tool gemini|aider] [--model <model>] [--plan [--force]]"
   echo ""
-  echo "  ID must be a feature ID (F001) or bug ID (B004)"
+  echo "  ID must be a feature ID (F1) or issue ID (I4)"
   exit 1
 fi
 

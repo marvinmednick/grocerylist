@@ -20,7 +20,7 @@ Four files and one external service work together:
 | Location | Purpose | Updated by |
 |----------|---------|------------|
 | `PLAN.md` | Feature registry — every feature has a row with ID, status, spec link, and GitHub issue link | Claude (during `/spec`, `/review`, and ship) |
-| `specs/F[NNN]-[slug].md` | Full implementation spec — everything Gemini needs to build a feature | Claude (via `/spec`) |
+| `specs/F[N]-[slug].md` | Full implementation spec — everything Gemini needs to build a feature | Claude (via `/spec`) |
 | `BACKLOG.md` | Short-lived inbox — items land here during `/spec` and `/review`, then are triaged to GitHub Issues (or discarded) right after each commit | Claude (during `/spec`, `/review`, and post-commit triage) |
 | `CODING.md` | Coding conventions and patterns — the implementor's reference for every implementation | Claude (when new patterns are established) |
 | `GEMINI.md` | Gemini-specific invocation guide | Claude (when Gemini workflow changes) |
@@ -31,7 +31,7 @@ Four files and one external service work together:
 
 These are two independent numbering sequences that are linked but not the same.
 
-**Feature IDs** (F001, F002, …) are assigned by us:
+**Feature IDs** (F1, F2, …) are assigned by us:
 - Sequential, feature-only — every spec gets the next number regardless of what else is in GitHub
 - Stable — an F-number never changes once assigned
 - Used in: spec filenames, PLAN.md rows, spec headers, BACKLOG.md references
@@ -40,10 +40,10 @@ These are two independent numbering sequences that are linked but not the same.
 - Sequential across *all* issue types — features, bugs, questions, anything filed in the repo
 - Used in: commit messages (`closes #1`), PR descriptions, GitHub's audit trail
 
-F001 happened to become issue #1 because it was the first issue in a fresh repo. But F002 might become issue #5 if three bugs were filed in between. The PLAN.md table and the spec header always record both, so you can find the relationship:
+F1 happened to become issue #1 because it was the first issue in a fresh repo. But F2 might become issue #5 if three bugs were filed in between. The PLAN.md table and the spec header always record both, so you can find the relationship:
 
 ```
-| F001 | List Interaction Modes | Specced | specs/F001-list-interactions.md | #1 |
+| F1 | List Interaction Modes | Specced | specs/F1-list-interactions.md | #1 |
 ```
 
 **Commit messages use the GitHub issue number** so that GitHub auto-closes the issue on merge:
@@ -82,13 +82,13 @@ When the feature is in `PLAN.md` as Backlog and has a corresponding design doc i
 
 Claude will:
 1. Read `docs/design/multi-user-trips.md` and `DESIGN.md`
-2. Assign the next F-number (e.g. F002)
-3. Write `specs/F002-multi-user-trips.md`
-4. Create GitHub issue `gh issue create --title "F002: Multi-User Trip Management" ...`
+2. Assign the next F-number (e.g. F2)
+3. Write `specs/F2-multi-user-trips.md`
+4. Create GitHub issue `gh issue create --title "F2: Multi-User Trip Management" ...`
 5. Update `PLAN.md` row from `Backlog` to `Specced`
 6. Append any deferred items to `BACKLOG.md`
 
-**Hand to implementor** using `specs/F002-multi-user-trips.md` + `AGENT.md` + `CODING.md` (see [Handing Off to the Implementor](#handing-off-to-the-implementor)).
+**Hand to implementor** using `specs/F2-multi-user-trips.md` + `AGENT.md` + `CODING.md` (see [Handing Off to the Implementor](#handing-off-to-the-implementor)).
 
 ---
 
@@ -125,7 +125,7 @@ Each spec has a `**Review Level:**` header — **Light** or **Full**. The spec a
 
 **Light workflow:**
 ```
-./implement F001                    # implementor writes code, runs tests, fixes failures
+./implement F1                    # implementor writes code, runs tests, fixes failures
   ↓
 Claude /review                      # review code and test quality
   ↓
@@ -136,12 +136,12 @@ Commit
 
 **Full workflow:**
 ```
-./implement F001 --plan             # implementor writes plans/F001-plan.md, then exits
+./implement F1 --plan             # implementor writes plans/F1-plan.md, then exits
   ↓
-/review-plan F001                   # Claude reviews, fixes gaps, iterates with you, writes
-                                    # plans/F001-plan-approved.md when both parties approve
+/review-plan F1                   # Claude reviews, fixes gaps, iterates with you, writes
+                                    # plans/F1-plan-approved.md when both parties approve
   ↓
-./implement F001                    # implementor runs full session: code + tests + fixes
+./implement F1                    # implementor runs full session: code + tests + fixes
   ↓
 Claude /review                      # review code and test quality
   ↓
@@ -156,26 +156,26 @@ is a final sanity check that the baseline is clean before committing.
 
 #### Reviewing the Plan (Full Level)
 
-After `./implement F[NNN] --plan` writes `plans/F[NNN]-plan.md`, run in Claude Code:
+After `./implement F[N] --plan` writes `plans/F[N]-plan.md`, run in Claude Code:
 
 ```
-/review-plan F001
+/review-plan F1
 ```
 
 Claude will:
 1. Read the plan and spec
-2. **Leave `plans/F[NNN]-plan.md` unmodified** — the original draft is preserved for comparison
+2. **Leave `plans/F[N]-plan.md` unmodified** — the original draft is preserved for comparison
 3. Report gaps found and flag anything needing your input
 4. Iterate with you until both parties are satisfied
-5. Write the corrected plan to **`plans/F[NNN]-plan-approved.md`** — this is what the implementor uses
+5. Write the corrected plan to **`plans/F[N]-plan-approved.md`** — this is what the implementor uses
 
 The original draft and the approved file can be diffed at any time to see exactly what the review process changed.
 
 **This is scope/approach only — not a code review.** Claude checks the plan matches the spec and fixes it; the full pattern and test check happens later with `/review`.
 
-**`./implement F001` auto-detects the approved plan.** Once `/review-plan F001` writes
-`plans/F001-plan-approved.md`, the next `./implement F001` picks it up automatically.
-Running `./implement F001` on a Full-level spec without an approved plan will error with guidance.
+**`./implement F1` auto-detects the approved plan.** Once `/review-plan F1` writes
+`plans/F1-plan-approved.md`, the next `./implement F1` picks it up automatically.
+Running `./implement F1` on a Full-level spec without an approved plan will error with guidance.
 
 ---
 
@@ -184,11 +184,11 @@ Running `./implement F001` on a Full-level spec without an approved plan will er
 Use the `implement` script from the project root — it finds the spec, extracts the file list, and runs the right command:
 
 ```bash
-./implement F001                        # implement (auto-detects approved plan if present)
-./implement F001 --plan                 # write plan only (Full level, step 1)
-./implement F001 --tool aider           # use aider instead of Gemini (interactive)
-./implement F001 --tool aider --model claude-sonnet-4-6
-./implement B042                        # bug fix spec (B-number = GitHub issue number)
+./implement F1                        # implement (auto-detects approved plan if present)
+./implement F1 --plan                 # write plan only (Full level, step 1)
+./implement F1 --tool aider           # use aider instead of Gemini (interactive)
+./implement F1 --tool aider --model claude-sonnet-4-6
+./implement I42                       # issue spec (I-number = GitHub issue number)
 ```
 
 #### Tool Selection
@@ -206,7 +206,7 @@ Use the `implement` script from the project root — it finds the spec, extracts
 `GEMINI.md`, `AGENT.md`, and `CODING.md` are auto-loaded via `.gemini/settings.json`. Just point at the spec:
 
 ```bash
-gemini "Implement specs/F001-list-interactions.md. Run npm test from client/ when done. List all files changed and paste the test output."
+gemini "Implement specs/F1-list-interactions.md. Run npm test from client/ when done. List all files changed and paste the test output."
 ```
 
 #### Manual aider
@@ -215,7 +215,7 @@ gemini "Implement specs/F001-list-interactions.md. Run npm test from client/ whe
 
 ```bash
 aider --model <model-flag> \
-  --read specs/F001-list-interactions.md \
+  --read specs/F1-list-interactions.md \
   client/app/(tabs)/index.tsx \
   client/lib/household.tsx
 ```
@@ -227,7 +227,7 @@ See `AIDER.md` for full setup and model selection.
 Paste in this order:
 1. Full contents of `AGENT.md`
 2. Full contents of `CODING.md`
-3. Full contents of `specs/F[NNN]-[slug].md`
+3. Full contents of `specs/F[N]-[slug].md`
 4. Contents of the specific files the spec says to modify
 
 End with:
@@ -242,8 +242,8 @@ End with:
 
 If implementation stops mid-spec (context limit, model switch, or session break):
 
-1. The implementor updates `plans/F[NNN]-progress.md` with current state and displays it
-2. To resume, run the same `./implement` command — the new session reads `plans/F[NNN]-progress.md` and self-orients; no user guidance needed
+1. The implementor updates `plans/F[N]-progress.md` with current state and displays it
+2. To resume, run the same `./implement` command — the new session reads `plans/F[N]-progress.md` and self-orients; no user guidance needed
 3. The `/review` step happens only after the full spec is complete
 
 You can optionally make a WIP commit to save partial work, but this doesn't affect how the implementor resumes.
@@ -295,7 +295,7 @@ This workflow can be used independently of any feature implementation — run it
 Once the implementor reports back (all tests passing, files listed), run in Claude Code:
 
 ```
-/review F001
+/review F1
 ```
 
 Or with the diff/output pasted directly:
@@ -321,7 +321,7 @@ Claude will:
 Once review passes, run in Claude Code:
 
 ```
-/complete F001
+/complete F1
 ```
 
 Claude will:
@@ -333,21 +333,26 @@ Claude will:
 
 ---
 
-### 7. Bug Fix
+### 7. Non-Feature Issues (Bugs, Cleanup, Tasks)
 
-Run `/bugfix` in Claude Code with either a description or an existing issue number:
+Run `/resolve` in Claude Code with either a description or an existing issue number:
 
 ```
-/bugfix Avatar menu doesn't close on web
-/bugfix 42
+/resolve Avatar menu doesn't close on web
+/resolve 42
 ```
 
-Bugs use **B-numbers** tied to their GitHub issue number — B42 = issue #42, spec file
-`specs/B042-avatar-menu-dismiss.md`. This means no separate counter to manage.
+Non-feature issues use their GitHub issue number directly — issue #42 has spec file
+`specs/I42-avatar-menu-dismiss.md` if a spec is needed. No separate counter to manage.
 
-#### What `/bugfix` does
+#### What `/resolve` does
 
-Claude runs a three-phase investigation before deciding anything:
+Reads the issue label to determine the path:
+
+- **`bug`** — runs a three-phase investigation (locate → diagnose → blast radius) before fixing
+- **`cleanup` / `test-quality` / `docs` / `enhancement` (small)** — reads the issue and applies the fix directly; no investigation needed
+
+**Bug investigation phases:**
 
 **Phase 1 — Locate:** Maps the described behavior to the code path using architecture docs,
 grep, and file reads.
@@ -364,15 +369,16 @@ any exported interface, greps for callers, and assesses whether a new test file 
 | Outcome | What happens |
 |---------|-------------|
 | Fix is contained, no new test file | Claude applies fix directly, runs `./check-tests`, asks to commit |
-| Callers in many/large unread files, or new test file needed | Claude writes `specs/B[N]-slug.md` → `./implement B[N]` |
+| Callers in many/large unread files, or new test file needed | Claude writes `specs/I[N]-slug.md` → `./implement I[N]` |
 | Phase 2 fails (runtime/state-dependent) | Claude writes spec with suspected area + investigation instructions |
 | Phase 1 fails (can't locate from static analysis) | Claude writes spec with full investigate-and-fix instructions |
 | Fix has architectural implications | Claude escalates — design conversation before any spec |
+| Issue is labeled `feature` | Claude stops — this should go through `/spec` first |
 
 #### When a spec is written
 
 ```bash
-./implement B042                  # implement the bug fix spec
+./implement I42                   # implement the issue spec
 ./check-tests                     # verify after /review
 git commit -m "fix: ... (closes #42)"
 ```
@@ -382,7 +388,7 @@ git commit -m "fix: ... (closes #42)"
 Once the fix is verified, run in Claude Code:
 
 ```
-/complete B42
+/complete 42
 ```
 
 Same steps as feature shipping: verify tests, commit, close issue, triage BACKLOG.md, push.
@@ -397,7 +403,7 @@ For each open item, choose one action:
 
 **Fix now** — if it's a 1–5 minute change with no risk, apply it in the same session and commit:
 ```bash
-git commit -m "chore: remove dead modal.tsx (deferred from F001)"
+git commit -m "chore: remove dead modal.tsx (deferred from F1)"
 ```
 
 **Promote to GitHub Issue** — for anything that needs more thought or is non-trivial, create an issue and remove it from BACKLOG.md. Use labels to signal the type:
@@ -415,7 +421,7 @@ The goal is an empty (or near-empty) BACKLOG.md after every triage. If items acc
 When you notice something during `/spec` or `/review` that shouldn't interrupt the current task, add it to `BACKLOG.md` and come back to it at the next triage:
 
 ```markdown
-- [ ] Migrate items screen to use same consolidated header pattern as F001 (noticed during F002 spec)
+- [ ] Migrate items screen to use same consolidated header pattern as F1 (noticed during F2 spec)
 ```
 
 Items that grow in scope during triage can be promoted to a full feature:
@@ -448,15 +454,15 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | Task | Do this |
 |------|---------|
 | Spec a new feature | `/spec [feature name]` in Claude |
-| Hand off to implementor (Light) | `./implement F001` (or `--tool aider`, `--model <model>`) |
-| Hand off to implementor (Full) | `./implement F001 --plan`, then `/review-plan F001`, then `./implement F001` |
-| Review the plan (Full level) | `/review-plan F001` in Claude Code (preserves draft, writes approved file) |
-| Review the implementation | `/review F001` in Claude Code (after implementor reports tests passing) |
+| Hand off to implementor (Light) | `./implement F1` (or `--tool aider`, `--model <model>`) |
+| Hand off to implementor (Full) | `./implement F1 --plan`, then `/review-plan F1`, then `./implement F1` |
+| Review the plan (Full level) | `/review-plan F1` in Claude Code (preserves draft, writes approved file) |
+| Review the implementation | `/review F1` in Claude Code (after implementor reports tests passing) |
 | Verify tests before commit | `./check-tests` |
 | Fix a dirty baseline | `/fix-baseline` in Claude Code (diagnose → propose → confirm → fix) |
-| Ship a feature | `/complete F001` in Claude Code |
-| Investigate and fix a bug | `/bugfix <description or issue#>` in Claude Code |
-| Ship a bug fix | `/complete B003` in Claude Code |
+| Ship a feature | `/complete F1` in Claude Code |
+| Resolve a non-feature issue (bug, cleanup, task) | `/resolve <description or issue#>` in Claude Code |
+| Ship a non-feature issue | `/complete 42` in Claude Code |
 | Triage backlog | Happens automatically as part of `/complete` |
 | Promote backlog to feature | `/spec [description]` in Claude |
 | Update coding conventions | Ask Claude to update `CODING.md` |
@@ -479,6 +485,6 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | `PLAN.md` | Checking feature status or finding the right spec |
 | `BACKLOG.md` | Looking for small tasks to clean up |
 | `client/known-test-failures.txt` | Reviewing or updating acknowledged pre-existing test failures |
-| `specs/F[NNN]-*.md` | Implementing or reviewing a specific feature |
+| `specs/F[N]-*.md` | Implementing or reviewing a specific feature |
 | `DESIGN.md` | Understanding full system architecture before designing a feature |
 | `docs/design/[feature].md` | Deep dive on a specific feature's design |
