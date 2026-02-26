@@ -3,7 +3,6 @@
 Coding conventions and patterns for this repository. Read by all implementation agents (Gemini, aider, etc.) before writing code.
 
 For behavioral rules and workflow discipline, see `AGENT.md`.
-For invocation instructions specific to each tool, see `GEMINI.md` (Gemini) or `AIDER.md` (aider).
 
 ## Tech Stack
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # implement — Start an implementation session for a feature or issue spec
 #
-# Usage: ./implement <ID> [--tool gemini|aider] [--model <model>] [--plan [--force]]
+# Usage: ./implement <ID> [--tool codex|gemini|aider] [--model <model>] [--plan [--force]]
 #
 #   <ID>          Feature ID (F1) or issue ID (I4 = GitHub issue #4)
 #   --plan        Stage 1: write implementation plan only, no code
 #   --force       Overwrite existing plan (use with --plan)
-#   --tool        gemini (default) or aider
-#   --model       Model flag passed to aider (e.g. claude-sonnet-4-6)
+#   --tool        codex, gemini, or aider (overrides IMPLEMENT_TOOL env and .implement.conf)
+#   --model       Model override (overrides IMPLEMENT_MODEL env and .implement.conf)
 #
 # Stages:
 #   1. Plan:      ./implement F1 --plan
@@ -19,13 +19,17 @@
 #                 → implementor runs tests and fixes failures as part of the session
 #   3. Verify:    ./check-tests  (pre-commit sanity check after /review)
 #
+# Tool selection: --tool arg > IMPLEMENT_TOOL env > .implement.conf > error
+# Model selection: --model arg > IMPLEMENT_MODEL env > .implement.conf
+#
 # For aider, AGENT.md and CODING.md are auto-loaded via .aider.conf.yml.
-# For Gemini CLI, GEMINI.md/AGENT.md/CODING.md are auto-loaded via .gemini/settings.json.
+# For Gemini CLI, AGENT.md and CODING.md are auto-loaded via .gemini/settings.json.
+# For Codex, AGENTS.md is auto-loaded; prompt also explicitly requires AGENT.md + CODING.md.
 
 set -euo pipefail
 
 SPEC_ID=""
-TOOL="gemini"
+TOOL=""
 MODEL=""
 PLAN_MODE=false
 FORCE=false
@@ -38,24 +42,69 @@ while [[ $# -gt 0 ]]; do
     --plan)      PLAN_MODE=true; shift;;
     --force)     FORCE=true; shift;;
     -h|--help)
-      echo "Usage: ./implement <ID> [--tool gemini|aider] [--model <model>] [--plan [--force]]"
+      echo "Usage: ./implement <ID> [--tool codex|gemini|aider] [--model <model>] [--plan [--force]]"
       echo ""
       echo "  ID         F1 (feature) or I4 (issue — matches GitHub issue #4)"
       echo "  --plan     Stage 1: write plan only (no code)"
       echo "  --force    Overwrite existing plan"
+      echo ""
+      echo "Tool selection (required unless configured):"
+      echo "  --tool     codex, gemini, or aider"
+      echo "             Overrides: IMPLEMENT_TOOL env var or tool= in .implement.conf"
+      echo "  --model    Model to use (e.g. codex-mini-latest, claude-sonnet-4-6)"
+      echo "             Overrides: IMPLEMENT_MODEL env var or model= in .implement.conf"
       exit 0;;
     *)
       echo "Unknown argument: $1"
-      echo "Usage: ./implement <ID> [--tool gemini|aider] [--model <model>] [--plan [--force]]"
+      echo "Usage: ./implement <ID> [--tool codex|gemini|aider] [--model <model>] [--plan [--force]]"
       exit 1;;
   esac
 done
 
 if [[ -z "$SPEC_ID" ]]; then
-  echo "Usage: ./implement <ID> [--tool gemini|aider] [--model <model>] [--plan [--force]]"
+  echo "Usage: ./implement <ID> [--tool codex|gemini|aider] [--model <model>] [--plan [--force]]"
   echo ""
   echo "  ID must be a feature ID (F1) or issue ID (I4)"
   exit 1
+fi
+
+# Resolve tool: --tool arg > IMPLEMENT_TOOL env > .implement.conf > error
+TOOL_SOURCE=""
+CONFIG_FILE=".implement.conf"
+CONFIG_TOOL=""
+CONFIG_MODEL=""
+if [[ -f "$CONFIG_FILE" ]]; then
+  CONFIG_TOOL=$(grep '^tool=' "$CONFIG_FILE" | head -1 | sed 's/^tool=//' | tr -d '[:space:]' || true)
+  CONFIG_MODEL=$(grep '^model=' "$CONFIG_FILE" | head -1 | sed 's/^model=//' | tr -d '[:space:]' || true)
+fi
+
+if [[ -z "$TOOL" ]]; then
+  if [[ -n "${IMPLEMENT_TOOL:-}" ]]; then
+    TOOL="$IMPLEMENT_TOOL"
+    TOOL_SOURCE="env"
+  elif [[ -n "$CONFIG_TOOL" ]]; then
+    TOOL="$CONFIG_TOOL"
+    TOOL_SOURCE="config"
+  else
+    echo "Error: No tool specified."
+    echo ""
+    echo "Specify one of:"
+    echo "  --tool codex|gemini|aider         (CLI argument)"
+    echo "  IMPLEMENT_TOOL=codex              (environment variable)"
+    echo "  tool=codex in .implement.conf     (project config)"
+    exit 1
+  fi
+else
+  TOOL_SOURCE="arg"
+fi
+
+# Resolve model: --model arg > IMPLEMENT_MODEL env > .implement.conf
+if [[ -z "$MODEL" ]]; then
+  if [[ -n "${IMPLEMENT_MODEL:-}" ]]; then
+    MODEL="$IMPLEMENT_MODEL"
+  elif [[ -n "$CONFIG_MODEL" ]]; then
+    MODEL="$CONFIG_MODEL"
+  fi
 fi
 
 # Find the spec file
@@ -110,7 +159,7 @@ if [[ "$PLAN_MODE" == false ]] && [[ "$REVIEW_LEVEL" == "Full" ]] && [[ "$HAS_AP
 fi
 
 echo "Spec:  $SPEC_FILE"
-echo "Tool:  $TOOL${MODEL:+ (model: $MODEL)}"
+echo "Tool:  $TOOL [$TOOL_SOURCE]${MODEL:+ (model: $MODEL)}"
 if [[ -n "$REVIEW_LEVEL" ]]; then
   echo "Review Level: $REVIEW_LEVEL"
 fi
@@ -138,8 +187,29 @@ fi
 
 
 case "$TOOL" in
+  codex)
+    # AGENTS.md is auto-loaded by Codex; prompt also explicitly requires AGENT.md + CODING.md
+    # to guarantee both are loaded regardless of auto-discovery behavior.
+    CONTEXT_PREFIX="First read AGENT.md and CODING.md in full. Confirm you have read both before making any changes. "
+    CODEX_ARGS=(-a never -s workspace-write)
+    if [[ -n "$MODEL" ]]; then
+      CODEX_ARGS+=(-m "$MODEL")
+    fi
+
+    if [[ "$PLAN_MODE" == true ]]; then
+      PROMPT="${CONTEXT_PREFIX}Read $SPEC_FILE. Write an implementation plan to $PLAN_FILE using the Plan Mode section format in AGENT.md. Do not write any code. After writing the plan, output a summary."
+    elif [[ "$HAS_APPROVED_PLAN" == true ]]; then
+      PROMPT="${CONTEXT_PREFIX}The approved plan in $APPROVED_PLAN_FILE has been reviewed and approved by Claude and the user. Check $PROGRESS_FILE for a progress log — if present, read the completed files to confirm their state and continue from where the previous session left off; otherwise start fresh. Maintain $PROGRESS_FILE throughout: append a progress entry after each file. After all files are implemented, run 'npm --prefix client test --watchAll=false' and fix any failing tests (run again to confirm all pass). List all files changed and paste the final test output when done."
+    else
+      PROMPT="${CONTEXT_PREFIX}Implement $SPEC_FILE. Maintain $PROGRESS_FILE throughout: append a progress entry after completing each file. After all files are implemented, run 'npm --prefix client test --watchAll=false' and fix any failing tests (run again to confirm all pass). List all files changed and paste the final test output when done."
+    fi
+    echo "Running: codex exec ${CODEX_ARGS[*]} \"$PROMPT\""
+    echo ""
+    codex exec "${CODEX_ARGS[@]}" "$PROMPT"
+    ;;
+
   gemini)
-    # GEMINI.md, AGENT.md, and CODING.md are auto-loaded via .gemini/settings.json
+    # AGENT.md and CODING.md are auto-loaded via .gemini/settings.json
     if [[ "$PLAN_MODE" == true ]]; then
       PROMPT="Read $SPEC_FILE. Write an implementation plan to $PLAN_FILE using the Plan Mode section format in AGENT.md. Do not write any code. After writing the plan, output a summary and wait for my approval. Type \"approved\" to proceed with implementation."
     elif [[ "$HAS_APPROVED_PLAN" == true ]]; then
@@ -236,7 +306,7 @@ case "$TOOL" in
 
   *)
     echo "Unknown tool: $TOOL"
-    echo "Use --tool gemini or --tool aider"
+    echo "Use --tool codex, gemini, or aider"
     exit 1
     ;;
 esac

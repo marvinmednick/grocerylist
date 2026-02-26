@@ -23,7 +23,7 @@ Four files and one external service work together:
 | `specs/F[N]-[slug].md` | Full implementation spec — everything Gemini needs to build a feature | Claude (via `/spec`) |
 | `BACKLOG.md` | Short-lived inbox — items land here during `/spec` and `/review`, then are triaged to GitHub Issues (or discarded) right after each commit | Claude (during `/spec`, `/review`, and post-commit triage) |
 | `CODING.md` | Coding conventions and patterns — the implementor's reference for every implementation | Claude (when new patterns are established) |
-| `GEMINI.md` | Gemini-specific invocation guide | Claude (when Gemini workflow changes) |
+| `docs/tools/gemini.md` | Gemini invocation reference (human docs) | Claude (when Gemini workflow changes) |
 | `AGENT.md` | Behavioral rules for all implementation agents | Claude (when scope discipline changes) |
 | GitHub Issues | Formal record linked to commits — audit trail and commit cross-referencing | Claude (via `gh` CLI, automated in commands) |
 
@@ -63,8 +63,8 @@ Idea → [Design] → Specced → In Progress → In Review → Done
 |--------|---------|---------------|
 | Backlog | Planned but not yet specced | PLAN.md row added |
 | Specced | Spec written, GitHub issue open, ready for Gemini | spec file created, PLAN.md updated, issue created |
-| In Progress | Gemini is implementing | (Gemini working) |
-| In Review | Gemini submitted, Claude reviewing | PLAN.md updated, issue comment added |
+| In Progress | Implementor is implementing | (implementor working) |
+| In Review | Implementor submitted, Claude reviewing | PLAN.md updated, issue comment added |
 | Done | Review passed, merged | PLAN.md updated to Done, GitHub issue closed |
 
 ---
@@ -184,26 +184,40 @@ Running `./implement F1` on a Full-level spec without an approved plan will erro
 Use the `implement` script from the project root — it finds the spec, extracts the file list, and runs the right command:
 
 ```bash
-./implement F1                        # implement (auto-detects approved plan if present)
+./implement F1                        # implement (uses tool from .implement.conf)
 ./implement F1 --plan                 # write plan only (Full level, step 1)
-./implement F1 --tool aider           # use aider instead of Gemini (interactive)
+./implement F1 --tool codex           # use Codex (explicit override)
+./implement F1 --tool gemini          # use Gemini CLI
+./implement F1 --tool aider           # use aider (interactive)
 ./implement F1 --tool aider --model claude-sonnet-4-6
 ./implement I42                       # issue spec (I-number = GitHub issue number)
 ```
 
 #### Tool Selection
 
+The active tool is configured in `.implement.conf` (committed default) and can be overridden via `IMPLEMENT_TOOL` env var or `--tool` arg. See `.implement.conf` for the current project default.
+
 | Tool | Best when |
 |------|-----------|
-| **Gemini CLI** | Default — interactive session, runs to completion including tests |
+| **Codex CLI** | Autonomous run-to-completion; strong OpenAI model support; default tool |
+| **Gemini CLI** | Autonomous run-to-completion; large context window; Google model support |
 | **aider** | Interactive session; initial prompt sent via `--message`, type `continue` to proceed through remaining files |
-| **Copy-paste** | Web interfaces (AI Studio) where no CLI is available |
+| **Copy-paste** | Web interfaces (AI Studio, ChatGPT) where no CLI is available |
 
-**aider edit format:** `diff` is set as the project default in `.aider.conf.yml`. This is required for Azure-hosted or other unrecognized models — without it, aider falls back to `whole` format, which causes some models to return narrative summaries instead of writing actual file edits. See `AIDER.md` for details.
+**aider edit format:** `diff` is set as the project default in `.aider.conf.yml`. This is required for Azure-hosted or other unrecognized models — without it, aider falls back to `whole` format, which causes some models to return narrative summaries instead of writing actual file edits. See `docs/tools/aider.md` for details.
+
+#### Manual Codex CLI
+
+`AGENTS.md` is auto-loaded. The prompt also explicitly requires both context files — see `docs/tools/codex.md` for details.
+
+```bash
+codex exec -a never -s workspace-write \
+  "First read AGENT.md and CODING.md in full. Confirm you have read both. Implement specs/F1-list-interactions.md. Run npm test from client/ when done. List all files changed and paste the test output."
+```
 
 #### Manual Gemini CLI
 
-`GEMINI.md`, `AGENT.md`, and `CODING.md` are auto-loaded via `.gemini/settings.json`. Just point at the spec:
+`AGENT.md` and `CODING.md` are auto-loaded via `.gemini/settings.json`. Just point at the spec:
 
 ```bash
 gemini "Implement specs/F1-list-interactions.md. Run npm test from client/ when done. List all files changed and paste the test output."
@@ -220,7 +234,7 @@ aider --model <model-flag> \
   client/lib/household.tsx
 ```
 
-See `AIDER.md` for full setup and model selection.
+See `docs/tools/aider.md` for full setup and model selection.
 
 #### Copy-paste (web UI only — not needed for CLI tools)
 
@@ -310,7 +324,7 @@ Claude will:
 4. Append non-blocking findings to `BACKLOG.md`
 5. Update PLAN.md status to `In Review` (if passing) or keep `In Progress` (if blocking issues)
 
-**If blocking issues exist:** Share Claude's review with Gemini for fixes, then re-review.
+**If blocking issues exist:** Share Claude's review with the implementor for fixes, then re-review.
 
 **If review passes:** Proceed to ship (see below).
 
@@ -480,8 +494,9 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | `CLAUDE.md` | Starting a Claude session — project guidance and architecture |
 | `AGENT.md` | Starting any implementation session — behavioral rules for all tools |
 | `CODING.md` | Starting any implementation session — coding conventions and patterns |
-| `GEMINI.md` | Starting a Gemini session — Gemini-specific invocation |
-| `AIDER.md` | Starting an aider session — aider setup and model selection |
+| `docs/tools/codex.md` | Codex invocation, API key, model selection (human reference) |
+| `docs/tools/gemini.md` | Gemini invocation and copy-paste reference (human reference) |
+| `docs/tools/aider.md` | aider setup, edit formats, model selection (human reference) |
 | `PLAN.md` | Checking feature status or finding the right spec |
 | `BACKLOG.md` | Looking for small tasks to clean up |
 | `client/known-test-failures.txt` | Reviewing or updating acknowledged pre-existing test failures |

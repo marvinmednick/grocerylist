@@ -1,0 +1,10 @@
+# Codex project configuration
+# See CODEX.md for full setup and invocation guide.
+
+# Default model — override with -m flag or IMPLEMENT_MODEL env var
+model = "codex-mini-latest"
+
+# Non-interactive defaults used by the implement script
+# (passed explicitly as flags; listed here for reference)
+# approval_policy = "never"
+# sandbox = "workspace-write"
