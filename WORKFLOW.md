@@ -9,16 +9,19 @@
 ### Feature Flow
 
 ```
-Idea → /spec → ./implement → /review → /complete
+Idea → [/design] → /spec → ./implement → /review → /complete
 ```
 
-| Step | Command |
-|------|---------|
-| Design + spec | `/spec Feature Name` in Claude |
-| Implement (Light) | `./implement F1` |
-| Implement (Full) | `./implement F1 --plan` → `/review-plan F1` → `./implement F1` |
-| Review code | `/review F1` after implementor reports tests passing |
-| Ship | `/complete F1` |
+`/design` is optional for simple features with clear requirements. Use it when UX, data model, or scope needs discussion before a spec can be written.
+
+| Step | Command | When |
+|------|---------|------|
+| Design | `/design Feature Name` in Claude | When requirements need discussion or a design doc needs updating |
+| Spec | `/spec Feature Name` or `/spec F2` | Always — reads design doc if one exists |
+| Implement (Light) | `./implement F1` | Review level Light |
+| Implement (Full) | `./implement F1 --plan` → `/review-plan F1` → `./implement F1` | Review level Full |
+| Review code | `/review F1` after implementor reports tests passing | Always |
+| Ship | `/complete F1` | After review passes |
 
 ### Bug Flow
 
@@ -110,13 +113,16 @@ git commit -m "feat: implement interaction modes (closes #1)"
 ## Feature Lifecycle
 
 ```
-Idea → [Design] → Specced → In Progress → In Review → Done
+Idea → Backlog → [Designed] → Specced → In Progress → In Review → Done
 ```
+
+`Designed` is optional — features with clear requirements can go directly from `Backlog` to `Specced`.
 
 | Status | Meaning | Files updated |
 |--------|---------|---------------|
-| Backlog | Planned but not yet specced | PLAN.md row added |
-| Specced | Spec written, GitHub issue open, ready for Gemini | spec file created, PLAN.md updated, issue created |
+| Backlog | Planned but not yet designed or specced | PLAN.md row added |
+| Designed | Design doc written, decisions recorded; ready to spec | `docs/design/F[N]-[slug].md` created, PLAN.md updated |
+| Specced | Spec written, GitHub issue open, ready for implementor | spec file created, PLAN.md updated, issue created |
 | In Progress | Implementor is implementing | (implementor working) |
 | In Review | Implementor submitted, Claude reviewing | PLAN.md updated, issue comment added |
 | Done | Review passed, merged | PLAN.md updated to Done, GitHub issue closed |
@@ -125,9 +131,9 @@ Idea → [Design] → Specced → In Progress → In Review → Done
 
 ## Use Cases
 
-### 1. New Feature That Already Has a Design Doc
+### 1. Feature With a Design Doc
 
-When the feature is in `PLAN.md` as Backlog and has a corresponding design doc in `docs/design/`:
+When the feature has a design doc (status `Designed` in PLAN.md), run `/spec` directly:
 
 **In Claude:**
 ```
@@ -135,34 +141,52 @@ When the feature is in `PLAN.md` as Backlog and has a corresponding design doc i
 ```
 
 Claude will:
-1. Read `docs/design/multi-user-trips.md` and `DESIGN.md`
-2. Assign the next F-number (e.g. F2)
-3. Write `specs/F2-multi-user-trips.md`
-4. Create GitHub issue `gh issue create --title "F2: Multi-User Trip Management" ...`
-5. Update `PLAN.md` row from `Backlog` to `Specced`
-6. Append any deferred items to `BACKLOG.md`
+1. Read `docs/design/F2-multi-user-trips.md` and `DESIGN.md`
+2. Do a consistency check — verify the design doc's references to existing code are still accurate
+3. Flag any drift to you and ask how to proceed before continuing
+4. Write `specs/F2-multi-user-trips.md`
+5. Create GitHub issue `gh issue create --title "F2: Multi-User Trip Management" ...`
+6. Update `PLAN.md` row from `Designed` to `Specced`
+7. Append any deferred items to `BACKLOG.md`
 
 **Hand to implementor** using `specs/F2-multi-user-trips.md` + `AGENT.md` + `CODING.md` (see [Handing Off to the Implementor](#handing-off-to-the-implementor)).
 
 ---
 
-### 2. New Feature That Needs Design First
+### 2. Feature That Needs Design First
 
-When you have an idea but no design doc yet, have a design conversation with Claude before running `/spec`.
+When you have an idea but no design doc yet, start with `/design`:
 
 **In Claude:**
 ```
-I want to add price tracking — log what items cost at each store so we
-can estimate trip totals. How should this work?
+/design Price Tracking
 ```
 
-Claude will discuss the design, ask clarifying questions, and produce a design. Once you're happy with the direction:
+Claude will:
+1. Ask clarifying questions about UX, data model, scope, and integration points
+2. Discuss options and trade-offs for each significant decision
+3. Record all decisions in `docs/design/F[N]-price-tracking.md`
+4. Update `PLAN.md` status to `Designed`
+
+Once the design is complete:
 ```
-That looks good. Can you write that up as a design doc in docs/design/
-and then run /spec for it?
+/spec F[N]
 ```
 
-Claude writes `docs/design/price-tracking.md` first, then produces the spec.
+Claude reads the design doc and writes the spec with all decisions already resolved.
+
+**When to use `/design` vs going straight to `/spec`:**
+- Use `/design` when: UX is unclear, multiple data model approaches exist, scope needs discussion, or the feature interacts with several existing systems
+- Go straight to `/spec` when: requirements are obvious, DESIGN.md already covers the approach, and the feature is a well-understood addition to existing patterns
+
+**Updating an existing design doc:**
+
+If a feature already has a design doc but you want to refine it (or the codebase has drifted):
+```
+/design F2
+```
+
+Claude enters update mode: reads the existing doc, scans for drift, presents required and desired changes, and updates the doc interactively.
 
 ---
 
@@ -593,7 +617,9 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 
 | Task | Do this |
 |------|---------|
-| Spec a new feature | `/spec [feature name]` in Claude |
+| Design a feature (requirements + decisions) | `/design [feature name or F-number]` in Claude |
+| Update an existing design doc | `/design F[N]` in Claude (enters update mode automatically) |
+| Spec a new feature | `/spec [feature name or F-number]` in Claude |
 | Hand off to implementor (Light) | `./implement F1` (or `--tool aider`, `--model <model>`) |
 | Hand off to implementor (Full) | `./implement F1 --plan`, then `/review-plan F1`, then `./implement F1` |
 | Review the plan (Full level) | `/review-plan F1` in Claude Code (preserves draft, writes approved file) |
@@ -631,4 +657,4 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | `client/known-test-failures.txt` | Reviewing or updating acknowledged pre-existing test failures |
 | `specs/F[N]-*.md` | Implementing or reviewing a specific feature |
 | `DESIGN.md` | Understanding full system architecture before designing a feature |
-| `docs/design/[feature].md` | Deep dive on a specific feature's design |
+| `docs/design/F[N]-[slug].md` | Design decisions for a feature — read before running `/spec`, update with `/design` |

@@ -4,7 +4,7 @@
 
 | ID | Feature | Status | Spec | Issue |
 |----|---------|--------|------|-------|
-| F2 | Multi-User Trip Management | Backlog | [docs/design/multi-user-trips.md](docs/design/multi-user-trips.md) | [#4](https://github.com/marvinmednick/grocerylist/issues/4) |
+| F2 | Multi-User Trip Management | Designed | [docs/design/multi-user-trips.md](docs/design/multi-user-trips.md) | [#4](https://github.com/marvinmednick/grocerylist/issues/4) |
 | F3 | Recipes & Bundles | Backlog | — | [#5](https://github.com/marvinmednick/grocerylist/issues/5) |
 | F4 | Fuzzy Matching | Backlog | — | [#6](https://github.com/marvinmednick/grocerylist/issues/6) |
 | F5 | Duplicate Entry Handling | Backlog | — | [#7](https://github.com/marvinmednick/grocerylist/issues/7) |
@@ -13,7 +13,8 @@
 | F8 | Enhanced Shopping Mode (Store Focus) | Backlog | — | [#10](https://github.com/marvinmednick/grocerylist/issues/10) |
 | F9 | Trip History View | Specced | [specs/F9-trip-history.md](specs/F9-trip-history.md) | [#11](https://github.com/marvinmednick/grocerylist/issues/11) |
 
-**Statuses:** `Backlog` → `Specced` → `In Progress` → `In Review` → `Done`
+**Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `In Review` → `Done`
+(`Designed` is optional — features with clear requirements can go `Backlog` → `Specced` directly)
 
 ## Future Features (Unscheduled)
 

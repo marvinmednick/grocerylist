@@ -2,11 +2,62 @@ Produce a structured implementation spec for Gemini to implement the following f
 
 Read the relevant sections of DESIGN.md and any applicable docs/design/ files before writing the spec.
 
-## Before writing the spec:
+---
 
-1. **Assign a feature ID**: Use Glob to list `specs/F*.md`. Extract the highest number and increment by 1 (e.g. if F1 and F1 exist, use F1). If no specs exist yet, start at F1.
+## Step 0: Design Doc Check
 
-2. **Determine the slug**: Derive a short kebab-case slug from the feature name (e.g. `list-interactions`, `duplicate-detection`).
+Before assigning an F-number or writing anything, check for an existing design doc.
+
+**Identify the feature and F-number (if already assigned):**
+- If $ARGUMENTS is an F-number (e.g. `F9`): look up the feature in PLAN.md
+- If $ARGUMENTS is a name: search PLAN.md for a matching row; note its F-number and design doc link if present
+
+**Check for a design doc:**
+```bash
+ls docs/design/F[N]-*.md 2>/dev/null     # F-number known
+# or check the design doc link in PLAN.md
+```
+
+### If a design doc is found
+
+1. Read it fully
+2. **Consistency check** — scan the codebase for key items the design doc references about *existing* code (file paths, function names, hook names, schema elements, patterns). A quick grep per key item is sufficient; this is not a deep investigation.
+3. If anything looks stale (referenced item renamed, removed, or structurally changed):
+   - Present the drift to the user
+   - Ask how to proceed:
+     - **Option A:** Stop — run `/design F[N]` first to update the design doc, then re-run `/spec`
+     - **Option B:** Proceed — note the discrepancies in the spec as caveats and continue
+4. If consistent (or user chose Option B): proceed to Step 1 with the design doc informing every decision in the spec
+
+### If no design doc is found
+
+Proceed to Step 1. Treat any design choices that arise as calls for user interaction (see **Mid-Spec Interaction** below).
+
+---
+
+## Step 1: Assign a Feature ID
+
+Use Glob to list `specs/F*.md` and `docs/design/F*.md`. Extract the highest number across both and increment by 1. If the feature is already in PLAN.md with an F-number, use that number — do not assign a new one.
+
+## Step 2: Determine the Slug
+
+Derive a short kebab-case slug from the feature name (e.g. `list-interactions`, `duplicate-detection`).
+
+---
+
+## Mid-Spec Interaction
+
+**Stop and ask the user** when a design choice arises that cannot be resolved from DESIGN.md, CODING.md, or the design doc. This includes:
+- Multiple valid approaches with meaningfully different trade-offs
+- UX decisions not addressed by existing docs (how does the user interact with this edge case?)
+- Scope ambiguity (is X in V1 or deferred?)
+- Anything where a reasonable implementor could go two different ways
+
+**Do not stop** for routine choices fully determined by existing patterns — apply CODING.md conventions directly without asking.
+
+**If significant design choices accumulate during spec writing** (more than one or two non-trivial decisions made inline): offer to write or update `docs/design/F[N]-[slug].md` with those decisions before finalizing the spec. This keeps the design doc as the source of truth for future updates.
+
+---
 
 ## Determine Review Level
 
@@ -50,17 +101,19 @@ Update the tracking comment's `GitHub: #[N] (to be created)` with the assigned i
 
 ## Update PLAN.md:
 
-Add a row to the Active Features table in PLAN.md:
+Add or update a row in the Active Features table in PLAN.md:
 ```
 | F[N] | [Feature Name] | Specced | [specs/F[N]-[slug].md](specs/F[N]-[slug].md) | [#N](url) |
 ```
+
+If a row for this feature already exists (e.g. at `Backlog` or `Designed` status), update it in place rather than adding a new row.
 
 ## The spec must include all of the following sections (omit any that genuinely don't apply, but err toward inclusion):
 
 ## Feature: [name]
 
 ### Context
-Brief explanation of what this feature does and which user scenario it addresses. Reference USER_SCENARIOS.md or DESIGN.md if relevant.
+Brief explanation of what this feature does and which user scenario it addresses. Reference USER_SCENARIOS.md or DESIGN.md if relevant. If a design doc exists, note it here: "Design decisions recorded in `docs/design/F[N]-[slug].md`."
 
 ### Files to Modify
 List each file and what changes are needed (add a function, modify a query, add UI state, etc.). Be specific about which existing functions/hooks are touched.
