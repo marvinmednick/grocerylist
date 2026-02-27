@@ -255,24 +255,25 @@ Options to consider: inline error text, toast notification, retry button.
 
 ---
 
-## 14. User Identity Badges (F2)
+## 14. User Identity on Checked Items (F2)
 
-Used on the shopping list to distinguish which checked-off items belong to the current user vs. other household members.
+Used on the shopping list to distinguish which checked-off items belong to the current user vs. other household members. No extra space or badges required — the checkbox style itself carries the signal.
 
-**Current user's checked items:** their profile color on the check indicator. No badge. *"No label needed — it's mine."*
+| | Checkbox style |
+|---|---|
+| **Current user** | Outlined circle, checkmark in their profile color, white fill |
+| **Other users** | Filled circle in their profile color, white checkmark (inverted) |
 
-**Other users' checked items:** their profile color on the check indicator + a small circular initials badge.
+Example: user's color = green, household partner's color = blue
+- User's items: green outlined circle + green check on white — familiar "checked" look
+- Partner's items: blue filled circle + white check — visually inverted, immediately distinct
 
-**Initials badge spec:**
-- Shape: small filled circle in the user's profile color
-- Text: 2-character white initials
-- Derivation (computed at render time, no stored `initials` column):
-  - Take first letter of each word in `display_name_short`, limit to 2 chars (e.g. "Mike Smith" → "MS")
-  - Single word: first 2 characters (e.g. "Mike" → "MI")
-  - No `display_name_short` set: first 2 characters of the email prefix before `@`
-- User controls their initials by editing `display_name_short` in Settings (F7)
+**Why inversion works:**
+- No extra elements or space on the row
+- The filled/outlined distinction separates "mine" from "not mine" regardless of color
+- Works for any number of users as long as profile colors are distinct
 
-This pattern is **novel** — it establishes the first use of an identity badge in the app. All future features needing user attribution should follow this pattern.
+This is a **novel pattern** in this app. All future features needing "mine vs. others" distinction on list items should follow this inverted-checkbox approach.
 
 ---
 
@@ -304,7 +305,6 @@ When a new visual or interaction pattern is established during a `/design` sessi
 | Decision | Value | Set by | Notes |
 |----------|-------|--------|-------|
 | User identity color system | Fixed profile colors, auto-assigned from 7-color palette, user-changeable | F2 | See §2 Profile Color Palette for the full palette |
-| "Mine vs. others" visual marker | Current user = their color, no badge. Others = their color + 2-char initials badge | F2 | See §14 for initials derivation rules |
-| Initials source | Derived at render time from `display_name_short`; no separate `initials` column | F2 | User controls via Settings (F7) |
-| Multi-user end trip dialog | React Native `<Modal>` (not Alert.alert) | F2 | Needed for checkbox rows with color badges |
+| "Mine vs. others" on checked items | Current user = outlined checkbox in their color. Others = filled/inverted checkbox in their color + white check | F2 | See §14; no extra space or badges needed |
+| Multi-user end trip dialog | React Native `<Modal>` (not Alert.alert) | F2 | Needed for per-user checkbox rows |
 | De-facto color palette | Tailwind hex values as hardcoded constants (blue-600, gray-900, etc.) | Observed | See §2 De-Facto UI Color Palette; consolidate into constants file when palette is finalized |

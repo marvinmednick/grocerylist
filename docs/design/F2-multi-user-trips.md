@@ -62,21 +62,23 @@ When a new profile is created, loop through this list and assign the first color
 
 ### 4. "Mine vs. Others" Visual Identification on Checked Items
 
-**Decision:** Two-signal approach — color alone is insufficient (color-blind users, ambiguous with 3+ people):
+**Decision:** Inverted checkbox style for other users' items. No initials badge, no extra space required.
 
-- **Current user's checked items:** their profile color on the checkbox/check icon. No initials badge. *"Mine — no label needed."*
-- **Other users' checked items:** their profile color on the checkbox/check icon + a small circular initials badge (2 characters, white text on their color).
+| | Style | Effect |
+|---|---|---|
+| **Current user** | Outlined circle, checkmark in their profile color, white background | Standard checkbox feel — familiar, "normal" |
+| **Other users** | Filled circle in their profile color, white checkmark | Visually inverted — immediately distinct |
 
-**Initials derivation:** Computed client-side from `display_name_short`:
-- Take the first letter of each word, limit to 2 characters (e.g. "Mike Smith" → "MS")
-- If only one word, take first 2 characters (e.g. "Mike" → "MI")
-- If `display_name_short` is not set, fall back to the first 2 characters of the email prefix
+Example for a two-person household (user = green, wife = blue):
+- User's checked items: green outlined circle with green check on white
+- Wife's checked items: blue filled circle with white check
 
-**User control over initials:** The user sets/changes their initials indirectly by editing `display_name_short` in Settings (F7). There is no separate `initials` column — derivation happens at render time. This keeps the schema simple and lets users set display names like "MJ" if they want specific 2-char initials.
+This works for any number of users — each person's color is unique (see §3), and the filled/outlined distinction immediately separates "mine" from "not mine" regardless of color.
 
 **Alternatives considered:**
-- Separate `initials` column — rejected as unnecessary complexity; display_name_short gives equivalent control
-- Color-only identification — rejected as insufficient for color-blind users and ambiguous when 3+ people are shopping
+- Color + 2-char initials badge overlapping checkbox — rejected; checkbox area too small for legible initials (~24px, font would be ~7px)
+- Initials at trailing edge of row — adds visual clutter; the inversion accomplishes the same distinction without extra elements
+- Color-only, no style inversion — less distinct, relies entirely on users knowing their own color
 - "Me = always blue" (viewer-relative) — rejected because colors lose cross-device identity and conflict resolution gets complex with 3+ users
 
 ---
@@ -134,13 +136,12 @@ End Trips at Costco
 ## F7 Dependency
 
 The following F2 features require a Settings screen (F7):
-- Editing `display_name_short` (which controls initials)
+- Editing `display_name_short` (used in the multi-trip dialog for display names)
 - Editing profile `color`
 
 **F2 can ship without F7** with graceful degradation:
-- Display names in the multi-trip dialog fall back to email prefix
+- Display names in the multi-trip dialog fall back to email prefix if `display_name_short` is not set
 - Colors are auto-assigned and unchangeable until F7 ships
-- Initials are auto-derived and unchangeable until F7 ships
 
 This means F2 and F7 are independent but complementary. F2 ships full functionality; F7 adds personalization on top.
 
@@ -166,15 +167,14 @@ None. All design decisions resolved.
 2. Update `useTogglePurchased` to set `purchased_by: currentUserId` on check, `null` on uncheck
 3. Update profile creation in `auth.tsx` to auto-assign a color from the palette
 4. Fetch `purchased_by` user's profile (color, display_name_short) in the shopping list query
-5. Color-code check-off icons by `purchased_by` profile color
-6. Show initials badge for items purchased by other users (not current user)
-7. Update `useEndTrip` to detect multiple purchasers and surface the selection modal
-8. Update undo to handle multi-trip archival (one `pushAction` covering N records)
-9. [F7] Display name and color editing in Settings
+5. Render checked items: current user → outlined checkbox in their color; others → filled checkbox in their color with white check
+6. Update `useEndTrip` to detect multiple purchasers and surface the selection modal
+7. Update undo to handle multi-trip archival (one `pushAction` covering N records)
+8. [F7] Display name and color editing in Settings
 
 ---
 
 ## Revision History
 
 - 2025-01-01: Initial design (multi-user-trips.md)
-- 2026-02-27: Updated — renamed to F2 convention; resolved all open questions: one-record-per-user trips, fixed profile colors with 7-color palette, "mine vs. others" via color + initials badge (no separate initials column), multi-user dialog confirmed as Modal, F7 dependency scoped as graceful degradation
+- 2026-02-27: Updated — renamed to F2 convention; resolved all open questions: one-record-per-user trips, fixed profile colors with 7-color palette, "mine vs. others" via inverted checkbox style (outlined = mine, filled+inverted = others; no badges or extra space), multi-user dialog confirmed as Modal, F7 dependency scoped as graceful degradation
