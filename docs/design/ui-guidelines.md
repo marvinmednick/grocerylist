@@ -41,16 +41,45 @@ These come from `client/constants/Colors.ts` — the current values are the **de
 
 **These are placeholders.** The app has not yet established a custom color palette. Customize `constants/Colors.ts` when ready.
 
+### De-Facto UI Color Palette
+The existing screens use **Tailwind color hex values as hardcoded constants** consistently across components. These are the established values — use them for new UI rather than introducing new hex values:
+
+| Role | Hex | Tailwind | Used for |
+|------|-----|----------|----------|
+| Primary / interactive | `#2563eb` | blue-600 | Buttons, active states, links |
+| Text primary | `#111827` | gray-900 | Main content text |
+| Text secondary | `#374151` | gray-700 | Labels, secondary content |
+| Text muted | `#6b7280` | gray-500 | Metadata, captions |
+| Placeholder / disabled | `#9ca3af` | gray-400 | Input placeholders, inactive |
+| Error | `#991b1b` | red-800 | Error messages |
+| Success | `#166534` | green-800 | Success messages |
+| Highlight / star | `#fbbf24` | amber-400 | Default store indicator |
+
+> These values are not yet in a shared constants file — they are hardcoded per-component. When the palette is finalized, consolidate into `constants/Colors.ts`.
+
 ### Data-Driven Colors
 These are established and should not change:
 - **Store colors:** `stores.color_code` — used in store section headers on the shopping list
-- **User/profile colors:** `profiles.color` — used for multi-user check-off indicators (purchased_by)
+- **User/profile colors:** `profiles.color` — used for multi-user check-off indicators. See Profile Color Palette below.
+
+### Profile Color Palette (F2)
+Each user profile is assigned a distinct color for identity across the app (checked items, trip dialogs, history). Colors are auto-assigned at profile creation (first unused in the household) and user-changeable in Settings (F7).
+
+| # | Color | Hex | Tailwind |
+|---|-------|-----|----------|
+| 1 | Blue (default) | `#2563eb` | blue-600 |
+| 2 | Green | `#16a34a` | green-600 |
+| 3 | Orange | `#ea580c` | orange-600 |
+| 4 | Purple | `#9333ea` | purple-600 |
+| 5 | Red | `#dc2626` | red-600 |
+| 6 | Teal | `#0d9488` | teal-600 |
+| 7 | Pink | `#db2777` | pink-600 |
+
+Cycles from the top if the household has more than 7 members. Soft conflict warning in Settings if a user picks a color already used by a household member.
 
 ### Semantic Colors
 [TBD — decide during /design sessions]
-- Success / confirmation feedback
 - Warning / caution states
-- Destructive actions
 - Disabled / inactive state
 - Purchased / completed item strikethrough color
 
@@ -226,7 +255,28 @@ Options to consider: inline error text, toast notification, retry button.
 
 ---
 
-## 14. Interaction Patterns
+## 14. User Identity Badges (F2)
+
+Used on the shopping list to distinguish which checked-off items belong to the current user vs. other household members.
+
+**Current user's checked items:** their profile color on the check indicator. No badge. *"No label needed — it's mine."*
+
+**Other users' checked items:** their profile color on the check indicator + a small circular initials badge.
+
+**Initials badge spec:**
+- Shape: small filled circle in the user's profile color
+- Text: 2-character white initials
+- Derivation (computed at render time, no stored `initials` column):
+  - Take first letter of each word in `display_name_short`, limit to 2 chars (e.g. "Mike Smith" → "MS")
+  - Single word: first 2 characters (e.g. "Mike" → "MI")
+  - No `display_name_short` set: first 2 characters of the email prefix before `@`
+- User controls their initials by editing `display_name_short` in Settings (F7)
+
+This pattern is **novel** — it establishes the first use of an identity badge in the app. All future features needing user attribution should follow this pattern.
+
+---
+
+## 15. Interaction Patterns
 
 | Gesture | Current use | Notes |
 |---------|-------------|-------|
@@ -237,7 +287,7 @@ Options to consider: inline error text, toast notification, retry button.
 
 ---
 
-## 15. Dark Mode
+## 16. Dark Mode
 
 Light/dark mode support is scaffolded via `useColorScheme()` and `constants/Colors.ts`. The color tokens in section 2 have both light and dark values.
 
@@ -247,10 +297,14 @@ In practice: new components should use the `Colors[colorScheme]` tokens rather t
 
 ---
 
-## 16. Decision Log
+## 17. Decision Log
 
 When a new visual or interaction pattern is established during a `/design` session, append it here with the feature it came from. This prevents re-litigating the same decision on future features.
 
 | Decision | Value | Set by | Notes |
 |----------|-------|--------|-------|
-| *(empty — first decisions pending)* | | | |
+| User identity color system | Fixed profile colors, auto-assigned from 7-color palette, user-changeable | F2 | See §2 Profile Color Palette for the full palette |
+| "Mine vs. others" visual marker | Current user = their color, no badge. Others = their color + 2-char initials badge | F2 | See §14 for initials derivation rules |
+| Initials source | Derived at render time from `display_name_short`; no separate `initials` column | F2 | User controls via Settings (F7) |
+| Multi-user end trip dialog | React Native `<Modal>` (not Alert.alert) | F2 | Needed for checkbox rows with color badges |
+| De-facto color palette | Tailwind hex values as hardcoded constants (blue-600, gray-900, etc.) | Observed | See §2 De-Facto UI Color Palette; consolidate into constants file when palette is finalized |

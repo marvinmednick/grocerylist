@@ -4,7 +4,7 @@
 
 | ID | Feature | Status | Spec | Issue |
 |----|---------|--------|------|-------|
-| F2 | Multi-User Trip Management | Designed | [docs/design/multi-user-trips.md](docs/design/multi-user-trips.md) | [#4](https://github.com/marvinmednick/grocerylist/issues/4) |
+| F2 | Multi-User Trip Management | Designed | [docs/design/F2-multi-user-trips.md](docs/design/F2-multi-user-trips.md) | [#4](https://github.com/marvinmednick/grocerylist/issues/4) |
 | F3 | Recipes & Bundles | Backlog | — | [#5](https://github.com/marvinmednick/grocerylist/issues/5) |
 | F4 | Fuzzy Matching | Backlog | — | [#6](https://github.com/marvinmednick/grocerylist/issues/6) |
 | F5 | Duplicate Entry Handling | Backlog | — | [#7](https://github.com/marvinmednick/grocerylist/issues/7) |
