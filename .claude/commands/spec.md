@@ -1,6 +1,6 @@
 Produce a structured implementation spec for Gemini to implement the following feature: $ARGUMENTS
 
-Read the relevant sections of DESIGN.md and any applicable docs/design/ files before writing the spec.
+Read the relevant sections of DESIGN.md, docs/design/ui-guidelines.md, and any applicable docs/design/ files before writing the spec.
 
 ---
 
@@ -47,6 +47,7 @@ Derive a short kebab-case slug from the feature name (e.g. `list-interactions`, 
 
 ## Mid-Spec Interaction
 
+### Functional / data choices
 **Stop and ask the user** when a design choice arises that cannot be resolved from DESIGN.md, CODING.md, or the design doc. This includes:
 - Multiple valid approaches with meaningfully different trade-offs
 - UX decisions not addressed by existing docs (how does the user interact with this edge case?)
@@ -55,7 +56,18 @@ Derive a short kebab-case slug from the feature name (e.g. `list-interactions`, 
 
 **Do not stop** for routine choices fully determined by existing patterns — apply CODING.md conventions directly without asking.
 
-**If significant design choices accumulate during spec writing** (more than one or two non-trivial decisions made inline): offer to write or update `docs/design/F[N]-[slug].md` with those decisions before finalizing the spec. This keeps the design doc as the source of truth for future updates.
+### UI choices
+Check each UI element against `docs/design/ui-guidelines.md`:
+
+| Tier | What it means | Action in spec |
+|------|---------------|----------------|
+| **Established** | Pattern is documented in ui-guidelines.md | Apply it; cite the section in a spec comment (e.g., "uses modal pattern from ui-guidelines §7") |
+| **Extension** | Similar to established but with a new variation | Note it and ask user: "Plan to use X pattern here — does that fit?" |
+| **Novel** | No precedent in the app | Stop and discuss with user before writing the UI section; record decision before continuing |
+
+**Never let the implementor invent novel UI.** If the spec reaches a UI element that is novel and hasn't been resolved through a design doc or inline discussion, stop and get a decision rather than leaving it vague.
+
+**If significant choices accumulate during spec writing** (more than one or two non-trivial decisions made inline): offer to write or update `docs/design/F[N]-[slug].md` with those decisions before finalizing the spec, and propagate novel UI decisions to `docs/design/ui-guidelines.md`.
 
 ---
 

@@ -657,4 +657,5 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | `client/known-test-failures.txt` | Reviewing or updating acknowledged pre-existing test failures |
 | `specs/F[N]-*.md` | Implementing or reviewing a specific feature |
 | `DESIGN.md` | Understanding full system architecture before designing a feature |
-| `docs/design/F[N]-[slug].md` | Design decisions for a feature — read before running `/spec`, update with `/design` |
+| `docs/design/ui-guidelines.md` | Visual and interaction patterns — updated as decisions are made; read before any feature `/design` or `/spec` |
+| `docs/design/F[N]-[slug].md` | Design decisions for a specific feature — read before running `/spec`, update with `/design` |

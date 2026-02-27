@@ -6,7 +6,7 @@ Identify the feature:
 - If $ARGUMENTS is an F-number (e.g. `F2`): look it up in PLAN.md to get the feature name, status, and any linked design doc
 - If $ARGUMENTS is a feature name: search PLAN.md for a matching row; if none, this is a brand-new feature
 
-Read `DESIGN.md` and `CLAUDE.md` for architecture context before proceeding.
+Read `DESIGN.md`, `CLAUDE.md`, and `docs/design/ui-guidelines.md` for architecture and UI context before proceeding.
 
 ## Mode Detection
 
@@ -41,6 +41,7 @@ If not in PLAN.md:
 Read:
 - `DESIGN.md` — architecture, data model, existing patterns
 - `USER_SCENARIOS.md` — relevant user scenarios
+- `docs/design/ui-guidelines.md` — established visual and interaction patterns
 - Any related `docs/design/` files for features that interact with this one
 
 ### Step 3 — Open questions
@@ -54,12 +55,40 @@ Identify the design questions that need resolution before a spec can be written.
 
 ### Step 4 — Interactive design conversation
 
-Present the open questions to the user and discuss them. For each question:
+Run the conversation in two passes. Keep them distinct so UI preferences don't get buried under technical questions.
+
+**Pass 1 — Functional/data decisions:**
+- Data model choices (new table vs. column, nullable fields, scoping)
+- Scope boundaries (what's in V1 vs. deferred)
+- Integration points (which existing hooks, mutations, or React Query keys are involved)
+- Undo/redo requirements
+- Household scoping requirements
+
+**Pass 2 — UI/interaction decisions:**
+
+For each UI element the feature introduces, classify it against `docs/design/ui-guidelines.md`:
+
+| Tier | What it means | Action |
+|------|---------------|--------|
+| **Established** | Matches a pattern already in ui-guidelines.md | Apply silently; note which guideline in the design doc |
+| **Extension** | Similar to existing but with a new twist | Flag to user: "I plan to use the X pattern here — does that fit?" |
+| **Novel** | No precedent in the app | Always discuss with user before deciding; this sets a new guideline |
+
+Novel UI territory to always ask about:
+- First use of a new interaction gesture (swipe, long-press beyond current uses)
+- New component type (bottom sheet, date picker, multi-select, etc.)
+- New screen-level layout pattern
+- Visual treatment for a new semantic state (warning, success, error if not yet established)
+- Any aesthetic choice with multiple reasonable options (icon selection, color assignment, label wording)
+
+For each question:
 - State the question clearly
-- Propose options with trade-offs
+- Propose options with trade-offs or show the established pattern
 - Record the user's decision and rationale
 
-Continue until all significant design questions are resolved. Do not write the design doc until the conversation is complete — the goal is a fully resolved set of decisions.
+**When novel UI decisions are made:** note them explicitly as "new pattern — update ui-guidelines.md" in the design doc. The Step 5 write will capture them in the design doc's Decisions section; Step 6 will propagate them to the guidelines.
+
+Continue until all significant questions in both passes are resolved.
 
 ### Step 5 — Write the design doc
 
@@ -91,8 +120,9 @@ Write `docs/design/F[N]-[slug].md` with this structure:
 [Anything still unresolved. Should be empty before handing to /spec — if not, note what needs resolution.]
 ```
 
-### Step 6 — Update PLAN.md
+### Step 6 — Update PLAN.md and UI Guidelines
 
+**PLAN.md:**
 - If the feature was not in PLAN.md: the row was added in Step 1; update status to `Designed` and add design doc link
 - If already in PLAN.md as `Backlog`: update status to `Designed` and add the design doc link
 
@@ -101,6 +131,15 @@ Write `docs/design/F[N]-[slug].md` with this structure:
 ```
 
 (GitHub issue link stays `—` until `/spec` runs and creates the issue.)
+
+**`docs/design/ui-guidelines.md`:**
+For any decision flagged as "novel pattern" during Step 4, update the guidelines:
+- If a TBD section is now resolved (e.g., first empty-state styling decision): fill in that section directly
+- For other new patterns: append a row to the Decision Log at the bottom of the file:
+  ```
+  | [What was decided] | [Value/pattern chosen] | F[N] | [Brief rationale] |
+  ```
+The goal is that the next `/design` session picks up these decisions as "established" rather than re-opening them.
 
 ### Step 7 — Report
 
@@ -157,10 +196,14 @@ Revise `docs/design/F[N]-[slug].md` to reflect all changes. Add a revision histo
 - [YYYY-MM-DD]: Updated — [brief summary of changes made]
 ```
 
-### Step 6 — Update PLAN.md if needed
+### Step 6 — Update PLAN.md and UI Guidelines if needed
 
+**PLAN.md:**
 - If status was `Backlog` (design doc existed informally): update to `Designed` and add design doc link
 - If status is already `Designed`, `Specced`, `In Progress`, etc.: leave status unchanged; the design doc update is noted in the revision history
+
+**`docs/design/ui-guidelines.md`:**
+Same rule as Fresh mode: if any novel UI patterns were decided during the update session, propagate them to the guidelines (fill TBD sections or append to Decision Log).
 
 ### Step 7 — Report
 

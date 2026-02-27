@@ -1,5 +1,7 @@
 # Grocery App Design & Architecture
 
+> **Related docs:** `docs/design/ui-guidelines.md` — visual and interaction patterns (component selection, established conventions, TBD placeholders, decision log). Read alongside this file before designing any feature with a UI component.
+
 ## 1. Project Overview
 **Goal:** A cross-platform (iOS/Android/Web) collaborative shopping list application.
 **Core Philosophy:** Real-time synchronization, structured data (Stores/Categories) mixed with flexibility (Custom items), and "Trip" based workflows.
