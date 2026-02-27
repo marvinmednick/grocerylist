@@ -1,6 +1,60 @@
 # Development Workflow
 
-This document describes the end-to-end development process for this project, including the roles of Claude and Gemini, the tracking system, and how to handle every common scenario.
+> **Details below.** This cheatsheet is the "what do I run" view — scan it for the right command, then read the relevant section for the full story.
+
+---
+
+## Cheatsheet
+
+### Feature Flow
+
+```
+Idea → /spec → ./implement → /review → /complete
+```
+
+| Step | Command |
+|------|---------|
+| Design + spec | `/spec Feature Name` in Claude |
+| Implement (Light) | `./implement F1` |
+| Implement (Full) | `./implement F1 --plan` → `/review-plan F1` → `./implement F1` |
+| Review code | `/review F1` after implementor reports tests passing |
+| Ship | `/complete F1` |
+
+### Bug Flow
+
+```
+File → Triage → Investigate → /resolve → /complete
+```
+
+| Step | Command | When |
+|------|---------|------|
+| File | `/resolve <description>` or `gh issue create` | Always; capture triage inline if cause is already known |
+| Triage | `/triage N` or `/triage N1 N2 …` | Assess severity + effort; no code tracing |
+| Investigate | `/investigate N` | When effort is unknown and you need root cause before deciding |
+| Fix | `/resolve N` | Stage-aware — skips what's already done |
+| Ship | `/complete N` | Same as feature shipping |
+
+### Other Commands
+
+| Command | When |
+|---------|------|
+| `/fix-baseline` | Unexpected test failures exist before starting a feature |
+| `./check-tests` | Verify clean baseline before committing |
+| `/triage` (no args) | Triage all open bugs in one pass |
+| `./implement F1 --tool aider --model claude-sonnet-4-6` | Override tool or model |
+| `gh issue list --label bug --state open` | See all open bugs |
+
+### Implement Tool Selection
+
+Tool is read from `.implement.conf` → `IMPLEMENT_TOOL` env → `--tool` arg (arg wins).
+
+| Flag | Tool |
+|------|------|
+| `--tool codex` | Codex CLI (project default) |
+| `--tool gemini` | Gemini CLI |
+| `--tool aider --model <model>` | aider (interactive) |
+
+---
 
 ## Philosophy
 
