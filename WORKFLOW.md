@@ -349,63 +349,135 @@ Claude will:
 
 ### 7. Non-Feature Issues (Bugs, Cleanup, Tasks)
 
-Run `/resolve` in Claude Code with either a description or an existing issue number:
+Non-feature issues use their GitHub issue number directly. Issue #42 gets spec file
+`specs/I42-avatar-menu-dismiss.md` if one is needed. No separate counter to manage.
+
+#### Bug Lifecycle
+
+Bugs move through distinct stages. Each can happen in the same session or separately:
+
+```
+Filed → Triaged → Investigated → Fixed → Shipped
+```
+
+| Stage | Command | What happens |
+|-------|---------|-------------|
+| **File** | `gh issue create` or `/resolve <description>` | Log the bug; capture what's already known |
+| **Triage** | `/triage N` | Assess severity + effort; no code investigation |
+| **Investigate** | `/investigate N` | Locate root cause (Phase 1+2); don't fix yet |
+| **Fix** | `/resolve N` | Stage-aware: skips completed stages, applies fix |
+| **Ship** | `/complete N` | Commit, close issue, triage backlog |
+
+**Common paths:**
+
+- Bug found during code review (cause already known): File → `/resolve N` (skips to fix)
+- Bug from user report (cause unknown): File → `/triage N` → `/investigate N` → `/resolve N`
+- Quick triage session: `/triage 18 19 20 21` across a batch of open bugs
+
+---
+
+#### Triage Fields
+
+Every bug issue should have a `## Triage` section in its body:
+
+```markdown
+## Triage
+- **Severity:** [High|Medium|Low] — [one-line impact rationale]
+- **Effort:** [Small|Medium|Large] ([confirmed|estimated|unknown]) — [one-line rationale]
+- **Root Cause:** [Brief description if known, or "not yet investigated"]
+```
+
+**Severity** (always knowable from description — no code needed):
+
+| Severity | When |
+|----------|------|
+| High | Data integrity risk, security, app crash, no workaround |
+| Medium | Incorrect visible behavior, functional workaround exists |
+| Low | Cosmetic, edge case, rare sequence, minor UX |
+
+**Effort qualifier:**
+
+| Qualifier | Meaning |
+|-----------|---------|
+| `(confirmed)` | Root cause read or described; fix scope verified |
+| `(estimated)` | Quick code look supports this estimate; not fully traced |
+| `(unknown)` | Insufficient information; needs `/investigate` first |
+
+**Capture what's already in context.** When a bug is found during a code review or spec session, files are already loaded — document the root cause and fix approach immediately. Do not re-investigate what's already understood. If cause is unknown, mark effort `(unknown)` and move on; investigation happens when you're ready to fix.
+
+---
+
+#### `/triage [N]` — Assess without fixing
+
+```
+/triage 18
+/triage 18 19 20 21
+/triage                   (all open bugs)
+```
+
+Assesses severity and estimates effort with minimal code examination. Updates the issue body and applies labels. Does **not** trace code paths, investigate root causes, or fix anything. Quick grep to locate a file is allowed; reading and tracing files is not — that's `/investigate`.
+
+---
+
+#### `/investigate N` — Understand root cause without fixing
+
+```
+/investigate 18
+```
+
+Runs Phase 1 (locate) and Phase 2 (diagnose). Identifies the root cause and documents findings on the issue — upgrading effort to `(confirmed)`. Does **not** run Phase 3 or apply any fix. Use when effort is `(unknown)` or `(estimated)` and you need to understand true scope before deciding whether to fix.
+
+After investigation, choose: `/resolve N` to fix now, or defer based on findings.
+
+---
+
+#### `/resolve N` — Fix a bug (stage-aware)
 
 ```
 /resolve Avatar menu doesn't close on web
 /resolve 42
 ```
 
-Non-feature issues use their GitHub issue number directly — issue #42 has spec file
-`specs/I42-avatar-menu-dismiss.md` if a spec is needed. No separate counter to manage.
+Reads the issue and skips stages that are already complete:
 
-#### What `/resolve` does
+- Spec file exists → skip straight to `./implement I[N]`
+- Investigation findings present + effort `(confirmed)` → skip to Phase 3 (blast radius) and fix
+- Triage present but effort unknown → skip triage, run Phase 1+2+3
+- Nothing done → run everything
 
-Reads the issue label to determine the path:
+For non-bug labels (`cleanup`, `test-quality`, `docs`, `enhancement`): reads the issue and applies the fix directly — no investigation phases.
 
-- **`bug`** — runs a three-phase investigation (locate → diagnose → blast radius) before fixing
-- **`cleanup` / `test-quality` / `docs` / `enhancement` (small)** — reads the issue and applies the fix directly; no investigation needed
+**Bug investigation phases (when needed):**
 
-**Bug investigation phases:**
+- **Phase 1 — Locate:** Map behavior to code path via grep and file reads
+- **Phase 2 — Diagnose:** Read located files; identify root cause and fix
+- **Phase 3 — Blast radius:** Interface changes? Callers? New test files needed?
 
-**Phase 1 — Locate:** Maps the described behavior to the code path using architecture docs,
-grep, and file reads.
-
-**Phase 2 — Diagnose:** Reads the located files in depth to identify root cause and fix.
-Phase 2 can also fail if static analysis is inconclusive — runtime state or platform
-behavior may be responsible.
-
-**Phase 3 — Blast radius** *(only if Phase 2 succeeds):* Checks whether the fix changes
-any exported interface, greps for callers, and assesses whether a new test file is needed.
-
-#### Outcomes
+**Outcomes:**
 
 | Outcome | What happens |
 |---------|-------------|
-| Fix is contained, no new test file | Claude applies fix directly, runs `./check-tests`, asks to commit |
-| Callers in many/large unread files, or new test file needed | Claude writes `specs/I[N]-slug.md` → `./implement I[N]` |
-| Phase 2 fails (runtime/state-dependent) | Claude writes spec with suspected area + investigation instructions |
-| Phase 1 fails (can't locate from static analysis) | Claude writes spec with full investigate-and-fix instructions |
-| Fix has architectural implications | Claude escalates — design conversation before any spec |
-| Issue is labeled `feature` | Claude stops — this should go through `/spec` first |
+| Fix contained, no new test file | Claude applies fix directly, runs `./check-tests`, asks to commit |
+| Callers in large unread files, or new test file needed | Claude writes `specs/I[N]-slug.md` → `./implement I[N]` |
+| Phase 2 fails (runtime/state-dependent) | Spec with suspected area + investigation instructions |
+| Phase 1 fails (can't locate statically) | Spec with full investigate-and-fix instructions |
+| Architectural implications | Escalates — design conversation before any spec |
+| Labeled `feature` | Stops — should go through `/spec` first |
 
 #### When a spec is written
 
 ```bash
 ./implement I42                   # implement the issue spec
 ./check-tests                     # verify after /review
-git commit -m "fix: ... (closes #42)"
 ```
 
 #### Commit and close
-
-Once the fix is verified, run in Claude Code:
 
 ```
 /complete 42
 ```
 
-Same steps as feature shipping: verify tests, commit, close issue, triage BACKLOG.md, push.
+Same steps as feature shipping: verify tests, commit with `closes #42`, close issue, triage BACKLOG.md, push.
 
 ---
 
@@ -475,7 +547,10 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | Verify tests before commit | `./check-tests` |
 | Fix a dirty baseline | `/fix-baseline` in Claude Code (diagnose → propose → confirm → fix) |
 | Ship a feature | `/complete F1` in Claude Code |
-| Resolve a non-feature issue (bug, cleanup, task) | `/resolve <description or issue#>` in Claude Code |
+| File a bug | `/resolve <description>` or `gh issue create` |
+| Triage bug(s) | `/triage N` or `/triage N1 N2 N3` or `/triage` (all open) |
+| Investigate a bug (understand before fixing) | `/investigate N` in Claude Code |
+| Fix a bug or non-feature issue | `/resolve N` in Claude Code (stage-aware) |
 | Ship a non-feature issue | `/complete 42` in Claude Code |
 | Triage backlog | Happens automatically as part of `/complete` |
 | Promote backlog to feature | `/spec [description]` in Claude |

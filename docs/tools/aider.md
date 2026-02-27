@@ -44,9 +44,10 @@ aider does not have a default model set in `.aider.conf.yml` — choose at runti
 
 | Model flag | Best for |
 |-----------|---------|
-| `--model claude-sonnet-4-5` | Complex multi-file changes, strong TypeScript reasoning |
+| `--model claude-sonnet-4-6` | Complex multi-file changes, strong TypeScript reasoning |
 | `--model gpt-4o` | Fast general-purpose implementation |
 | `--model openai/gpt-4.1` | Latest GPT-4 class tasks |
+| `--model openai/codex-mini-latest` | Code-focused tasks via aider (use Codex CLI directly for most cases) |
 | `--model openrouter/qwen/qwen-2.5-coder-32b-instruct` | Code-focused tasks, cost-efficient |
 | `--model gemini/gemini-2.0-flash` | Fast, large context window |
 

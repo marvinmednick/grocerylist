@@ -27,6 +27,32 @@ Read `DESIGN.md` and `CLAUDE.md` for architecture context before investigating o
 
 ## Path A — Bug Investigation (label: `bug`)
 
+### Stage Detection
+
+Before running investigation phases, check what's already been done on this issue:
+
+```bash
+# Check for a spec file (investigation complete, fix ready to implement)
+ls specs/I${N}-*.md 2>/dev/null
+
+# Check issue body for existing triage/investigation
+gh issue view $N --json body | jq -r '.body'
+```
+
+Act based on what's found:
+
+| State | Signal | Action |
+|-------|--------|--------|
+| Spec file exists | `specs/I[N]-*.md` present | Skip to "When a spec is written" — run `./implement I[N]` |
+| Fully investigated | `## Investigation Findings` section present + effort `(confirmed)` | Skip Phases 1+2; go to Phase 3 with findings already known |
+| Root cause in triage | Triage has `(confirmed)` effort and Root Cause described | Skip Phases 1+2; go to Phase 3 |
+| Partially triaged | Triage present but effort `(unknown)` or `(estimated)` | Skip triage re-assessment; run Phases 1+2+3 |
+| Nothing done | No triage section | Run all phases; assess triage en route |
+
+When skipping to Phase 3 with known findings, read the `## Investigation Findings` or `## Triage` root cause description before assessing blast radius — treat it as the output of Phase 2.
+
+---
+
 ### Phase 1: Locate
 
 Map the described behavior to a code path:
@@ -78,6 +104,13 @@ or user data that cannot be observed from reading the code.
 **Direct fix path:**
 Apply the fix using Edit/Write tools. Modify any affected existing tests in the same pass.
 Run `./check-tests --show-known` to verify. Report the result and ask whether to commit.
+
+Before committing, ensure the issue has a complete `## Triage` section with `(confirmed)` effort.
+If triage is missing or effort was previously `(unknown)`/`(estimated)`, update it now:
+```bash
+gh issue edit N --body "..." # prepend/update ## Triage section
+gh issue edit N --add-label "severity:[high|medium|low]" --add-label "effort:[small|medium|large]"
+```
 
 ---
 
