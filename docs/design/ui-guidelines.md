@@ -15,9 +15,9 @@
 - **Adding a new tab:** Add a `<Tabs.Screen>` entry in `client/app/(tabs)/_layout.tsx`
 
 ### Screen Layout
-- Shopping List: custom header (headerShown: false on the tab); screen manages its own header
-- Items: standard Expo Router header
-- [TBD: preferred header pattern for new screens — custom vs. default Expo router header]
+- All main tabs use `headerShown: false`; each screen manages its own header with `useSafeAreaInsets` for safe area handling
+- Header right side: `HeaderActions` component (undo + redo + UserAvatar) — shared across Items, History, and Shopping List
+- Shopping List: custom header also includes contextual content (store filter, add-item UI)
 
 ### Navigation between screens
 - All main screens are tabs — no deep linking between them currently
@@ -310,3 +310,4 @@ When a new visual or interaction pattern is established during a `/design` sessi
 | De-facto color palette | Tailwind hex values as hardcoded constants (blue-600, gray-900, etc.) | Observed | See §2 De-Facto UI Color Palette; consolidate into constants file when palette is finalized |
 | Trip/list row owner display | Show owner name only for other users' trips, not your own; format: `"· Name"` before item count | F9 | Keeps list clean for single-user households; absence of name = "mine" |
 | Owner name in modal header | Append `" · Name"` at end of header only when trip belongs to another user | F9 | Consistent with row pattern; your own modal headers stay clean |
+| Profile color picker | Row of 7 filled circles (32px); selected circle shows white inner ring via 2px border | F7 | Extension of chip selection pattern; color circles replace text chips |
