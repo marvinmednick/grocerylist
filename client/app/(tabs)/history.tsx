@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronRight, X } from 'lucide-react-native';
 import { useTripHistory, useTripItems, TripSummary, TripItem } from '@/api/trips';
 import { supabase } from '@/lib/supabase';
@@ -19,6 +19,7 @@ const getOwnerName = (trip: TripSummary) => {
 };
 
 export default function HistoryScreen() {
+  const insets = useSafeAreaInsets();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedTrip, setSelectedTrip] = useState<TripSummary | null>(null);
 
@@ -79,6 +80,9 @@ export default function HistoryScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={[styles.screenHeader, { paddingTop: insets.top || 20 }]}>
+        <Text style={styles.screenTitle}>History</Text>
+      </View>
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#2563eb" testID="history-loading" />
@@ -94,8 +98,8 @@ export default function HistoryScreen() {
       )}
 
       <Modal visible={selectedTrip !== null} animationType="slide" onRequestClose={() => setSelectedTrip(null)}>
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
+        <View style={styles.modalContainer}>
+          <View style={[styles.modalHeader, { paddingTop: (insets.top || 18) + 8 }]}>
             <Text style={styles.modalTitle} testID="history-modal-title">
               {selectedIsOwnTrip
                 ? `${selectedStoreName} — ${selectedTripDate}`
@@ -119,7 +123,7 @@ export default function HistoryScreen() {
               ListEmptyComponent={<Text style={styles.emptyText}>No items in this trip</Text>}
             />
           )}
-        </SafeAreaView>
+        </View>
       </Modal>
     </View>
   );
@@ -129,6 +133,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
+  },
+  screenHeader: {
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+    backgroundColor: '#ffffff',
+  },
+  screenTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#111827',
   },
   center: {
     flex: 1,
@@ -176,7 +190,6 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     backgroundColor: '#ffffff',
-    paddingTop: 18,
   },
   modalHeader: {
     flexDirection: 'row',

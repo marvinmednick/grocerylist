@@ -205,6 +205,7 @@ export const useEndTrip = () => {
   return useMutation({
     mutationFn: async ({ store_id }: { store_id?: string } = {}) => {
       if (!householdId) throw new Error('No household ID found');
+      const { data: { user } } = await supabase.auth.getUser();
       incrementLocalMutation();
       try {
         const { data: trip, error: tripError } = await supabase
@@ -214,6 +215,7 @@ export const useEndTrip = () => {
             status: 'completed',
             ended_at: new Date().toISOString(),
             household_id: householdId,
+            user_id: user?.id ?? null,
           })
           .select()
           .single();

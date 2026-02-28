@@ -4,8 +4,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useHousehold } from '@/lib/household';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const UserAvatar: React.FC = () => {
+  const insets = useSafeAreaInsets();
   const { displayName, displayNameShort, avatarColor } = useHousehold();
   const [menuVisible, setMenuVisible] = useState(false);
   const queryClient = useQueryClient();
@@ -42,7 +44,7 @@ export const UserAvatar: React.FC = () => {
           style={styles.backdrop}
           onPress={() => setMenuVisible(false)}
         >
-          <View style={styles.menu}>
+          <View style={[styles.menu, { top: (insets.top || 20) + 40 }]}>
             <Text style={styles.userName}>{displayName || 'User'}</Text>
             <TouchableOpacity style={styles.menuItem} onPress={handleSignOut}>
               <Text style={styles.signOutText}>Sign Out</Text>
@@ -73,7 +75,6 @@ const styles = StyleSheet.create({
   },
   menu: {
     position: 'absolute',
-    top: 60,
     right: 16,
     backgroundColor: '#ffffff',
     borderRadius: 8,

@@ -3,8 +3,10 @@ import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, M
 import { Search, Tag, Store, Plus, Star } from 'lucide-react-native';
 import { useAllItems, useCreateMasterItem, useUpdateMasterItem } from '@/api/items';
 import { useMetadata } from '@/api/metadata';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ItemsScreen() {
+  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
@@ -86,7 +88,7 @@ export default function ItemsScreen() {
   return (
     <View style={styles.container}>
       {/* Header / Search */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top || 16 }]}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>Master Database</Text>
           <TouchableOpacity 

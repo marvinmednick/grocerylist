@@ -151,7 +151,7 @@ if (Platform.OS === 'web') {
 
 Use `StyleSheet.create()` only. Do not use NativeWind `className` props.
 
-**Safe area:** Import `SafeAreaView` from `react-native-safe-area-context`, not from `react-native` (the built-in one is deprecated and triggers warnings in tests). When rendering a modal, wrap its content in `SafeAreaView` from `react-native-safe-area-context`. Tests that render components using `SafeAreaView` need a `SafeAreaProvider` wrapper (see `index-interactions-test.tsx` for the pattern).
+**Safe area:** Use `useSafeAreaInsets` from `react-native-safe-area-context` to apply insets manually (e.g., `paddingTop: insets.top` on a header). Do not use the built-in `SafeAreaView` from `react-native` — it is deprecated and triggers warnings in tests. If you do use `SafeAreaView`, import it from `react-native-safe-area-context`. Tests that render components using either require a `SafeAreaProvider` wrapper (see `index-interactions-test.tsx` for the pattern).
 
 ```typescript
 // Correct
