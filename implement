@@ -191,7 +191,7 @@ case "$TOOL" in
     # AGENTS.md is auto-loaded by Codex; prompt also explicitly requires AGENT.md + CODING.md
     # to guarantee both are loaded regardless of auto-discovery behavior.
     CONTEXT_PREFIX="First read AGENT.md and CODING.md in full. Confirm you have read both before making any changes. "
-    CODEX_ARGS=(-a never -s workspace-write)
+    CODEX_ARGS=(--full-auto)
     if [[ -n "$MODEL" ]]; then
       CODEX_ARGS+=(-m "$MODEL")
     fi
