@@ -13,3 +13,8 @@ See WORKFLOW.md §8 (Backlog Triage) for the full process.
 - [ ] Trip statistics (total items per trip, most frequent items). (deferred from F9)
 - [ ] Pagination for households with very long trip histories. (deferred from F9)
 - [ ] "Your trips" vs. "All trips" toggle filter in trip history — requires F2 first. (deferred from F9)
+
+## Found in Review
+
+- [ ] F9 modal missing `SafeAreaView` wrapper — content may overlap notch/home indicator on iOS. Add `<SafeAreaView style={{flex:1}}>` inside `<Modal>` in `history.tsx`. (found in F9 review)
+- [ ] F9 no test for "cross-store item shows store name in parentheses" acceptance criterion — add assertion to `shows trip items in the detail modal` in `history-test.tsx`. (found in F9 review)
