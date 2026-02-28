@@ -19,6 +19,9 @@
 #                 → implementor runs tests and fixes failures as part of the session
 #   3. Verify:    ./check-tests  (pre-commit sanity check after /review)
 #
+# All three tools run in interactive mode: codex and gemini accept an initial prompt
+# then stay interactive; aider does the same. Type 'continue' to proceed after each response.
+#
 # Tool selection: --tool arg > IMPLEMENT_TOOL env > .implement.conf > error
 # Model selection: --model arg > IMPLEMENT_MODEL env > .implement.conf
 #
@@ -190,8 +193,10 @@ case "$TOOL" in
   codex)
     # AGENTS.md is auto-loaded by Codex; prompt also explicitly requires AGENT.md + CODING.md
     # to guarantee both are loaded regardless of auto-discovery behavior.
+    # Runs in interactive mode (no exec/--full-auto) so sessions can be continued
+    # by typing 'continue' rather than restarting from scratch after a timeout.
     CONTEXT_PREFIX="First read AGENT.md and CODING.md in full. Confirm you have read both before making any changes. "
-    CODEX_ARGS=(--full-auto)
+    CODEX_ARGS=()
     if [[ -n "$MODEL" ]]; then
       CODEX_ARGS+=(-m "$MODEL")
     fi
@@ -203,9 +208,11 @@ case "$TOOL" in
     else
       PROMPT="${CONTEXT_PREFIX}Implement $SPEC_FILE. Maintain $PROGRESS_FILE throughout: append a progress entry after completing each file. After all files are implemented, run 'npm --prefix client test --watchAll=false' and fix any failing tests (run again to confirm all pass). List all files changed and paste the final test output when done."
     fi
-    echo "Running: codex exec ${CODEX_ARGS[*]} \"$PROMPT\""
+    echo "Running: codex (interactive)${MODEL:+ (model: $MODEL)}"
+    echo "NOTE: Codex will process the initial message then stay interactive."
+    echo "      Type 'continue' after each response to proceed with remaining files."
     echo ""
-    codex exec "${CODEX_ARGS[@]}" "$PROMPT"
+    codex "${CODEX_ARGS[@]}" "$PROMPT"
     ;;
 
   gemini)
