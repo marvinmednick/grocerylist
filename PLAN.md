@@ -11,6 +11,7 @@
 | F6 | Quantity Units System | Backlog | — | [#8](https://github.com/marvinmednick/grocerylist/issues/8) |
 | F7 | Settings Screen | Designed | [docs/design/F7-settings.md](docs/design/F7-settings.md) | [#9](https://github.com/marvinmednick/grocerylist/issues/9) |
 | F8 | Enhanced Shopping Mode (Store Focus) | Backlog | — | [#10](https://github.com/marvinmednick/grocerylist/issues/10) |
+| F10 | Dark Mode Visual Implementation | Backlog | — | [#27](https://github.com/marvinmednick/grocerylist/issues/27) |
 | F9 | Trip History View | Done | [specs/F9-trip-history.md](specs/F9-trip-history.md) · [design](docs/design/F9-trip-history.md) | [#11](https://github.com/marvinmednick/grocerylist/issues/11) |
 
 **Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `In Review` → `Done`
