@@ -281,6 +281,15 @@ it('registers an undo action after adding an item', async () => {
     expect.objectContaining({ label: expect.stringContaining('Added') })
   );
 });
+
+// Locale/timezone-sensitive values (dates, formatted numbers)
+// Compute the expected string the same way the component does — never hardcode locale output.
+// This is self-consistent across CI environments with different locale settings.
+it('displays the formatted end date', () => {
+  const ended_at = '2025-01-15T20:00:00.000Z';
+  // render component with ended_at above
+  expect(screen.getByText(new Date(ended_at).toLocaleDateString())).toBeTruthy();
+});
 ```
 
 ### Mocking Notes

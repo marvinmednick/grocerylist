@@ -120,6 +120,11 @@ Omitting any category means those files will be missing from the implementation.
 - The plan must account for every section of the spec: Files to Modify, New Files (components + tests
   + migrations), and Tests to Write. Any section left unaddressed risks being skipped during
   implementation.
+- **Carry forward spec-defined specifics.** When the spec defines exact values — query key names,
+  field names, API parameters, call ordering — capture those in the plan verbatim rather than
+  paraphrasing. Describing "fetches trips with joins" when the spec gives an exact `.select()` string,
+  or saying "call auth before insert" when the spec shows exact call ordering, leaves implementation
+  decisions that the spec already made.
 - After writing the plan file, output a summary and wait for the user to type `"approved"` before
   proceeding (same-session interactive mode). If invoked via `--plan` in a scripted context the
   session will exit after writing — implementation runs separately via `--plan-approved`.

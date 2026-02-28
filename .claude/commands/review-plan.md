@@ -24,8 +24,13 @@ Check the plan against the spec for each item:
 **Precision**
 - UI element additions state: what the element is, where it appears in the layout (position
   relative to siblings), and what triggers it — not just that it exists
+- Spec-defined specifics are present: query key names, exact field names, API call ordering
+  constraints, and enumerated values from the spec are captured verbatim — not paraphrased away
 - Behavioral details match the spec exactly: default values, fallback chains, color defaults,
   exact field names
+- Tests for locale/timezone-sensitive values (dates, numbers) use self-consistent assertions:
+  compute the expected string in the test using the same function call as the component, rather
+  than hardcoding a locale-specific string
 - External library or package assumptions are either confirmed in CODING.md or flagged in
   Ambiguities / Questions
 - Test files that contain JSX (render calls, component trees) use `.tsx` extension, not `.ts`
