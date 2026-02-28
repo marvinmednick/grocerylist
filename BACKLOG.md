@@ -6,4 +6,7 @@ See WORKFLOW.md §8 (Backlog Triage) for the full process.
 
 ---
 
-_(empty — all items triaged to GitHub Issues)_
+## Deferred from Specs
+
+- [ ] Visual dark theme implementation (color token refactor) — tracked as F10 (#27). (deferred from F7)
+- [ ] Household member list in Settings — deferred until F2 (multi-user) advances. (deferred from F7)
