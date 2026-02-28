@@ -152,7 +152,7 @@ React Query key: `['household_member_colors', householdId]`
 
 ## Out of Scope
 
-- Visual dark theme implementation (color token refactor across all screens/components) — separate follow-on task
+- Visual dark theme implementation (color token refactor across all screens/components) — tracked in [#27](https://github.com/marvinmednick/grocerylist/issues/27)
 - Household member list in Settings — deferred until F2 (Multi-User Trip Management) advances
 - Multi-household management (switching households, invites) — separate feature
 - Profile avatar image upload — no design decision yet
