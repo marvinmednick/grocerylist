@@ -151,6 +151,8 @@ if (Platform.OS === 'web') {
 
 Use `StyleSheet.create()` only. Do not use NativeWind `className` props.
 
+**Safe area:** Import `SafeAreaView` from `react-native-safe-area-context`, not from `react-native` (the built-in one is deprecated and triggers warnings in tests). When rendering a modal, wrap its content in `SafeAreaView` from `react-native-safe-area-context`. Tests that render components using `SafeAreaView` need a `SafeAreaProvider` wrapper (see `index-interactions-test.tsx` for the pattern).
+
 ```typescript
 // Correct
 const styles = StyleSheet.create({
