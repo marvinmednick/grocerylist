@@ -23,6 +23,9 @@
   - Verified avatar rendering, fallback logic, menu toggling, and sign-out.
 - ✅ Created `client/app/(tabs)/__tests__/index-interactions-test.tsx`
   - Verified shopping/planning modes and interaction differences.
+- ✅ Updated `client/app/(tabs)/history.tsx`, `client/app/(tabs)/items.tsx`, and `client/components/UserAvatar.tsx` for iOS Safe Area compliance.
+  - Added headers and used `useSafeAreaInsets` to fix layout issues behind iOS cutout.
+  - Updated `UserAvatar-test.tsx` to mock `useSafeAreaInsets`.
 - ✅ Created `client/lib/__tests__/household-test.tsx`
   - Verified profile data exposure and query key renaming.
 
