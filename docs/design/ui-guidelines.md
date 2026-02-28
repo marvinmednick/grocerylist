@@ -308,3 +308,5 @@ When a new visual or interaction pattern is established during a `/design` sessi
 | "Mine vs. others" on checked items | Current user = outlined checkbox in their color. Others = filled/inverted checkbox in their color + white check | F2 | See §14; no extra space or badges needed |
 | Multi-user end trip dialog | React Native `<Modal>` (not Alert.alert) | F2 | Needed for per-user checkbox rows |
 | De-facto color palette | Tailwind hex values as hardcoded constants (blue-600, gray-900, etc.) | Observed | See §2 De-Facto UI Color Palette; consolidate into constants file when palette is finalized |
+| Trip/list row owner display | Show owner name only for other users' trips, not your own; format: `"· Name"` before item count | F9 | Keeps list clean for single-user households; absence of name = "mine" |
+| Owner name in modal header | Append `" · Name"` at end of header only when trip belongs to another user | F9 | Consistent with row pattern; your own modal headers stay clean |
