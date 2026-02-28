@@ -12,3 +12,4 @@ See WORKFLOW.md §8 (Backlog Triage) for the full process.
 - [ ] Filtering/searching trip history by store or date range. (deferred from F9)
 - [ ] Trip statistics (total items per trip, most frequent items). (deferred from F9)
 - [ ] Pagination for households with very long trip histories. (deferred from F9)
+- [ ] "Your trips" vs. "All trips" toggle filter in trip history — requires F2 first. (deferred from F9)
