@@ -5,11 +5,13 @@ import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useHousehold } from '@/lib/household';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Settings } from '@/components/Settings';
 
 export const UserAvatar: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { displayName, displayNameShort, avatarColor } = useHousehold();
   const [menuVisible, setMenuVisible] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -46,12 +48,24 @@ export const UserAvatar: React.FC = () => {
         >
           <View style={[styles.menu, { top: (insets.top || 20) + 40 }]}>
             <Text style={styles.userName}>{displayName || 'User'}</Text>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                setSettingsVisible(true);
+              }}
+            >
+              <Text style={styles.menuText}>Settings</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.menuItem} onPress={handleSignOut}>
               <Text style={styles.signOutText}>Sign Out</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
       </Modal>
+      {settingsVisible ? (
+        <Settings visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
+      ) : null}
     </View>
   );
 };
@@ -98,6 +112,10 @@ const styles = StyleSheet.create({
   },
   menuItem: {
     padding: 8,
+  },
+  menuText: {
+    fontSize: 14,
+    color: '#374151',
   },
   signOutText: {
     fontSize: 14,

@@ -14,6 +14,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { UndoProvider } from '@/api/undoContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { HouseholdProvider } from '@/lib/household';
+import { AppThemeProvider } from '@/lib/theme';
 
 import { useColorScheme } from '@/components/useColorScheme';
 
@@ -55,11 +56,13 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <UndoProvider>
-          <RootLayoutNav />
-        </UndoProvider>
-      </QueryClientProvider>
+      <AppThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <UndoProvider>
+            <RootLayoutNav />
+          </UndoProvider>
+        </QueryClientProvider>
+      </AppThemeProvider>
     </GestureHandlerRootView>
   );
 }

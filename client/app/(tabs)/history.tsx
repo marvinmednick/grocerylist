@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronRight, X } from 'lucide-react-native';
 import { useTripHistory, useTripItems, TripSummary, TripItem } from '@/api/trips';
 import { supabase } from '@/lib/supabase';
+import { HeaderActions } from '@/components/HeaderActions';
 
 const getOwnerName = (trip: TripSummary) => {
   return trip.owner?.display_name_short ?? trip.owner?.display_name?.split('@')[0] ?? 'Unknown';
@@ -82,6 +83,7 @@ export default function HistoryScreen() {
     <View style={styles.container}>
       <View style={[styles.screenHeader, { paddingTop: insets.top || 20 }]}>
         <Text style={styles.screenTitle}>History</Text>
+        <HeaderActions />
       </View>
       {isLoading ? (
         <View style={styles.center}>
@@ -138,6 +140,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 10,
     backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   screenTitle: {
     fontSize: 28,

@@ -29,6 +29,12 @@ jest.mock('@tanstack/react-query', () => {
 jest.mock('expo-router', () => ({
   useRouter: jest.fn(),
 }));
+jest.mock('@/components/Settings', () => ({
+  Settings: ({ visible }: { visible: boolean }) => {
+    const { Text } = require('react-native');
+    return visible ? <Text>Settings Modal Open</Text> : null;
+  },
+}));
 
 const mockUseHousehold = useHousehold as jest.Mock;
 const mockUseQueryClient = useQueryClient as jest.Mock;
@@ -121,6 +127,33 @@ describe('UserAvatar', () => {
     
     expect(screen.getByText('Jane Smith')).toBeTruthy();
     expect(screen.getByText('Sign Out')).toBeTruthy();
+  });
+
+  it('shows Settings option in the dropdown menu', () => {
+    mockUseHousehold.mockReturnValue({
+      displayNameShort: 'JS',
+      displayName: 'Jane Smith',
+      avatarColor: '#123456',
+    });
+
+    render(<UserAvatar />);
+    fireEvent.press(screen.getByTestId('avatar-button'));
+
+    expect(screen.getByText('Settings')).toBeTruthy();
+  });
+
+  it('opens settings modal when Settings is pressed', () => {
+    mockUseHousehold.mockReturnValue({
+      displayNameShort: 'JS',
+      displayName: 'Jane Smith',
+      avatarColor: '#123456',
+    });
+
+    render(<UserAvatar />);
+    fireEvent.press(screen.getByTestId('avatar-button'));
+    fireEvent.press(screen.getByText('Settings'));
+
+    expect(screen.getByText('Settings Modal Open')).toBeTruthy();
   });
 
   it('calls signOut and clears query cache on Sign Out press', async () => {

@@ -221,6 +221,7 @@ cd client
 npm test                                          # all tests
 npm test -- --testPathPattern=SmartAddItem        # single file
 npm test -- --watchAll                            # watch mode
+npm test -- --runInBand --detectOpenHandles       # diagnose async leaks / worker exit warnings
 ```
 
 ### Test File Location
@@ -239,23 +240,39 @@ api/
 
 Components that use `useHousehold()`, `useUndo()`, or any React Query hook require all three providers. The Supabase mock returns a null session, so `householdId` will be null — fine for UI tests, but mutation tests need to mock the household query response explicitly.
 
+**Always create `QueryClient` per-test inside `beforeEach` and clear it in `afterEach`.** A module-level singleton leaks async state between tests (TanStack Query's `notifyManager` fires state updates after the assertion phase, which the `console.error` fail policy turns into hard failures).
+
 ```tsx
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UndoProvider } from '@/api/undoContext';
 import { HouseholdProvider } from '@/lib/household';
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false } },
-});
+describe('MyComponent', () => {
+  let queryClient: QueryClient;
 
-const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>
-    <UndoProvider>
-      <HouseholdProvider>{children}</HouseholdProvider>
-    </UndoProvider>
-  </QueryClientProvider>
-);
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <UndoProvider>
+        <HouseholdProvider>{children}</HouseholdProvider>
+      </UndoProvider>
+    </QueryClientProvider>
+  );
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+  });
+
+  // ...tests
+});
 ```
+
+If you see `"worker process has failed to exit gracefully"` after a test run, run with `--runInBand --detectOpenHandles` to pinpoint the leak source.
 
 ### What to Test
 

@@ -4,6 +4,7 @@ import { Search, Tag, Store, Plus, Star } from 'lucide-react-native';
 import { useAllItems, useCreateMasterItem, useUpdateMasterItem } from '@/api/items';
 import { useMetadata } from '@/api/metadata';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { HeaderActions } from '@/components/HeaderActions';
 
 export default function ItemsScreen() {
   const insets = useSafeAreaInsets();
@@ -91,12 +92,15 @@ export default function ItemsScreen() {
       <View style={[styles.header, { paddingTop: insets.top || 16 }]}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>Master Database</Text>
-          <TouchableOpacity 
-            style={styles.addBtn}
-            onPress={() => openModal()}
-          >
-            <Plus size={24} color="#2563eb" />
-          </TouchableOpacity>
+          <View style={styles.titleRowActions}>
+            <TouchableOpacity 
+              style={styles.addBtn}
+              onPress={() => openModal()}
+            >
+              <Plus size={24} color="#2563eb" />
+            </TouchableOpacity>
+            <HeaderActions />
+          </View>
         </View>
         
         <View style={styles.searchBar}>
@@ -267,6 +271,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#ffffff' },
   header: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  titleRowActions: { flexDirection: 'row', alignItems: 'center' },
   title: { fontSize: 24, fontWeight: '800', color: '#111827' },
   addBtn: { backgroundColor: '#eff6ff', padding: 8, borderRadius: 12 },
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f3f4f6', paddingHorizontal: 12, height: 44, borderRadius: 12 },

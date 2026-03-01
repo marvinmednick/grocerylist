@@ -8,6 +8,22 @@ import { supabase } from '@/lib/supabase';
 const safeAreaMetrics = { insets: { top: 44, bottom: 34, left: 0, right: 0 }, frame: { x: 0, y: 0, width: 390, height: 844 } };
 
 jest.mock('@/api/trips');
+jest.mock('@/api/undoContext', () => ({
+  useUndo: () => ({
+    undoLastAction: jest.fn(),
+    redoLastAction: jest.fn(),
+    canUndo: false,
+    canRedo: false,
+    undoStack: [],
+    redoStack: [],
+  }),
+}));
+jest.mock('@/components/UserAvatar', () => ({
+  UserAvatar: () => {
+    const { Text } = require('react-native');
+    return <Text>Avatar Stub</Text>;
+  },
+}));
 jest.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
@@ -68,6 +84,14 @@ describe('HistoryScreen', () => {
     await renderScreen();
 
     expect(screen.getByText('No past trips yet')).toBeTruthy();
+  });
+
+  it('renders header actions (undo, redo, avatar)', async () => {
+    await renderScreen();
+
+    expect(screen.getByTestId('header-undo-button')).toBeTruthy();
+    expect(screen.getByTestId('header-redo-button')).toBeTruthy();
+    expect(screen.getByText('Avatar Stub')).toBeTruthy();
   });
 
   it('renders a row for each past trip', async () => {
