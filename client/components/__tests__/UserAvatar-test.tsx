@@ -129,7 +129,7 @@ describe('UserAvatar', () => {
     expect(screen.getByText('Sign Out')).toBeTruthy();
   });
 
-  it('shows Settings option in the dropdown menu', () => {
+  it('shows Settings option in the dropdown menu, above Sign Out', () => {
     mockUseHousehold.mockReturnValue({
       displayNameShort: 'JS',
       displayName: 'Jane Smith',
@@ -140,6 +140,8 @@ describe('UserAvatar', () => {
     fireEvent.press(screen.getByTestId('avatar-button'));
 
     expect(screen.getByText('Settings')).toBeTruthy();
+    const rendered = JSON.stringify(screen.toJSON());
+    expect(rendered.indexOf('"Settings"')).toBeLessThan(rendered.indexOf('"Sign Out"'));
   });
 
   it('opens settings modal when Settings is pressed', () => {

@@ -48,23 +48,21 @@ const mockUseUndo = useUndo as jest.Mock;
 const mockUseMetadata = useMetadata as jest.Mock;
 const mockUseHousehold = useHousehold as jest.Mock;
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false } },
-});
-
 const safeAreaMetrics = { insets: { top: 44, bottom: 34, left: 0, right: 0 }, frame: { x: 0, y: 0, width: 390, height: 844 } };
 
-const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <SafeAreaProvider initialMetrics={safeAreaMetrics}>
-    <QueryClientProvider client={queryClient}>
-      <UndoProvider>
-        <HouseholdProvider>{children}</HouseholdProvider>
-      </UndoProvider>
-    </QueryClientProvider>
-  </SafeAreaProvider>
-);
-
 describe('ShoppingListScreen Interactions', () => {
+  let queryClient: QueryClient;
+
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <SafeAreaProvider initialMetrics={safeAreaMetrics}>
+      <QueryClientProvider client={queryClient}>
+        <UndoProvider>
+          <HouseholdProvider>{children}</HouseholdProvider>
+        </UndoProvider>
+      </QueryClientProvider>
+    </SafeAreaProvider>
+  );
+
   const mockItems = [
     {
       id: '1',
@@ -80,6 +78,9 @@ describe('ShoppingListScreen Interactions', () => {
   const mockMutateAsync = jest.fn();
 
   beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     jest.clearAllMocks();
     mockUseShoppingList.mockReturnValue({ data: mockItems, isLoading: false });
     mockUseTogglePurchased.mockReturnValue({ mutateAsync: mockMutateAsync });
@@ -99,6 +100,10 @@ describe('ShoppingListScreen Interactions', () => {
     });
     mockUseMetadata.mockReturnValue({ data: { stores: [], categories: [] } });
     mockUseHousehold.mockReturnValue({ householdId: 'h1', isLoading: false });
+  });
+
+  afterEach(() => {
+    queryClient.clear();
   });
 
   it('defaults to shopping mode on mount', () => {
