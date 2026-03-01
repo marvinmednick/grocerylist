@@ -17,19 +17,23 @@ jest.mock('@/lib/supabase', () => ({
   },
 }));
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false } },
-});
-
-const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>
-    <HouseholdProvider>{children}</HouseholdProvider>
-  </QueryClientProvider>
-);
-
 describe('HouseholdProvider', () => {
+  let queryClient: QueryClient;
+
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <HouseholdProvider>{children}</HouseholdProvider>
+    </QueryClientProvider>
+  );
+
   beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    });
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
     queryClient.clear();
   });
 

@@ -260,7 +260,7 @@ describe('MyComponent', () => {
 
   beforeEach(() => {
     queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
     });
   });
 
@@ -272,7 +272,7 @@ describe('MyComponent', () => {
 });
 ```
 
-If you see `"worker process has failed to exit gracefully"` after a test run, run with `--runInBand --detectOpenHandles` to pinpoint the leak source.
+If you see `"worker process has failed to exit gracefully"` after a test run, the most common cause is a React Query GC timer left open. Ensure all test `QueryClient` instances use `gcTime: Infinity` (prevents GC timers from being scheduled). Run with `--runInBand --detectOpenHandles` to pinpoint other leak sources.
 
 ### What to Test
 

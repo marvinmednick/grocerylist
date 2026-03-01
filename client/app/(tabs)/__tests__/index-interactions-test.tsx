@@ -79,7 +79,7 @@ describe('ShoppingListScreen Interactions', () => {
 
   beforeEach(() => {
     queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
+      defaultOptions: { queries: { retry: false, gcTime: Infinity } },
     });
     jest.clearAllMocks();
     mockUseShoppingList.mockReturnValue({ data: mockItems, isLoading: false });
