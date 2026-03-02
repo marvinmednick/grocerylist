@@ -37,6 +37,12 @@ Evaluate each of the following and report pass / fail / not-applicable with a br
 - Is business logic in api/ files rather than screen components?
 - Were any patterns changed that require a design decision (new context providers, RLS changes, undo system changes, trip workflow changes)?
 
+**Database Schema / Migration Status**
+- Does the spec's "Database / Schema Changes" section list any new migrations? If none, mark not-applicable.
+- If new migration files are present, run `supabase migration list` from the project root and verify every new migration file appears as **applied** in the output.
+- If any new migration is listed as pending (or absent), this is a **blocking** finding — all Jest tests mock Supabase and will pass regardless, but the app will fail at runtime until the migration is applied.
+- List the migration filename(s) and their applied/pending status in the report.
+
 **Test Coverage**
 - Does every item in the spec's Acceptance Criteria have a corresponding test?
 - Is there a test verifying the household guard throws when householdId is null (for any new inserts)?
