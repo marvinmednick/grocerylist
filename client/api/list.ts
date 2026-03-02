@@ -8,10 +8,12 @@ export interface ListItem {
   name: string;
   quantity: string;
   is_purchased: boolean;
+  purchased_by: string | null;
   category_id: string | null;
   store_id: string | null;
   item_id: string | null; // Link to master item
   trip_id?: string | null;
+  archived_at?: string | null;
   store?: { name: string; color_code: string };
   category?: { name: string; sort_order: number };
 }
@@ -81,6 +83,7 @@ export const useShoppingList = (onRemoteChange?: (event: string, itemName?: stri
 // Toggle Purchased Status
 export const useTogglePurchased = () => {
   const queryClient = useQueryClient();
+  const { userId } = useHousehold();
 
   return useMutation({
     mutationFn: async ({ id, is_purchased }: { id: string; is_purchased: boolean }) => {
@@ -90,7 +93,8 @@ export const useTogglePurchased = () => {
           .from('list_items')
           .update({
             is_purchased,
-            purchased_at: is_purchased ? new Date().toISOString() : null
+            purchased_at: is_purchased ? new Date().toISOString() : null,
+            purchased_by: is_purchased ? userId : null,
           })
           .eq('id', id)
           .select()
@@ -203,9 +207,9 @@ export const useEndTrip = () => {
   const { householdId } = useHousehold();
 
   return useMutation({
-    mutationFn: async ({ store_id }: { store_id?: string } = {}) => {
+    mutationFn: async ({ store_id, user_id: targetUserId }: { store_id?: string; user_id?: string } = {}) => {
       if (!householdId) throw new Error('No household ID found');
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user: currentAuthUser } } = await supabase.auth.getUser();
       incrementLocalMutation();
       try {
         const { data: trip, error: tripError } = await supabase
@@ -215,7 +219,7 @@ export const useEndTrip = () => {
             status: 'completed',
             ended_at: new Date().toISOString(),
             household_id: householdId,
-            user_id: user?.id ?? null,
+            user_id: targetUserId ?? currentAuthUser?.id ?? null,
           })
           .select()
           .single();
@@ -233,6 +237,9 @@ export const useEndTrip = () => {
 
         if (store_id) {
           query = query.eq('store_id', store_id);
+        }
+        if (targetUserId) {
+          query = query.eq('purchased_by', targetUserId);
         }
 
         const { data: items, error: itemsError } = await query.select();

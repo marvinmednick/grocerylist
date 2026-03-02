@@ -1,25 +1,36 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, Platform, Pressable } from 'react-native';
-import { CheckCircle2, Circle, Archive, RotateCcw, RotateCw, Trash2, GripVertical, ShoppingCart, Pencil } from 'lucide-react-native';
+import { CheckCircle2, Circle, Archive, RotateCcw, RotateCw, Trash2, GripVertical, ShoppingCart, Pencil, Check } from 'lucide-react-native';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { SmartAddItem } from '@/components/SmartAddItem';
 import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, useEndTrip, useDeleteListItem, useRevertArchival, ListItem } from '@/api/list';
 import { useUndo } from '@/api/undoContext';
 import { useMetadata } from '@/api/metadata';
+import { useHouseholdMembers } from '@/api/profile';
 import { Toast } from '@/components/Toast';
 import { useHousehold } from '@/lib/household';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MultiTripModal, TripUser } from '@/components/MultiTripModal';
 
 type FlatListItem =
   | { type: 'header'; id: string; title: string; storeId: string; items: ListItem[] }
   | { type: 'item'; id: string; data: ListItem };
 
+interface MultiTripContextState {
+  storeId?: string;
+  storeName: string;
+  users: TripUser[];
+}
+
 export default function ShoppingListScreen() {
   const insets = useSafeAreaInsets();
-  const { householdId, isLoading: isHouseholdLoading } = useHousehold();
+  const { householdId, userId, avatarColor, isLoading: isHouseholdLoading } = useHousehold();
+  const { data: members = [] } = useHouseholdMembers(householdId);
   const [toast, setToast] = useState({ visible: false, message: '' });
   const [interactionMode, setInteractionMode] = useState<'shopping' | 'planning'>('shopping');
+  const [isMultiTripModalVisible, setIsMultiTripModalVisible] = useState(false);
+  const [multiTripContext, setMultiTripContext] = useState<MultiTripContextState | null>(null);
 
   const handleRemoteChange = useCallback((event: string, itemName?: string) => {
     let message = 'List updated';
@@ -50,6 +61,7 @@ export default function ShoppingListScreen() {
   const [editName, setEditName] = useState('');
   const [editQty, setEditQty] = useState('');
   const [editStoreId, setEditStoreId] = useState('');
+  const memberMap = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
 
   useEffect(() => {
     if (lastTripId) {
@@ -130,8 +142,49 @@ export default function ShoppingListScreen() {
     setEditingItem(null);
   };
 
+  const renderCheckbox = (item: ListItem) => {
+    if (!item.is_purchased) {
+      return <Circle size={24} color="#d1d5db" />;
+    }
+
+    if (item.purchased_by && item.purchased_by !== userId) {
+      const purchaser = memberMap.get(item.purchased_by);
+      return (
+        <View
+          testID={`other-user-checkbox-${item.id}`}
+          style={[styles.otherUserPurchasedBadge, { backgroundColor: purchaser?.color ?? '#6b7280' }]}
+        >
+          <Check size={14} color="white" />
+        </View>
+      );
+    }
+
+    return <CheckCircle2 size={24} color={avatarColor ?? '#2563eb'} />;
+  };
+
   const handleEndTrip = (storeId?: string, storeName?: string) => {
     const title = storeName ? `End Trip at ${storeName}?` : 'End All Shopping Trips?';
+    const scopedPurchasedItems = (listItems ?? []).filter((item) => {
+      if (!item.is_purchased || item.archived_at) return false;
+      if (!storeId) return true;
+      if (storeId === 'other') return !item.store_id;
+      return item.store_id === storeId;
+    });
+
+    const purchaserCounts = new Map<string, number>();
+    let hasNullPurchaser = false;
+    scopedPurchasedItems.forEach((item) => {
+      if (!item.purchased_by) {
+        hasNullPurchaser = true;
+        return;
+      }
+      purchaserCounts.set(item.purchased_by, (purchaserCounts.get(item.purchased_by) ?? 0) + 1);
+    });
+
+    if (purchaserCounts.size === 0 && !hasNullPurchaser) {
+      return;
+    }
+
     const doEndTrip = async () => {
       try {
         const result = await endTrip({ store_id: storeId === 'other' ? undefined : storeId });
@@ -147,6 +200,28 @@ export default function ShoppingListScreen() {
       }
     };
 
+    if (purchaserCounts.size >= 2) {
+      const users: TripUser[] = Array.from(purchaserCounts.entries()).map(([purchaserId, itemCount]) => {
+        const member = memberMap.get(purchaserId);
+        const fallbackName = purchaserId;
+        return {
+          userId: purchaserId,
+          displayName: member?.display_name || fallbackName,
+          displayNameShort: member?.display_name_short || null,
+          color: member?.color || '#6b7280',
+          itemCount,
+        };
+      });
+
+      setMultiTripContext({
+        storeId,
+        storeName: storeName ?? 'All Stores',
+        users,
+      });
+      setIsMultiTripModalVisible(true);
+      return;
+    }
+
     if (Platform.OS === 'web') {
       if (window.confirm(`${title}\n\nThis will archive all purchased items.`)) {
         doEndTrip();
@@ -156,6 +231,52 @@ export default function ShoppingListScreen() {
         { text: 'Cancel', style: 'cancel' },
         { text: 'End Trip', style: 'destructive', onPress: doEndTrip },
       ]);
+    }
+  };
+
+  const handleEndSelectedTrips = async (selectedUserIds: string[]) => {
+    if (!multiTripContext || selectedUserIds.length === 0) {
+      return;
+    }
+
+    const resolvedStoreId = multiTripContext.storeId === 'other' ? undefined : multiTripContext.storeId;
+    const endedStoreName = multiTripContext.storeName;
+
+    try {
+      const tripResults = await Promise.all(
+        selectedUserIds.map((selectedUserId) =>
+          endTrip({
+            store_id: resolvedStoreId,
+            user_id: selectedUserId,
+          })
+        )
+      );
+      let tripIds = tripResults.map((result) => result?.trip?.id).filter(Boolean) as string[];
+
+      if (tripIds.length > 0) {
+        pushAction({
+          label: `Ended ${selectedUserIds.length} trips at ${endedStoreName}`,
+          undo: async () => {
+            await Promise.all(tripIds.map((tripId) => revertArchival({ trip_id: tripId })));
+          },
+          redo: async () => {
+            const redoResults = await Promise.all(
+              selectedUserIds.map((selectedUserId) =>
+                endTrip({
+                  store_id: resolvedStoreId,
+                  user_id: selectedUserId,
+                })
+              )
+            );
+            tripIds = redoResults.map((result) => result?.trip?.id).filter(Boolean) as string[];
+          },
+        });
+      }
+    } catch (err) {
+      console.error('Failed to end selected trips:', err);
+    } finally {
+      setIsMultiTripModalVisible(false);
+      setMultiTripContext(null);
     }
   };
 
@@ -217,7 +338,7 @@ export default function ShoppingListScreen() {
               testID={`item-pressable-${listItem.id}`}
             >
               <View style={styles.colCheckbox}>
-                {listItem.is_purchased ? <CheckCircle2 size={24} color="#10b981" /> : <Circle size={24} color="#d1d5db" />}
+                {renderCheckbox(listItem)}
               </View>
               <View style={styles.colName}>
                 <Text style={[styles.nameText, listItem.is_purchased && styles.strikethrough]} numberOfLines={1}>
@@ -249,7 +370,7 @@ export default function ShoppingListScreen() {
             onPress={() => handleToggle(listItem)}
             testID={`checkbox-${listItem.id}`}
           >
-            {listItem.is_purchased ? <CheckCircle2 size={24} color="#10b981" /> : <Circle size={24} color="#d1d5db" />}
+            {renderCheckbox(listItem)}
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.colName} 
@@ -365,6 +486,16 @@ export default function ShoppingListScreen() {
         visible={toast.visible}
         onDismiss={() => setToast({ visible: false, message: '' })}
       />
+      <MultiTripModal
+        visible={isMultiTripModalVisible}
+        storeName={multiTripContext?.storeName ?? 'All Stores'}
+        users={multiTripContext?.users ?? []}
+        onConfirm={handleEndSelectedTrips}
+        onCancel={() => {
+          setIsMultiTripModalVisible(false);
+          setMultiTripContext(null);
+        }}
+      />
     </View>
   );
 }
@@ -387,7 +518,7 @@ const styles = StyleSheet.create({
   itemRow: { height: 48, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#f9fafb', backgroundColor: '#ffffff', width: '100%' },
   itemRowActive: { backgroundColor: '#eff6ff', elevation: 5, zIndex: 100 },
   shoppingPressable: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  colCheckbox: { marginRight: 12, width: 24, alignItems: 'center' },
+  colCheckbox: { marginRight: 12, width: 32, alignItems: 'center' },
   colName: { flex: 1, marginRight: 8 },
   nameText: { fontSize: 16, fontWeight: '500', color: '#111827' },
   strikethrough: { textDecorationLine: 'line-through', color: '#9ca3af' },
@@ -420,4 +551,11 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: '#2563eb' },
   cancelText: { fontWeight: '700', color: '#374151' },
   saveText: { fontWeight: '700', color: 'white' },
+  otherUserPurchasedBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

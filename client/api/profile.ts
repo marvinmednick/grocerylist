@@ -7,6 +7,13 @@ interface UpdateProfilePayload {
   color: string;
 }
 
+export interface HouseholdMember {
+  id: string;
+  display_name: string;
+  display_name_short: string;
+  color: string;
+}
+
 export const useUpdateProfile = () => {
   const queryClient = useQueryClient();
 
@@ -54,6 +61,30 @@ export const useHouseholdName = (householdId: string | null) => {
       return data.name as string;
     },
     enabled: !!householdId,
+  });
+};
+
+export const useHouseholdMembers = (householdId: string | null) => {
+  return useQuery({
+    queryKey: ['household_members', householdId],
+    queryFn: async () => {
+      if (!householdId) {
+        return [];
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, display_name, display_name_short, color')
+        .eq('household_id', householdId!);
+
+      if (error) {
+        throw error;
+      }
+
+      return (data ?? []) as HouseholdMember[];
+    },
+    enabled: !!householdId,
+    staleTime: 5 * 60 * 1000,
   });
 };
 

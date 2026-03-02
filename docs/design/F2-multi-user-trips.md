@@ -17,9 +17,9 @@ The shopping list is shared across a household, but shopping trips may not be. T
 
 ### 1. Schema: `purchased_by` on `list_items`
 
-**Decision:** Add `purchased_by UUID REFERENCES auth.users(id)` to `list_items`. Set it when `is_purchased` flips to `true`; clear it when unchecked.
+**Decision:** Add `purchased_by UUID REFERENCES profiles(id)` to `list_items`. Set it when `is_purchased` flips to `true`; clear it when unchecked.
 
-**Rationale:** This is the minimum change needed to know who checked off what. No new tables required.
+**Rationale:** This is the minimum change needed to know who checked off what. No new tables required. The FK references `profiles(id)` (not `auth.users(id)`) so that PostgREST can resolve the join — the same approach used for `shopping_trips.user_id` in F9.
 
 **Status:** Migration not yet written. Requires a new migration file.
 
@@ -31,7 +31,7 @@ The shopping list is shared across a household, but shopping trips may not be. T
 - `display_name_short TEXT` — short name shown in dialogs and as the source for initials
 - `color TEXT DEFAULT '#2563eb'` — user's assigned identity color
 
-**Status:** Schema is done. Client code does not yet use these columns.
+**Status:** Schema is done. Client code already uses these columns: `lib/household.tsx` fetches both and exposes them as `displayNameShort` and `avatarColor` via `useHousehold()`. F7 (Done) wires them into `UserAvatar` and the Settings screen (color picker + name editing).
 
 ---
 
@@ -133,17 +133,37 @@ End Trips at Costco
 
 ---
 
+### 8. Profile Color Resolution on the Shopping List
+
+**Decision:** Use a dedicated `useHouseholdMembers` hook (Option B) rather than joining purchaser profiles inline on the `useShoppingList` query (Option A).
+
+`useHouseholdMembers` fetches all profiles for the household once with a long `staleTime`. The component builds a `Map<userId, { color, displayNameShort }>` and looks up each item's `purchased_by` at render time:
+
+```typescript
+// One cached query
+const { data: members } = useHouseholdMembers();
+const memberMap = new Map(members.map(m => [m.id, m]));
+
+// Per item render
+const purchaserColor = item.purchased_by
+  ? memberMap.get(item.purchased_by)?.color
+  : null;
+```
+
+**Rationale:** `useHouseholdMembers` serves double duty — it provides colors for the shopping list checkboxes *and* names/colors/initials for the end-trip selection modal (§6). With Option A, a separate member query would still be needed for the modal, so you end up with two queries anyway. Option B fetches profiles once and reuses the result everywhere. At typical household size (2–4 people), the cached query is essentially free.
+
+**Alternatives considered:** Option A (inline join on `useShoppingList`) — simpler wiring, but returns profile data once per purchased item (redundant), and still requires a separate members query for the end-trip modal.
+
+**New hook:** `useHouseholdMembers` — new function in `api/profile.ts`. Fetches `id, display_name_short, display_name, color` for all profiles with matching `household_id`. React Query key: `['household_members', householdId]`.
+
+---
+
 ## F7 Dependency
 
-The following F2 features require a Settings screen (F7):
-- Editing `display_name_short` (used in the multi-trip dialog for display names)
-- Editing profile `color`
-
-**F2 can ship without F7** with graceful degradation:
-- Display names in the multi-trip dialog fall back to email prefix if `display_name_short` is not set
-- Colors are auto-assigned and unchangeable until F7 ships
-
-This means F2 and F7 are independent but complementary. F2 ships full functionality; F7 adds personalization on top.
+**F7 is Done.** The dependency is fully satisfied:
+- `display_name_short` and `color` are editable in the Settings screen
+- `useHousehold()` already exposes both as `displayNameShort` and `avatarColor`
+- Color auto-assignment at profile creation is the one remaining F2 implementation item (see Implementation Order step 3)
 
 ---
 
@@ -163,14 +183,14 @@ None. All design decisions resolved.
 
 ## Implementation Order
 
-1. Migration: add `purchased_by UUID REFERENCES auth.users(id)` to `list_items`
+1. Migration: add `purchased_by UUID REFERENCES profiles(id)` to `list_items`
 2. Update `useTogglePurchased` to set `purchased_by: currentUserId` on check, `null` on uncheck
 3. Update profile creation in `auth.tsx` to auto-assign a color from the palette
-4. Fetch `purchased_by` user's profile (color, display_name_short) in the shopping list query
+4. Add `useHouseholdMembers` hook to `api/profile.ts`; use it on the shopping list screen to build a `Map<userId, { color, displayNameShort }>` for purchased item rendering
 5. Render checked items: current user → outlined checkbox in their color; others → filled checkbox in their color with white check
 6. Update `useEndTrip` to detect multiple purchasers and surface the selection modal
 7. Update undo to handle multi-trip archival (one `pushAction` covering N records)
-8. [F7] Display name and color editing in Settings
+8. ~~[F7] Display name and color editing in Settings~~ — **Done** (shipped with F7)
 
 ---
 
@@ -178,3 +198,4 @@ None. All design decisions resolved.
 
 - 2025-01-01: Initial design (multi-user-trips.md)
 - 2026-02-27: Updated — renamed to F2 convention; resolved all open questions: one-record-per-user trips, fixed profile colors with 7-color palette, "mine vs. others" via inverted checkbox style (outlined = mine, filled+inverted = others; no badges or extra space), multi-user dialog confirmed as Modal, F7 dependency scoped as graceful degradation
+- 2026-03-01: Updated — corrected `purchased_by` FK to reference `profiles(id)` (not `auth.users(id)`) for PostgREST join compatibility; added §8 profile color resolution (Option B: `useHouseholdMembers` hook, serves both shopping list and end-trip modal); updated §2 status (F7 Done, columns already in use); updated F7 Dependency section; marked Implementation Order step 8 as done

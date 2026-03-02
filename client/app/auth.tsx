@@ -3,6 +3,31 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityInd
 import { supabase } from '../lib/supabase';
 import { Stack, useRouter } from 'expo-router';
 
+const PROFILE_COLOR_PALETTE = [
+  '#2563eb',
+  '#16a34a',
+  '#ea580c',
+  '#9333ea',
+  '#dc2626',
+  '#0d9488',
+  '#db2777',
+] as const;
+
+export async function pickProfileColor(householdId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('color')
+    .eq('household_id', householdId);
+
+  if (error) {
+    throw error;
+  }
+
+  const usedColors = new Set((data ?? []).map((profile) => profile.color).filter(Boolean));
+  const availableColor = PROFILE_COLOR_PALETTE.find((color) => !usedColors.has(color));
+  return availableColor ?? '#2563eb';
+}
+
 export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,10 +55,12 @@ export default function AuthScreen() {
         .single();
 
       if (hh) {
+        const color = await pickProfileColor(hh.id);
         await supabase.from('profiles').insert({
           id: userId,
           household_id: hh.id,
           display_name: email,
+          color,
         });
       }
     } else {
@@ -44,10 +71,12 @@ export default function AuthScreen() {
         .single();
 
       if (hh) {
+        const color = await pickProfileColor(hh.id);
         await supabase.from('profiles').insert({
           id: userId,
           household_id: hh.id,
           display_name: email,
+          color,
         });
       }
     }

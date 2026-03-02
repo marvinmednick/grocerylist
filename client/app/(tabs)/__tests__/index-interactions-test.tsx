@@ -4,6 +4,7 @@ import ShoppingListScreen from '../index';
 import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, useDeleteListItem, useEndTrip, useRevertArchival } from '@/api/list';
 import { useUndo } from '@/api/undoContext';
 import { useMetadata } from '@/api/metadata';
+import { useHouseholdMembers } from '@/api/profile';
 import { useHousehold } from '@/lib/household';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UndoProvider } from '@/api/undoContext';
@@ -20,6 +21,7 @@ jest.mock('@/api/undoContext', () => {
   };
 });
 jest.mock('@/api/metadata');
+jest.mock('@/api/profile');
 jest.mock('@/lib/household', () => ({
   HouseholdProvider: ({ children }: { children: React.ReactNode }) => children,
   useHousehold: jest.fn(),
@@ -46,6 +48,7 @@ const mockUseEndTrip = useEndTrip as jest.Mock;
 const mockUseRevertArchival = useRevertArchival as jest.Mock;
 const mockUseUndo = useUndo as jest.Mock;
 const mockUseMetadata = useMetadata as jest.Mock;
+const mockUseHouseholdMembers = useHouseholdMembers as jest.Mock;
 const mockUseHousehold = useHousehold as jest.Mock;
 
 const safeAreaMetrics = { insets: { top: 44, bottom: 34, left: 0, right: 0 }, frame: { x: 0, y: 0, width: 390, height: 844 } };
@@ -99,6 +102,7 @@ describe('ShoppingListScreen Interactions', () => {
       redoStack: [],
     });
     mockUseMetadata.mockReturnValue({ data: { stores: [], categories: [] } });
+    mockUseHouseholdMembers.mockReturnValue({ data: [] });
     mockUseHousehold.mockReturnValue({ householdId: 'h1', isLoading: false });
   });
 

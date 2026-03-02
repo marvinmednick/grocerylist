@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 
 interface HouseholdContextType {
   householdId: string | null;
+  userId: string | null;
   displayName: string | null;
   displayNameShort: string | null;
   avatarColor: string | null;
@@ -12,6 +13,7 @@ interface HouseholdContextType {
 
 const HouseholdContext = createContext<HouseholdContextType>({
   householdId: null,
+  userId: null,
   displayName: null,
   displayNameShort: null,
   avatarColor: null,
@@ -32,7 +34,7 @@ export const HouseholdProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         .single();
 
       if (error) throw error;
-      return data;
+      return { ...data, userId: session.user.id };
     },
     staleTime: Infinity,
   });
@@ -41,6 +43,7 @@ export const HouseholdProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     <HouseholdContext.Provider
       value={{
         householdId: profile?.household_id ?? null,
+        userId: profile?.userId ?? null,
         displayName: profile?.display_name ?? null,
         displayNameShort: profile?.display_name_short ?? null,
         avatarColor: profile?.color ?? null,
