@@ -170,6 +170,38 @@ describe('ShoppingListScreen F2 behaviors', () => {
     expect(screen.queryByTestId('multi-trip-modal')).toBeNull();
   });
 
+  it('single-user end-trip undo uses latest trip id after redo', async () => {
+    mockEndTrip
+      .mockResolvedValueOnce({ trip: { id: 'trip-1' }, items: [] })
+      .mockResolvedValueOnce({ trip: { id: 'trip-2' }, items: [] });
+
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      const endTripButton = buttons?.find((button) => button.text === 'End Trip');
+      endTripButton?.onPress?.();
+    });
+
+    render(<ShoppingListScreen />, { wrapper });
+    fireEvent.press(screen.getByText('End Trip'));
+
+    await waitFor(() => {
+      expect(pushAction).toHaveBeenCalledTimes(1);
+    });
+
+    const action = pushAction.mock.calls[0][0];
+    await action.undo();
+    expect(mockRevertArchival).toHaveBeenLastCalledWith({ trip_id: 'trip-1' });
+
+    await action.redo();
+    await waitFor(() => {
+      expect(mockEndTrip).toHaveBeenCalledTimes(2);
+    });
+
+    await action.undo();
+    expect(mockRevertArchival).toHaveBeenLastCalledWith({ trip_id: 'trip-2' });
+
+    alertSpy.mockRestore();
+  });
+
   it('multi-purchaser path opens modal and not Alert', () => {
     mockUseShoppingList.mockReturnValue({
       data: [

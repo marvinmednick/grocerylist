@@ -48,7 +48,11 @@ export const useShoppingList = (onRemoteChange?: (event: string, itemName?: stri
 
           if (localMutationCount === 0 && onRemoteChange) {
             const eventType = payload.eventType;
-            const record = (payload.new as Record<string, unknown>) || {};
+            const record = (
+              payload.eventType === 'DELETE'
+                ? payload.old
+                : payload.new
+            ) as Record<string, unknown> || {};
             const itemName = (record.name as string) || undefined;
             onRemoteChange(eventType, itemName);
           }

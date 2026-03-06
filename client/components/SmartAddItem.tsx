@@ -69,14 +69,16 @@ export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
     };
 
     const result = await forwardAction();
+    const tracker = { currentId: result.id };
 
     pushAction({
       label: `Added ${name} (${selection.qty})`,
       undo: async () => {
-        await deleteItem(result.id);
+        await deleteItem(tracker.currentId);
       },
       redo: async () => {
-        await forwardAction();
+        const r = await forwardAction();
+        tracker.currentId = r.id;
       }
     });
     
@@ -96,14 +98,16 @@ export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
     };
 
     const result = await forwardAction();
+    const tracker = { currentId: result.id };
 
     pushAction({
       label: `Added ${name}`,
       undo: async () => {
-        await deleteItem(result.id);
+        await deleteItem(tracker.currentId);
       },
       redo: async () => {
-        await forwardAction();
+        const r = await forwardAction();
+        tracker.currentId = r.id;
       }
     });
 

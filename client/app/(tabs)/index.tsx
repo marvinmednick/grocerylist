@@ -189,10 +189,16 @@ export default function ShoppingListScreen() {
       try {
         const result = await endTrip({ store_id: storeId === 'other' ? undefined : storeId });
         if (result?.trip?.id) {
+          const tripTracker = { currentId: result.trip.id };
           pushAction({
             label: `Ended trip ${storeName || 'All'}`,
-            undo: async () => { await revertArchival({ trip_id: result.trip.id }); },
-            redo: async () => { await endTrip({ store_id: storeId === 'other' ? undefined : storeId }); }
+            undo: async () => { await revertArchival({ trip_id: tripTracker.currentId }); },
+            redo: async () => {
+              const r = await endTrip({ store_id: storeId === 'other' ? undefined : storeId });
+              if (r?.trip?.id) {
+                tripTracker.currentId = r.trip.id;
+              }
+            }
           });
         }
       } catch (err) {

@@ -145,7 +145,8 @@ export const useUpdateMasterItem = () => {
 
       // 2. Sync stores (Delete old, Insert new)
       if (store_ids) {
-        await supabase.from('item_stores').delete().eq('item_id', id);
+        const { error: deleteError } = await supabase.from('item_stores').delete().eq('item_id', id);
+        if (deleteError) throw deleteError;
 
         if (store_ids.length > 0) {
           const links = store_ids.map(sid => ({
@@ -154,7 +155,8 @@ export const useUpdateMasterItem = () => {
             is_preferred: sid === updates.default_store_id,
             household_id: householdId,
           }));
-          await supabase.from('item_stores').insert(links);
+          const { error: insertError } = await supabase.from('item_stores').insert(links);
+          if (insertError) throw insertError;
         }
       }
 

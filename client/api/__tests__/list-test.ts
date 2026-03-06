@@ -1,4 +1,5 @@
 import { useEndTrip } from '../list';
+import { useUpdateMasterItem } from '../items';
 import { useHousehold } from '@/lib/household';
 import { supabase } from '@/lib/supabase';
 
@@ -94,5 +95,55 @@ describe('useEndTrip', () => {
         user_id: null,
       })
     );
+  });
+});
+
+describe('useUpdateMasterItem', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseHousehold.mockReturnValue({ householdId: 'household-1' });
+    mockUseMutation.mockImplementation((options: any) => ({
+      mutateAsync: async (args: any) => {
+        const result = await options.mutationFn(args);
+        if (options.onSuccess) {
+          options.onSuccess(result, args, undefined);
+        }
+        return result;
+      },
+    }));
+  });
+
+  it('throws when item_stores delete fails', async () => {
+    const itemsSingle = jest.fn().mockResolvedValue({ data: { id: 'item-1' }, error: null });
+    const itemsSelect = jest.fn().mockReturnValue({ single: itemsSingle });
+    const itemsEq = jest.fn().mockReturnValue({ select: itemsSelect });
+    const itemsUpdate = jest.fn().mockReturnValue({ eq: itemsEq });
+
+    const storesDeleteEq = jest.fn().mockResolvedValue({ error: { message: 'RLS violation' } });
+    const storesDelete = jest.fn().mockReturnValue({ eq: storesDeleteEq });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'items') {
+        return { update: itemsUpdate };
+      }
+
+      if (table === 'item_stores') {
+        return { delete: storesDelete };
+      }
+
+      return {};
+    });
+
+    const mutation = useUpdateMasterItem();
+
+    await expect(
+      mutation.mutateAsync({
+        id: 'item-1',
+        name: 'Milk',
+        store_ids: ['store-1'],
+      })
+    ).rejects.toMatchObject({ message: 'RLS violation' });
+
+    expect(mockInvalidateQueries).not.toHaveBeenCalled();
   });
 });
