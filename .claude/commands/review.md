@@ -14,6 +14,8 @@ Evaluate each of the following and report pass / fail / not-applicable with a br
 **Undo Registration**
 - Does every user-initiated mutation on the shopping list screen call pushAction with a label, undo fn, and redo fn?
 - Does the screen use mutateAsync (not mutate) where the returned id is needed for undo?
+- **Stale ID check (Failure Mode A):** If redo re-creates a row (re-insert after delete, re-end-trip), is the new ID tracked via a mutable object (`tracker.currentId`) rather than a closed-over variable?
+- **Field snapshot check (Failure Mode B):** For each pushAction, does the undo closure capture every field it needs to restore? Any field the mutation overwrites (e.g., `purchased_by`, `store_id`) must be read from the item *before* the mutation fires, not inside the closure. Multi-field edits should snapshot the full relevant row slice.
 
 **React Query Invalidation**
 - Are the correct query keys invalidated after each mutation?

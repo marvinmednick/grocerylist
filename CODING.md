@@ -119,6 +119,65 @@ pushAction({
 
 Use `mutateAsync` (not `mutate`) on screens that need to `pushAction` after the result, since `pushAction` often needs the returned `id`.
 
+#### Two failure modes — both cause silent data corruption
+
+**Failure mode A — Stale row ID after redo**
+
+When redo re-inserts a deleted row or re-creates an ended trip, Supabase assigns a *new* ID. A closure over the original ID will target a deleted or wrong row on the next undo.
+
+Fix: **mutable tracker pattern** — update the tracked ID inside the redo closure:
+
+```typescript
+const tracker = { currentId: result.id };
+pushAction({
+  label: `Added ${name}`,
+  undo: async () => { await deleteItem(tracker.currentId); },
+  redo: async () => {
+    const r = await forwardAction();
+    tracker.currentId = r.id;  // update so the next undo targets the new row
+  },
+});
+```
+
+**Failure mode B — Missing field capture**
+
+When undo needs to restore a field that the mutation overwrites (e.g., `purchased_by`, `store_id`), that field must be captured from the item *before* the mutation fires. Reading it inside the undo closure reads stale React state.
+
+For mutations that overwrite **one or two well-known fields**, capture them individually before the mutation:
+
+```typescript
+const originalPurchasedBy = item.purchased_by;  // capture before mutation
+await togglePurchased({ id: item.id, is_purchased: true });
+pushAction({
+  undo: async () => {
+    await togglePurchased({
+      id: item.id,
+      is_purchased: false,
+      purchased_by_override: originalPurchasedBy,
+    });
+  },
+  ...
+});
+```
+
+For mutations that overwrite **multiple fields at once** (e.g., editing name + qty + store together), snapshot the entire relevant portion of the row to avoid accidentally omitting a field:
+
+```typescript
+const snapshot = { name: item.name, quantity: item.quantity, store_id: item.store_id };
+await updateItem({ id: item.id, name: editName, quantity: editQty, store_id: editStoreId });
+pushAction({
+  undo: async () => { await updateItem({ id: item.id, ...snapshot }); },
+  redo: async () => { await updateItem({ id: item.id, name: editName, quantity: editQty, store_id: editStoreId }); },
+  ...
+});
+```
+
+#### Checklist before registering any pushAction
+
+1. Does redo create a new row (new ID)? → use mutable tracker
+2. Does the mutation overwrite any field that undo needs to restore? → capture it before the mutation
+3. Are multiple fields being overwritten? → snapshot the entire relevant portion of the row
+
 ### 4. React Query Invalidation
 
 After any mutation, invalidate the relevant query keys:
