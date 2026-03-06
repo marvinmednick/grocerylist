@@ -2,6 +2,8 @@ Resolve a non-feature GitHub issue. Input ($ARGUMENTS) is either a GitHub issue 
 
 Issues use their GitHub issue number as the identifier. If a spec file is needed, it is named `specs/I[N]-[slug].md` (e.g. `specs/I42-avatar-menu-dismiss.md`).
 
+**Naming convention:** Do NOT zero-pad issue numbers. Use `I38`, not `I038`. Use `I42`, not `I042`. The number is always bare.
+
 ## Setup
 
 **If $ARGUMENTS is a number** — fetch the existing issue:

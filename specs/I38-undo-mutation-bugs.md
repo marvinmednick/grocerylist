@@ -224,5 +224,5 @@ If no such test file exists, this case is low-risk enough to skip — do not cre
 ## Implementation Commands
 
 ```bash
-./implement I038
+./implement I38
 ```
