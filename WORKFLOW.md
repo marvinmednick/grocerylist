@@ -9,19 +9,20 @@
 ### Feature Flow
 
 ```
-Idea → [/design] → /spec → ./implement → /review → /complete
+Idea → /feature → [/design] → /spec → ./implement → /review → /complete
 ```
 
-`/design` is optional for simple features with clear requirements. Use it when UX, data model, or scope needs discussion before a spec can be written.
+`/feature` captures and registers the idea (assigns F-number, creates GitHub issue). `/design` is optional — use it when UX, data model, or scope needs discussion before a spec can be written.
 
 | Step | Command | When |
 |------|---------|------|
-| Design | `/design Feature Name` in Claude | When requirements need discussion or a design doc needs updating |
-| Spec | `/spec Feature Name` or `/spec F2` | Always — reads design doc if one exists |
-| Implement (Light) | `./implement F1` | Review level Light |
-| Implement (Full) | `./implement F1 --plan` → `/review-plan F1` → `./implement F1` | Review level Full |
-| Review code | `/review F1` after implementor reports tests passing | Always |
-| Ship | `/complete F1` | After review passes |
+| Register | `/feature <description>` | Always — captures the idea, assigns F-number, adds to PLAN.md |
+| Design | `/design F[N]` | When requirements need discussion or a design doc needs updating |
+| Spec | `/spec F[N]` | Always — reads design doc if one exists |
+| Implement (Light) | `./implement F[N]` | Review level Light |
+| Implement (Full) | `./implement F[N] --plan` → `/review-plan F[N]` → `./implement F[N]` | Review level Full |
+| Review code | `/review F[N]` after implementor reports tests passing | Always |
+| Ship | `/complete F[N]` | After review passes |
 
 ### Bug Flow
 
