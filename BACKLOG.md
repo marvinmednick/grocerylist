@@ -6,4 +6,4 @@ See WORKFLOW.md §8 (Backlog Triage) for the full process.
 
 ---
 
-- [ ] Move `useUpdateMasterItem` error test from `api/__tests__/list-test.ts` to a dedicated `api/__tests__/items-test.ts` — (found in I38 review)
+_(empty — all items triaged to GitHub Issues)_
