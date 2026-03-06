@@ -37,6 +37,14 @@ File → Triage → Investigate → /resolve → /complete
 | Fix | `/resolve N` | Stage-aware — skips what's already done |
 | Ship | `/complete N` | Same as feature shipping |
 
+### Batch Bug Flow
+
+```
+Create batch issue → /resolve [batch-N] → ./implement I[batch-N] → /review → /complete [batch-N]
+```
+
+Use when 2–5 small bugs share the same subsystem and can be handed to the implementor in a single pass. See [§9 Batch Bug Fixes](#9-batch-bug-fixes) for the full process.
+
 ### Other Commands
 
 | Command | When |
@@ -596,6 +604,105 @@ Then run `/spec Settings Screen` and it becomes a new F-number.
 
 ---
 
+### 9. Batch Bug Fixes
+
+Use a batch when 2–5 small bugs share the same subsystem, all have confirmed root causes, and can be handed to the implementor in a single pass. The goal is fewer context switches — one spec, one `./implement`, one review, one commit.
+
+**When to batch vs. fix individually:**
+
+| Condition | Action |
+|-----------|--------|
+| Same subsystem, confirmed root causes, all small effort | Batch |
+| Different subsystems with no shared files | Fix individually — no shared context benefit |
+| Any bug has unknown effort or unconfirmed root cause | Investigate first (`/investigate N`), then re-evaluate |
+| Any bug is medium/large effort | Pull it out — batch only individually small bugs |
+
+---
+
+#### Step 1 — Create labels (one-time setup)
+
+```bash
+gh label create "batch" --description "Container issue grouping multiple bugs into one implementation pass" --color "0075ca"
+gh label create "batched" --description "This bug is being fixed as part of a batch issue" --color "cfd3d7"
+```
+
+#### Step 2 — Create the batch issue
+
+```bash
+gh issue create \
+  --title "Batch fix: [subsystem] bugs (refs #N1, #N2, #N3)" \
+  --label "batch" \
+  --body "Batching the following small bugs into a single implementation pass:
+
+- #N1 — [title]
+- #N2 — [title]
+- #N3 — [title]
+
+Spec: \`specs/I[batch-N]-[slug].md\`"
+```
+
+#### Step 3 — Mark the individual issues
+
+For each issue in the batch:
+
+```bash
+gh issue edit N1 --add-label "batched"
+gh issue comment N1 --body "Being addressed in batch fix #[batch-N]."
+```
+
+#### Step 4 — Write the batch spec
+
+Run `/resolve [batch-N]` in Claude Code. Because all root causes are already confirmed, Claude skips investigation phases and writes a **Type 1 batch spec** directly. The spec has one section per bug:
+
+```markdown
+# Issue Fix: #[batch-N] Batch: [subsystem] bugs
+
+## Bug 1 — [Title] (closes #N1)
+### Root Cause
+### Files to Modify
+
+## Bug 2 — [Title] (closes #N2)
+### Root Cause
+### Files to Modify
+
+## What the Implementor Should NOT Change
+## Implementation Commands
+./implement I[batch-N]
+```
+
+#### Step 5 — Implement, review, ship
+
+Same as any Type 1 spec:
+
+```bash
+./implement I[batch-N]       # implementor applies all fixes
+/review                      # Claude reviews code + tests
+./check-tests                # verify baseline
+/complete [batch-N]          # commit, close batch issue
+```
+
+#### Step 6 — Close individual issues
+
+After the batch commit, close each individual issue referencing the batch:
+
+```bash
+gh issue close N1 --comment "Fixed in batch #[batch-N]."
+gh issue close N2 --comment "Fixed in batch #[batch-N]."
+```
+
+---
+
+#### Traceability summary
+
+| Direction | How |
+|-----------|-----|
+| Batch → individual issues | Batch issue title: `refs #N1, #N2, …` |
+| Individual issue → batch | `batched` label + comment pointing to batch issue |
+| Batch → commit | `closes #[batch-N]` in commit message |
+| Individual issue → commit | Close comment after ship: `"Fixed in batch #[batch-N]"` |
+
+---
+
 ### 10. Updating CODING.md
 
 When a new coding pattern is established that implementors need to follow on future features, update `CODING.md` to document it. This typically happens when:
@@ -632,6 +739,7 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | Investigate a bug (understand before fixing) | `/investigate N` in Claude Code |
 | Fix a bug or non-feature issue | `/resolve N` in Claude Code (stage-aware) |
 | Ship a non-feature issue | `/complete 42` in Claude Code |
+| Batch 2–5 small bugs | Create batch GH issue → `/resolve [batch-N]` → `./implement` → `/review` → `/complete` (see §9) |
 | Triage backlog | Happens automatically as part of `/complete` |
 | Promote backlog to feature | `/spec [description]` in Claude |
 | Update coding conventions | Ask Claude to update `CODING.md` |

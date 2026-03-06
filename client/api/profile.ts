@@ -9,8 +9,8 @@ interface UpdateProfilePayload {
 
 export interface HouseholdMember {
   id: string;
-  display_name: string;
-  display_name_short: string;
+  display_name: string | null;
+  display_name_short: string | null;
   color: string;
 }
 
