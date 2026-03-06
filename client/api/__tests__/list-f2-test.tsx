@@ -65,6 +65,24 @@ describe('F2 list hooks', () => {
     );
   });
 
+  it('useTogglePurchased uses purchased_by_override when re-checking', async () => {
+    const single = jest.fn().mockResolvedValue({ data: { id: 'item-1' }, error: null });
+    const select = jest.fn().mockReturnValue({ single });
+    const eq = jest.fn().mockReturnValue({ select });
+    const update = jest.fn().mockReturnValue({ eq });
+    mockFrom.mockReturnValue({ update });
+
+    const mutation = useTogglePurchased();
+    await mutation.mutateAsync({ id: 'item-1', is_purchased: true, purchased_by_override: 'user-B' });
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        is_purchased: true,
+        purchased_by: 'user-B',
+      })
+    );
+  });
+
   it('useTogglePurchased clears purchased_by when unchecking', async () => {
     const single = jest.fn().mockResolvedValue({ data: { id: 'item-1' }, error: null });
     const select = jest.fn().mockReturnValue({ single });

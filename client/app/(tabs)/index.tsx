@@ -89,10 +89,17 @@ export default function ShoppingListScreen() {
 
   const handleToggle = async (item: ListItem) => {
     const newStatus = !item.is_purchased;
+    const originalPurchasedBy = item.purchased_by;
     await togglePurchased({ id: item.id, is_purchased: newStatus });
     pushAction({
       label: `${newStatus ? 'Checked' : 'Unchecked'} ${item.name}`,
-      undo: async () => { await togglePurchased({ id: item.id, is_purchased: !newStatus }); },
+      undo: async () => {
+        await togglePurchased({
+          id: item.id,
+          is_purchased: !newStatus,
+          purchased_by_override: !newStatus ? originalPurchasedBy : undefined,
+        });
+      },
       redo: async () => { await togglePurchased({ id: item.id, is_purchased: newStatus }); }
     });
   };

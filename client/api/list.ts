@@ -90,7 +90,7 @@ export const useTogglePurchased = () => {
   const { userId } = useHousehold();
 
   return useMutation({
-    mutationFn: async ({ id, is_purchased }: { id: string; is_purchased: boolean }) => {
+    mutationFn: async ({ id, is_purchased, purchased_by_override }: { id: string; is_purchased: boolean; purchased_by_override?: string | null }) => {
       incrementLocalMutation();
       try {
         const { data, error } = await supabase
@@ -98,7 +98,7 @@ export const useTogglePurchased = () => {
           .update({
             is_purchased,
             purchased_at: is_purchased ? new Date().toISOString() : null,
-            purchased_by: is_purchased ? userId : null,
+            purchased_by: is_purchased ? (purchased_by_override !== undefined ? purchased_by_override : userId) : null,
           })
           .eq('id', id)
           .select()

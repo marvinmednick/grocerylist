@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import ShoppingListScreen from '../index';
 import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, useDeleteListItem, useEndTrip, useRevertArchival } from '@/api/list';
 import { useUndo } from '@/api/undoContext';
@@ -127,6 +127,33 @@ describe('ShoppingListScreen Interactions', () => {
     render(<ShoppingListScreen />, { wrapper });
     fireEvent.press(screen.getByTestId('item-pressable-1'));
     expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ id: '1', is_purchased: true }));
+  });
+
+  it('undo of uncheck restores original purchased_by', async () => {
+    const itemWithPurchasedBy = { ...mockItems[0], is_purchased: true, purchased_by: 'user-B' };
+    mockUseShoppingList.mockReturnValue({ data: [itemWithPurchasedBy], isLoading: false });
+    const mockPushAction = jest.fn();
+    mockUseUndo.mockReturnValue({
+      undoLastAction: jest.fn(),
+      redoLastAction: jest.fn(),
+      pushAction: mockPushAction,
+      canUndo: false,
+      canRedo: false,
+      undoStack: [],
+      redoStack: [],
+    });
+
+    render(<ShoppingListScreen />, { wrapper });
+    fireEvent.press(screen.getByTestId('item-pressable-1')); // uncheck (newStatus=false)
+
+    await waitFor(() => expect(mockPushAction).toHaveBeenCalledTimes(1));
+    const { undo } = mockPushAction.mock.calls[0][0];
+    await undo();
+
+    // Undo of an uncheck should re-check with the original purchaser, not the current user
+    expect(mockMutateAsync).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: '1', is_purchased: true, purchased_by_override: 'user-B' })
+    );
   });
 
   it('shopping mode: long press on item row opens edit modal', () => {
