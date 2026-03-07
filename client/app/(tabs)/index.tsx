@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, Platform, Pressable } from 'react-native';
 import { CheckCircle2, Circle, Archive, RotateCcw, RotateCw, Trash2, GripVertical, ShoppingCart, Pencil, Check } from 'lucide-react-native';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
@@ -86,6 +86,17 @@ export default function ShoppingListScreen() {
     });
     return result;
   }, [listItems]);
+
+  // localFlatData drives DraggableFlatList. It is updated synchronously in onDragEnd
+  // so the list re-renders correctly immediately after a cross-store drag (before the
+  // React Query refetch arrives). When the server data comes back, we sync back via
+  // the derived-state-during-render pattern (no useEffect, no extra async render).
+  const [localFlatData, setLocalFlatData] = useState<FlatListItem[]>(() => flatData);
+  const prevFlatDataRef = useRef(flatData);
+  if (prevFlatDataRef.current !== flatData) {
+    prevFlatDataRef.current = flatData;
+    setLocalFlatData(flatData);
+  }
 
   const handleToggle = async (item: ListItem) => {
     const newStatus = !item.is_purchased;
@@ -294,6 +305,7 @@ export default function ShoppingListScreen() {
   };
 
   const onDragEnd = async ({ data, from, to }: { data: FlatListItem[], from: number, to: number }) => {
+    setLocalFlatData(data);
     const draggedItem = data[to];
     if (draggedItem.type !== 'item') return;
     let newStoreId = '';
@@ -444,7 +456,7 @@ export default function ShoppingListScreen() {
       ) : (
         <View style={{ flex: 1, width: '100%', maxWidth: 600, alignSelf: 'center' }}>
           <DraggableFlatList
-            data={flatData}
+            data={localFlatData}
             onDragEnd={onDragEnd}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
