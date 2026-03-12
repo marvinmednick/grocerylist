@@ -1,0 +1,7 @@
+interface:
+  display_name: "Review Plan"
+  short_description: "Review an implementation plan against its spec"
+  default_prompt: "Use $review-plan to review the plan for F1"
+
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Design"
+  short_description: "Design or update a feature's design doc"
+  default_prompt: "Use $design to design F1"
+
+policy:
+  allow_implicit_invocation: false

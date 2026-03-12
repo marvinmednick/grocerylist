@@ -1,0 +1,7 @@
+interface:
+  display_name: "Investigate"
+  short_description: "Investigate a bug's root cause"
+  default_prompt: "Use $investigate to investigate issue 42"
+
+policy:
+  allow_implicit_invocation: false

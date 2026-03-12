@@ -1,0 +1,7 @@
+interface:
+  display_name: "Triage"
+  short_description: "Assess severity and effort for bug issues"
+  default_prompt: "Use $triage to triage issue 42"
+
+policy:
+  allow_implicit_invocation: false

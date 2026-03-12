@@ -1,0 +1,7 @@
+interface:
+  display_name: "Spec"
+  short_description: "Write an implementation spec for a feature"
+  default_prompt: "Use $spec to write a spec for F1"
+
+policy:
+  allow_implicit_invocation: false

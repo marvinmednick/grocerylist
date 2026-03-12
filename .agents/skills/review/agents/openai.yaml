@@ -1,0 +1,7 @@
+interface:
+  display_name: "Review"
+  short_description: "Review implementation against project patterns"
+  default_prompt: "Use $review to review the implementation of F1"
+
+policy:
+  allow_implicit_invocation: false

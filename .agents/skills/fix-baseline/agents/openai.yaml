@@ -1,0 +1,7 @@
+interface:
+  display_name: "Fix Baseline"
+  short_description: "Fix pre-existing test failures"
+  default_prompt: "Use $fix-baseline to clean up test failures"
+
+policy:
+  allow_implicit_invocation: false

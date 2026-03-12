@@ -1,0 +1,7 @@
+interface:
+  display_name: "Resolve"
+  short_description: "Fix a bug or non-feature issue"
+  default_prompt: "Use $resolve to fix issue 42"
+
+policy:
+  allow_implicit_invocation: false

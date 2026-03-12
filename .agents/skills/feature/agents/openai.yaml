@@ -1,0 +1,7 @@
+interface:
+  display_name: "Feature"
+  short_description: "Register a new feature idea"
+  default_prompt: "Use $feature to capture a new feature idea"
+
+policy:
+  allow_implicit_invocation: false

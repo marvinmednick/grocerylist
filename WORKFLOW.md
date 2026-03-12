@@ -724,29 +724,54 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 
 ---
 
+## Command Architecture
+
+All workflow commands are available in both **Claude Code** and **Codex CLI**:
+
+| Claude Code | Codex CLI | What it does |
+|---|---|---|
+| `/review F13` | `$review F13` | Review implementation code |
+| `/spec F12` | `$spec F12` | Write an implementation spec |
+| `/design F2` | `$design F2` | Design or update a feature |
+| `/complete F1` | `$complete F1` | Ship a feature or issue |
+| `/feature desc` | `$feature desc` | Register a new feature idea |
+| `/fix-baseline` | `$fix-baseline` | Fix pre-existing test failures |
+| `/investigate 42` | `$investigate 42` | Investigate a bug's root cause |
+| `/resolve 42` | `$resolve 42` | Fix a non-feature issue |
+| `/review-plan F1` | `$review-plan F1` | Review an implementation plan |
+| `/triage 18 19` | `$triage 18 19` | Assess severity/effort for bugs |
+
+**How it works:** Command instructions live in `commands/*.md` (single source of truth). Both tools reference these shared files through thin wrappers:
+- Claude: `.claude/commands/*.md` → reads `commands/*.md`
+- Codex: `.codex/skills/*/SKILL.md` → reads `commands/*.md`
+
+**Updating a command:** Edit the file in `commands/` — both tools pick up the change automatically.
+
+---
+
 ## Quick Reference
 
 | Task | Do this |
 |------|---------|
-| Design a feature (requirements + decisions) | `/design [feature name or F-number]` in Claude |
-| Update an existing design doc | `/design F[N]` in Claude (enters update mode automatically) |
-| Spec a new feature | `/spec [feature name or F-number]` in Claude |
+| Design a feature (requirements + decisions) | `/design [feature name or F-number]` or `$design ...` |
+| Update an existing design doc | `/design F[N]` (enters update mode automatically) |
+| Spec a new feature | `/spec [feature name or F-number]` or `$spec ...` |
 | Hand off to implementor (Light) | `./implement F1` (or `--tool aider`, `--model <model>`) |
 | Hand off to implementor (Full) | `./implement F1 --plan`, then `/review-plan F1`, then `./implement F1` |
-| Review the plan (Full level) | `/review-plan F1` in Claude Code (preserves draft, writes approved file) |
-| Review the implementation | `/review F1` in Claude Code (after implementor reports tests passing) |
+| Review the plan (Full level) | `/review-plan F1` or `$review-plan F1` |
+| Review the implementation | `/review F1` or `$review F1` (after implementor reports tests passing) |
 | Verify tests before commit | `./check-tests` |
-| Fix a dirty baseline | `/fix-baseline` in Claude Code (diagnose → propose → confirm → fix) |
-| Ship a feature | `/complete F1` in Claude Code |
-| File a bug | `/resolve <description>` or `gh issue create` |
-| Triage bug(s) | `/triage N` or `/triage N1 N2 N3` or `/triage` (all open) |
-| Investigate a bug (understand before fixing) | `/investigate N` in Claude Code |
-| Fix a bug or non-feature issue | `/resolve N` in Claude Code (stage-aware) |
-| Ship a non-feature issue | `/complete 42` in Claude Code |
+| Fix a dirty baseline | `/fix-baseline` or `$fix-baseline` |
+| Ship a feature | `/complete F1` or `$complete F1` |
+| File a bug | `/resolve <description>` or `$resolve <description>` or `gh issue create` |
+| Triage bug(s) | `/triage N` or `$triage N` (space-separated for multiple, empty for all) |
+| Investigate a bug (understand before fixing) | `/investigate N` or `$investigate N` |
+| Fix a bug or non-feature issue | `/resolve N` or `$resolve N` (stage-aware) |
+| Ship a non-feature issue | `/complete 42` or `$complete 42` |
 | Batch 2–5 small bugs | Create batch GH issue → `/resolve [batch-N]` → `./implement` → `/review` → `/complete` (see §9) |
 | Triage backlog | Happens automatically as part of `/complete` |
-| Promote backlog to feature | `/spec [description]` in Claude |
-| Update coding conventions | Ask Claude to update `CODING.md` |
+| Promote backlog to feature | `/spec [description]` |
+| Update coding conventions | Ask Claude/Codex to update `CODING.md` |
 | See all features and status | Open `PLAN.md` |
 | See small deferred items | Open `BACKLOG.md` |
 | See GitHub issues | `gh issue list` or https://github.com/marvinmednick/grocerylist/issues |
@@ -761,6 +786,7 @@ Claude will add it to the Mandatory Coding Patterns section so all future specs 
 | `CLAUDE.md` | Starting a Claude session — project guidance and architecture |
 | `AGENT.md` | Starting any implementation session — behavioral rules for all tools |
 | `CODING.md` | Starting any implementation session — coding conventions and patterns |
+| `commands/*.md` | Shared command instructions — single source of truth for both Claude and Codex |
 | `docs/tools/codex.md` | Codex invocation, API key, model selection (human reference) |
 | `docs/tools/gemini.md` | Gemini invocation and copy-paste reference (human reference) |
 | `docs/tools/aider.md` | aider setup, edit formats, model selection (human reference) |
