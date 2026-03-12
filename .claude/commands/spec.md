@@ -120,6 +120,20 @@ Add or update a row in the Active Features table in PLAN.md:
 
 If a row for this feature already exists (e.g. at `Backlog` or `Designed` status), update it in place rather than adding a new row.
 
+## Create feature log (`plans/F[N]-log.md`):
+
+Create a new file to track this feature's phase history. This file is Claude-authored and distinct from the implementor's `plans/F[N]-progress.md`.
+
+```markdown
+# F[N] Feature Log
+
+## [DATE] — Specced
+- **Spec:** `specs/F[N]-[slug].md`
+- **GitHub Issue:** #[N]
+- **Review Level:** [Full | Light]
+- **Scope:** [1–2 sentence summary of what this feature does]
+```
+
 ## The spec must include all of the following sections (omit any that genuinely don't apply, but err toward inclusion):
 
 ## Feature: [name]

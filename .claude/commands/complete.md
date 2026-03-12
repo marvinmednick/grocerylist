@@ -62,6 +62,13 @@ gh issue close [N] --comment "Implemented and reviewed."
 **If this is a feature (F[N]):**
 Update the feature's Status in PLAN.md from `In Review` to `Done`.
 
+Append a Shipped entry to `plans/F[N]-log.md`:
+```markdown
+## [DATE] — Shipped
+- **Commit:** `[commit message]`
+- **Closes:** #[N]
+```
+
 **If this is a non-feature issue:**
 No PLAN.md update needed.
 

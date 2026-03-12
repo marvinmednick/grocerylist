@@ -24,10 +24,13 @@ When producing specs, reference `DESIGN.md` and relevant `docs/design/` files. S
 |------|---------|
 | `PLAN.md` | Feature registry — ID, status, spec link, GitHub issue link |
 | `specs/F[N]-[slug].md` | Full implementation spec for each feature |
+| `plans/F[N]-log.md` | Feature journal — Claude-written phase history (spec, reviews, ship) |
+| `plans/F[N]-progress.md` | Implementor's self-tracking scratchpad — file checklist and resume state |
 | `BACKLOG.md` | Small deferred items and non-blocking review findings |
 | GitHub Issues | Formal record; linked to commits via `closes #N` in commit messages |
 
-**Statuses:** `Backlog` → `Specced` → `In Progress` → `In Review` → `Done`
+**Statuses:** `Backlog` → `Specced` → `In Progress` → `Needs Fixes` → `In Review` → `Done`
+(`Needs Fixes` = review found blocking issues; `In Review` = review passed, ready to ship)
 
 When a feature ships, update its status in `PLAN.md` to `Done` and close the GitHub Issue:
 ```bash

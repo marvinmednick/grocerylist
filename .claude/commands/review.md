@@ -50,7 +50,7 @@ Evaluate each of the following and report pass / fail / not-applicable with a br
 - Is there a test verifying the household guard throws when householdId is null (for any new inserts)?
 - Is there a test verifying pushAction is called with the correct label (for any new list mutations)?
 - Do tests use the full three-provider wrapper (QueryClientProvider + UndoProvider + HouseholdProvider)?
-- Do all tests pass? (`npm test` from client/)
+- Do all tests pass? (Run `./check-tests --show-known` from project root)
 
 **Summary**
 Provide an overall assessment and a prioritized list of issues to fix, separated into:
@@ -77,5 +77,25 @@ For each non-blocking finding and suggestion, append to BACKLOG.md under "Found 
 ```
 
 **Update PLAN.md status:**
-If the implementation passed review, update the feature's Status column from `In Progress` to `In Review`.
-If it needs fixes, keep it as `In Progress`.
+If the implementation passed review, update the feature's Status column to `In Review`.
+If it needs fixes, update the status to `Needs Fixes`.
+
+**Write entry to feature log (`plans/F[N]-log.md`):**
+Append a dated entry to the feature log. Create the file if it doesn't exist yet.
+
+If review passed:
+```markdown
+## [DATE] — Review [N] (Passed)
+- **Result:** Passed — no blocking issues
+- **Tests:** [X]/[X] passed
+- **Non-blocking:** [list, or "none"]
+```
+
+If needs fixes:
+```markdown
+## [DATE] — Review [N] (Needs Fixes)
+- **Result:** Needs Fixes — [N] blocking issue(s)
+- **Blocking:** [list each blocking issue]
+- **Non-blocking:** [list, or "none"]
+- **Next:** [what the implementor needs to do]
+```

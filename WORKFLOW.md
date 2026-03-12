@@ -87,6 +87,8 @@ Four files and one external service work together:
 |----------|---------|------------|
 | `PLAN.md` | Feature registry — every feature has a row with ID, status, spec link, and GitHub issue link | Claude (during `/spec`, `/review`, and ship) |
 | `specs/F[N]-[slug].md` | Full implementation spec — everything Gemini needs to build a feature | Claude (via `/spec`) |
+| `plans/F[N]-log.md` | Feature journal — phase-by-phase history written by Claude (spec, reviews, ship); primary session continuity record for features | Claude (at each phase transition) |
+| `plans/F[N]-progress.md` | Implementor's self-tracking scratchpad — file checklist and resume state; created and maintained by the implementor only | Implementor |
 | `BACKLOG.md` | Short-lived inbox — items land here during `/spec` and `/review`, then are triaged to GitHub Issues (or discarded) right after each commit | Claude (during `/spec`, `/review`, and post-commit triage) |
 | `CODING.md` | Coding conventions and patterns — the implementor's reference for every implementation | Claude (when new patterns are established) |
 | `docs/tools/gemini.md` | Gemini invocation reference (human docs) | Claude (when Gemini workflow changes) |
@@ -131,10 +133,11 @@ Idea → Backlog → [Designed] → Specced → In Progress → In Review → Do
 |--------|---------|---------------|
 | Backlog | Planned but not yet designed or specced | PLAN.md row added |
 | Designed | Design doc written, decisions recorded; ready to spec | `docs/design/F[N]-[slug].md` created, PLAN.md updated |
-| Specced | Spec written, GitHub issue open, ready for implementor | spec file created, PLAN.md updated, issue created |
+| Specced | Spec written, GitHub issue open, ready for implementor | spec file created, PLAN.md updated, issue created, `plans/F[N]-log.md` created |
 | In Progress | Implementor is implementing | (implementor working) |
-| In Review | Implementor submitted, Claude reviewing | PLAN.md updated, issue comment added |
-| Done | Review passed, merged | PLAN.md updated to Done, GitHub issue closed |
+| Needs Fixes | Review ran, found blocking issues; implementor must act | PLAN.md updated, issue comment added, log file updated |
+| In Review | Review passed, ready to ship | PLAN.md updated, issue labeled, log file updated |
+| Done | Committed, GitHub issue closed | PLAN.md updated to Done, issue closed, log file updated |
 
 ---
 
