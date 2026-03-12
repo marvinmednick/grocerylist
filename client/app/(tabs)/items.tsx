@@ -181,7 +181,7 @@ export default function ItemsScreen() {
       {error ? (
         <View style={styles.center}>
           <Text style={{ color: 'red', padding: 20, textAlign: 'center' }}>
-            Error loading items: {(error as any).message}
+            Error loading items: {(error as Error).message}
           </Text>
         </View>
       ) : isLoading ? (
