@@ -113,7 +113,7 @@ describe('useUpdateMasterItem', () => {
     }));
   });
 
-  it('throws when item_stores delete fails', async () => {
+  it('throws when item_store_preferences delete fails', async () => {
     const itemsSingle = jest.fn().mockResolvedValue({ data: { id: 'item-1' }, error: null });
     const itemsSelect = jest.fn().mockReturnValue({ single: itemsSingle });
     const itemsEq = jest.fn().mockReturnValue({ select: itemsSelect });
@@ -127,7 +127,7 @@ describe('useUpdateMasterItem', () => {
         return { update: itemsUpdate };
       }
 
-      if (table === 'item_stores') {
+      if (table === 'item_store_preferences') {
         return { delete: storesDelete };
       }
 
@@ -140,7 +140,7 @@ describe('useUpdateMasterItem', () => {
       mutation.mutateAsync({
         id: 'item-1',
         name: 'Milk',
-        store_ids: ['store-1'],
+        store_preferences: [{ store_id: 'store-1', status: 'preferred', comment: null }],
       })
     ).rejects.toMatchObject({ message: 'RLS violation' });
 

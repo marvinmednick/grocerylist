@@ -8,7 +8,10 @@ import { useUndo } from '@/api/undoContext';
 import { useMetadata } from '@/api/metadata';
 import { useHouseholdMembers } from '@/api/profile';
 import { Toast } from '@/components/Toast';
+import { WarningBadge } from '@/components/WarningBadge';
+import { StoreSelector } from '@/components/StoreSelector';
 import { useHousehold } from '@/lib/household';
+import { loadActiveStoreId, saveActiveStoreId } from '@/lib/activeStore';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MultiTripModal, TripUser } from '@/components/MultiTripModal';
@@ -31,6 +34,7 @@ export default function ShoppingListScreen() {
   const [interactionMode, setInteractionMode] = useState<'shopping' | 'planning'>('shopping');
   const [isMultiTripModalVisible, setIsMultiTripModalVisible] = useState(false);
   const [multiTripContext, setMultiTripContext] = useState<MultiTripContextState | null>(null);
+  const [activeStoreId, setActiveStoreId] = useState('');
 
   const handleRemoteChange = useCallback((event: string, itemName?: string) => {
     let message = 'List updated';
@@ -62,6 +66,43 @@ export default function ShoppingListScreen() {
   const [editQty, setEditQty] = useState('');
   const [editStoreId, setEditStoreId] = useState('');
   const memberMap = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
+
+  useEffect(() => {
+    if (!metadata?.stores?.length) return;
+
+    let isMounted = true;
+    const initializeActiveStore = async () => {
+      const savedStoreId = await loadActiveStoreId();
+      if (!isMounted) return;
+
+      const resolvedStoreId =
+        savedStoreId && metadata.stores.some((store) => store.id === savedStoreId)
+          ? savedStoreId
+          : metadata.stores[0].id;
+
+      setActiveStoreId((currentId) => {
+        if (currentId && metadata.stores.some((store) => store.id === currentId)) {
+          return currentId;
+        }
+        return resolvedStoreId;
+      });
+
+      if (savedStoreId !== resolvedStoreId) {
+        await saveActiveStoreId(resolvedStoreId);
+      }
+    };
+
+    initializeActiveStore();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [metadata?.stores]);
+
+  const handleStoreChange = useCallback((storeId: string) => {
+    setActiveStoreId(storeId);
+    saveActiveStoreId(storeId);
+  }, []);
 
   useEffect(() => {
     if (lastTripId) {
@@ -351,34 +392,45 @@ export default function ShoppingListScreen() {
       );
     }
     const listItem = item.data;
+    const secondaryParts = [
+      listItem.quantity,
+      listItem.category?.name,
+      listItem.store?.name,
+    ].filter(Boolean);
+    const secondaryText = secondaryParts.join(' · ');
+    const displayName = listItem.master_item?.short_name || listItem.name;
 
     if (interactionMode === 'shopping') {
       return (
         <ScaleDecorator>
           <View style={[styles.itemRow, isActive && styles.itemRowActive]}>
-            <Pressable 
+            <TouchableOpacity
+              style={styles.colCheckbox}
+              onPress={() => handleToggle(listItem)}
+              testID={`checkbox-${listItem.id}`}
+            >
+              {renderCheckbox(listItem)}
+            </TouchableOpacity>
+            <Pressable
               style={styles.shoppingPressable}
               onPress={() => handleToggle(listItem)}
               onLongPress={() => openEditModal(listItem)}
               testID={`item-pressable-${listItem.id}`}
             >
-              <View style={styles.colCheckbox}>
-                {renderCheckbox(listItem)}
-              </View>
-              <View style={styles.colName}>
+              <View style={styles.textContent}>
                 <Text style={[styles.nameText, listItem.is_purchased && styles.strikethrough]} numberOfLines={1}>
-                  {listItem.name}{listItem.quantity ? ` - ${listItem.quantity}` : ''}
+                  {displayName}
                 </Text>
-              </View>
-              <View style={styles.colCategory}>
-                <Text style={styles.categoryText} numberOfLines={1}>{listItem.category?.name || '—'}</Text>
-              </View>
-              <View style={styles.colEditIcon}>
-                <View testID="pencil-icon">
-                  <Pencil size={14} color="#9ca3af" />
-                </View>
+                {secondaryText ? (
+                  <Text style={styles.secondaryText} numberOfLines={1}>
+                    {secondaryText}
+                  </Text>
+                ) : null}
               </View>
             </Pressable>
+            {listItem.warnings?.length ? (
+              <WarningBadge warnings={listItem.warnings} />
+            ) : null}
             <TouchableOpacity onLongPress={drag} delayLongPress={50} style={styles.dragHandle}>
               <GripVertical size={20} color="#d1d5db" />
             </TouchableOpacity>
@@ -390,25 +442,32 @@ export default function ShoppingListScreen() {
     return (
       <ScaleDecorator>
         <View style={[styles.itemRow, isActive && styles.itemRowActive]}>
-          <TouchableOpacity 
-            style={styles.colCheckbox} 
+          <TouchableOpacity
+            style={styles.colCheckbox}
             onPress={() => handleToggle(listItem)}
             testID={`checkbox-${listItem.id}`}
           >
             {renderCheckbox(listItem)}
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.colName} 
+          <TouchableOpacity
+            style={styles.planningTextPressable}
             onPress={() => openEditModal(listItem)}
             testID={`name-${listItem.id}`}
           >
-            <Text style={[styles.nameText, listItem.is_purchased && styles.strikethrough]} numberOfLines={1}>
-              {listItem.name}{listItem.quantity ? ` - ${listItem.quantity}` : ''}
-            </Text>
+            <View style={styles.textContent}>
+              <Text style={[styles.nameText, listItem.is_purchased && styles.strikethrough]} numberOfLines={1}>
+                {displayName}
+              </Text>
+              {secondaryText ? (
+                <Text style={styles.secondaryText} numberOfLines={1}>
+                  {secondaryText}
+                </Text>
+              ) : null}
+            </View>
           </TouchableOpacity>
-          <View style={styles.colCategory}>
-            <Text style={styles.categoryText} numberOfLines={1}>{listItem.category?.name || '—'}</Text>
-          </View>
+          {listItem.warnings?.length ? (
+            <WarningBadge warnings={listItem.warnings} />
+          ) : null}
           <TouchableOpacity onLongPress={drag} delayLongPress={50} style={styles.dragHandle}>
             <GripVertical size={20} color="#d1d5db" />
           </TouchableOpacity>
@@ -420,7 +479,7 @@ export default function ShoppingListScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.globalHeader, { paddingTop: insets.top || 20 }]}>
-        <Text style={styles.globalTitle}>Shopping List</Text>
+        <StoreSelector activeStoreId={activeStoreId} onStoreChange={handleStoreChange} />
         <View style={styles.headerActions}>
           <TouchableOpacity 
             onPress={() => setInteractionMode(interactionMode === 'shopping' ? 'planning' : 'shopping')}
@@ -450,7 +509,9 @@ export default function ShoppingListScreen() {
           </View>
         </View>
       </View>
-      <View style={styles.headerContainer}><SmartAddItem disabled={isHouseholdLoading} /></View>
+      <View style={styles.headerContainer}>
+        <SmartAddItem disabled={isHouseholdLoading} activeStoreId={activeStoreId} />
+      </View>
       {isLoading || isHouseholdLoading ? (
         <View style={styles.center}><ActivityIndicator size="large" color="#0000ff" /></View>
       ) : (
@@ -528,7 +589,6 @@ export default function ShoppingListScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#ffffff' },
   globalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 10 },
-  globalTitle: { fontSize: 28, fontWeight: '800', color: '#111827' },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
   headerActionBtn: { padding: 8, backgroundColor: '#eff6ff', borderRadius: 12, position: 'relative' },
   badge: { position: 'absolute', top: -4, right: -4, borderRadius: 10, width: 18, height: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'white' },
@@ -540,16 +600,15 @@ const styles = StyleSheet.create({
   listContent: { paddingBottom: 100 },
   sectionHeader: { height: 32, backgroundColor: '#f3f4f6', paddingHorizontal: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#e5e7eb', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionHeaderText: { fontSize: 12, fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5 },
-  itemRow: { height: 48, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#f9fafb', backgroundColor: '#ffffff', width: '100%' },
+  itemRow: { minHeight: 48, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#f9fafb', backgroundColor: '#ffffff', width: '100%' },
   itemRowActive: { backgroundColor: '#eff6ff', elevation: 5, zIndex: 100 },
-  shoppingPressable: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  shoppingPressable: { flex: 1, justifyContent: 'center' },
+  planningTextPressable: { flex: 1, justifyContent: 'center' },
   colCheckbox: { marginRight: 12, width: 32, alignItems: 'center' },
-  colName: { flex: 1, marginRight: 8 },
-  nameText: { fontSize: 16, fontWeight: '500', color: '#111827' },
+  textContent: { flex: 1, marginRight: 8 },
+  nameText: { fontSize: 15, fontWeight: '500', color: '#111827' },
+  secondaryText: { fontSize: 12, color: '#6b7280', marginTop: 2 },
   strikethrough: { textDecorationLine: 'line-through', color: '#9ca3af' },
-  colCategory: { width: 80, alignItems: 'flex-end' },
-  categoryText: { fontSize: 12, color: '#9ca3af' },
-  colEditIcon: { width: 24, alignItems: 'center', marginLeft: 4 },
   dragHandle: { paddingHorizontal: 8, justifyContent: 'center' },
   inlineEndTripBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#bfdbfe' },
   inlineEndTripText: { fontSize: 11, fontWeight: '700', color: '#2563eb', marginLeft: 4 },

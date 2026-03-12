@@ -1,108 +1,171 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Modal, StyleSheet } from 'react-native';
-import { Search, Tag, Store, Plus, Star } from 'lucide-react-native';
-import { useAllItems, useCreateMasterItem, useUpdateMasterItem } from '@/api/items';
+import { Search, Tag, Store, Plus } from 'lucide-react-native';
+import { useAllItems, useCreateMasterItem, useUpdateMasterItem, MasterItem, ItemStorePreference } from '@/api/items';
 import { useMetadata } from '@/api/metadata';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HeaderActions } from '@/components/HeaderActions';
+import { useUndo } from '@/api/undoContext';
+
+type PreferenceStatus = 'neutral' | 'preferred' | 'avoided' | 'unavailable';
+
+type StorePreferencesState = Record<string, { status: PreferenceStatus; comment: string }>;
+
+const STATUS_OPTIONS: Array<{ label: string; value: PreferenceStatus }> = [
+  { label: '—', value: 'neutral' },
+  { label: 'Pref.', value: 'preferred' },
+  { label: 'Avoid', value: 'avoided' },
+  { label: 'N/A', value: 'unavailable' },
+];
 
 export default function ItemsScreen() {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null);
-  
+  const [editingItem, setEditingItem] = useState<MasterItem | null>(null);
+
   const { data: items, isLoading, error } = useAllItems(search);
   const { data: metadata } = useMetadata();
-  const { mutate: createItem } = useCreateMasterItem();
-  const { mutate: updateItem } = useUpdateMasterItem();
+  const { mutateAsync: createItem } = useCreateMasterItem();
+  const { mutateAsync: updateItem } = useUpdateMasterItem();
+  const { pushAction } = useUndo();
 
-  // Form State
   const [name, setName] = useState('');
+  const [shortName, setShortName] = useState('');
   const [qty, setQty] = useState('');
   const [altQtys, setAltQtys] = useState('');
-  const [storeId, setStoreId] = useState(''); // Default Store
-  const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([]);
+  const [storePreferences, setStorePreferences] = useState<StorePreferencesState>({});
   const [categoryId, setCategoryId] = useState('');
 
-  const openModal = (item: any = null) => {
+  const initializeStorePreferences = (item: MasterItem | null = null): StorePreferencesState => {
+    const base = Object.fromEntries(
+      (metadata?.stores ?? []).map((store) => [store.id, { status: 'neutral', comment: '' }])
+    ) as StorePreferencesState;
+
+    if (!item?.item_store_preferences) {
+      return base;
+    }
+
+    item.item_store_preferences.forEach((preference: ItemStorePreference) => {
+      base[preference.store_id] = {
+        status: preference.status,
+        comment: preference.comment || '',
+      };
+    });
+
+    return base;
+  };
+
+  const openModal = (item: MasterItem | null = null) => {
     if (item) {
       setEditingItem(item);
       setName(item.name);
+      setShortName(item.short_name || '');
       setQty(item.default_qty || '');
       setAltQtys(item.alternate_qtys ? item.alternate_qtys.join(', ') : '');
-      setStoreId(item.default_store_id || '');
-      
-      const linkedStores = item.item_stores?.map((s: any) => s.store.id) || [];
-      setSelectedStoreIds(linkedStores.length > 0 ? linkedStores : (item.default_store_id ? [item.default_store_id] : []));
-      
+      setStorePreferences(initializeStorePreferences(item));
       setCategoryId(item.default_category_id || '');
     } else {
       setEditingItem(null);
       setName('');
+      setShortName('');
       setQty('');
       setAltQtys('');
-      setStoreId('');
-      setSelectedStoreIds([]);
+      setStorePreferences(initializeStorePreferences());
       setCategoryId(metadata?.categories?.[0]?.id || '');
     }
     setIsModalVisible(true);
   };
 
-  const toggleStore = (sid: string) => {
-    setSelectedStoreIds(prev => {
-      const isSelected = prev.includes(sid);
-      const next = isSelected ? prev.filter(id => id !== sid) : [...prev, sid];
-      
-      // If the default store was removed, clear it or pick another
-      if (isSelected && storeId === sid) {
-        setStoreId(next[0] || '');
-      } else if (!isSelected && next.length === 1) {
-        setStoreId(sid); // Auto-set first selection as default
-      }
-      return next;
-    });
+  const updateStoreStatus = (storeId: string, status: PreferenceStatus) => {
+    setStorePreferences((prev) => ({
+      ...prev,
+      [storeId]: {
+        status,
+        comment: status === 'neutral' ? '' : prev[storeId]?.comment || '',
+      },
+    }));
   };
 
-  const handleSave = () => {
+  const updateStoreComment = (storeId: string, comment: string) => {
+    setStorePreferences((prev) => ({
+      ...prev,
+      [storeId]: {
+        status: prev[storeId]?.status || 'neutral',
+        comment,
+      },
+    }));
+  };
+
+  const buildStorePreferencesPayload = () => {
+    return Object.entries(storePreferences)
+      .filter(([, preference]) => preference.status !== 'neutral')
+      .map(([store_id, preference]) => ({
+        store_id,
+        status: preference.status as 'preferred' | 'avoided' | 'unavailable',
+        comment: preference.comment || null,
+      }));
+  };
+
+  const handleSave = async () => {
     if (!name) return;
 
     const payload = {
       name,
+      short_name: shortName || null,
       default_qty: qty,
-      alternate_qtys: altQtys.split(',').map(s => s.trim()).filter(s => s.length > 0),
-      default_store_id: storeId || null,
-      store_ids: selectedStoreIds,
+      alternate_qtys: altQtys
+        .split(',')
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0),
       default_category_id: categoryId,
+      store_preferences: buildStorePreferencesPayload(),
     };
 
     if (editingItem) {
-      updateItem({ id: editingItem.id, ...payload });
+      const oldSnapshot = {
+        name: editingItem.name,
+        short_name: editingItem.short_name || null,
+        default_qty: editingItem.default_qty || '',
+        alternate_qtys: editingItem.alternate_qtys || [],
+        default_category_id: editingItem.default_category_id || null,
+        store_preferences: (editingItem.item_store_preferences || []).map((preference: ItemStorePreference) => ({
+          store_id: preference.store_id,
+          status: preference.status,
+          comment: preference.comment || null,
+        })),
+      };
+
+      await updateItem({ id: editingItem.id, ...payload });
+      pushAction({
+        label: `Edited ${name}`,
+        undo: async () => {
+          await updateItem({ id: editingItem.id, ...oldSnapshot });
+        },
+        redo: async () => {
+          await updateItem({ id: editingItem.id, ...payload });
+        },
+      });
     } else {
-      createItem(payload);
+      await createItem(payload);
     }
-    
+
     setIsModalVisible(false);
   };
-// ... (modal UI update next)
 
   return (
     <View style={styles.container}>
-      {/* Header / Search */}
       <View style={[styles.header, { paddingTop: insets.top || 16 }]}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>Master Database</Text>
           <View style={styles.titleRowActions}>
-            <TouchableOpacity 
-              style={styles.addBtn}
-              onPress={() => openModal()}
-            >
+            <TouchableOpacity style={styles.addBtn} onPress={() => openModal()}>
               <Plus size={24} color="#2563eb" />
             </TouchableOpacity>
             <HeaderActions />
           </View>
         </View>
-        
+
         <View style={styles.searchBar}>
           <Search size={20} color="#9ca3af" />
           <TextInput
@@ -115,7 +178,6 @@ export default function ItemsScreen() {
         </View>
       </View>
 
-      {/* List */}
       {error ? (
         <View style={styles.center}>
           <Text style={{ color: 'red', padding: 20, textAlign: 'center' }}>
@@ -131,28 +193,30 @@ export default function ItemsScreen() {
           data={items}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <TouchableOpacity 
-              style={styles.itemCard}
-              onPress={() => openModal(item)}
-            >
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName}>
-                  {item.name}{item.default_qty ? ` - ${item.default_qty}` : ''}
-                </Text>
-                <View style={styles.badgeRow}>
-                  <View style={styles.badge}>
-                    <Tag size={12} color="#6b7280" />
-                    <Text style={styles.badgeText}>{item.category?.name || 'Uncategorized'}</Text>
-                  </View>
-                  <View style={styles.badge}>
-                    <Store size={12} color="#6b7280" />
-                    <Text style={styles.badgeText}>{item.store?.name || 'Any Store'}</Text>
+          renderItem={({ item }) => {
+            const preferredStore = item.item_store_preferences?.find((preference) => preference.status === 'preferred');
+
+            return (
+              <TouchableOpacity style={styles.itemCard} onPress={() => openModal(item)}>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.itemName}>
+                    {item.name}
+                    {item.default_qty ? ` - ${item.default_qty}` : ''}
+                  </Text>
+                  <View style={styles.badgeRow}>
+                    <View style={styles.badge}>
+                      <Tag size={12} color="#6b7280" />
+                      <Text style={styles.badgeText}>{item.category?.name || 'Uncategorized'}</Text>
+                    </View>
+                    <View style={styles.badge}>
+                      <Store size={12} color="#6b7280" />
+                      <Text style={styles.badgeText}>{preferredStore?.store?.name || 'Any Store'}</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          )}
+              </TouchableOpacity>
+            );
+          }}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyText}>No items found in your library.</Text>
@@ -161,24 +225,24 @@ export default function ItemsScreen() {
         />
       )}
 
-      {/* Add/Edit Item Modal */}
       <Modal visible={isModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {editingItem ? 'Edit Item' : 'New Master Item'}
-            </Text>
-            
+            <Text style={styles.modalTitle}>{editingItem ? 'Edit Item' : 'New Master Item'}</Text>
+
             <Text style={styles.label}>Item Name</Text>
-            <TextInput 
+            <TextInput style={styles.modalInput} value={name} onChangeText={setName} placeholder="e.g. Milk" />
+
+            <Text style={styles.label}>Short Name (optional)</Text>
+            <TextInput
               style={styles.modalInput}
-              value={name}
-              onChangeText={setName}
-              placeholder="e.g. Milk"
+              value={shortName}
+              onChangeText={setShortName}
+              placeholder="e.g. PB, OJ"
             />
 
             <Text style={styles.label}>Default Quantity</Text>
-            <TextInput 
+            <TextInput
               style={styles.modalInput}
               value={qty}
               onChangeText={setQty}
@@ -186,65 +250,73 @@ export default function ItemsScreen() {
             />
 
             <Text style={styles.label}>Alternate Quantities (comma separated)</Text>
-            <TextInput 
+            <TextInput
               style={styles.modalInput}
               value={altQtys}
               onChangeText={setAltQtys}
               placeholder="e.g. 1/2 gal, 2 gal"
             />
 
-            <Text style={styles.label}>Associated Stores (Tap name to toggle, Tap star to set default)</Text>
-            <View style={styles.tagsContainer}>
-              {metadata?.stores?.map(store => {
-                const isSelected = selectedStoreIds.includes(store.id);
-                const isDefault = storeId === store.id;
-                
+            <Text style={styles.label}>Store Preferences</Text>
+            <View style={styles.storePreferenceContainer}>
+              {metadata?.stores?.map((store) => {
+                const preference = storePreferences[store.id] || { status: 'neutral', comment: '' };
+
                 return (
-                  <View 
-                    key={store.id}
-                    style={[
-                      styles.splitTag, 
-                      isSelected ? styles.tagActive : styles.tagInactive,
-                      isDefault && styles.tagDefault
-                    ]}
-                  >
-                    <TouchableOpacity
-                      onPress={() => toggleStore(store.id)}
-                      style={styles.tagMain}
-                    >
-                      <Text style={isSelected ? styles.tagTextActive : styles.tagTextInactive}>
-                        {store.name}
-                      </Text>
-                    </TouchableOpacity>
-                    
-                    {isSelected && (
-                      <TouchableOpacity 
-                        onPress={() => setStoreId(store.id)}
-                        style={styles.tagStar}
-                      >
-                        <Star 
-                          size={14} 
-                          fill={isDefault ? "#fbbf24" : "transparent"} 
-                          color={isDefault ? "#fbbf24" : "white"} 
-                        />
-                      </TouchableOpacity>
-                    )}
+                  <View key={store.id} style={styles.storePreferenceRow} testID={`store-pref-row-${store.id}`}>
+                    <View style={styles.storeHeaderRow}>
+                      <View style={[styles.storeColorDot, { backgroundColor: store.color_code }]} />
+                      <Text style={styles.storeNameText}>{store.name}</Text>
+                    </View>
+
+                    <View style={styles.segmentedContainer}>
+                      {STATUS_OPTIONS.map((option) => {
+                        const selected = preference.status === option.value;
+                        return (
+                          <TouchableOpacity
+                            key={`${store.id}-${option.value}`}
+                            testID={`store-pref-${store.id}-${option.value}`}
+                            onPress={() => updateStoreStatus(store.id, option.value)}
+                            style={[styles.segment, selected ? styles.segmentSelected : styles.segmentUnselected]}
+                          >
+                            <Text
+                              style={[
+                                styles.segmentText,
+                                selected ? styles.segmentTextSelected : styles.segmentTextUnselected,
+                              ]}
+                            >
+                              {option.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    {preference.status !== 'neutral' ? (
+                      <TextInput
+                        testID={`store-pref-comment-${store.id}`}
+                        style={styles.commentInput}
+                        value={preference.comment}
+                        onChangeText={(text) => updateStoreComment(store.id, text)}
+                        placeholder="Comment"
+                        placeholderTextColor="#9ca3af"
+                      />
+                    ) : null}
                   </View>
                 );
               })}
             </View>
 
-
             <Text style={styles.label}>Category</Text>
             <View style={styles.tagsContainer}>
-              {metadata?.categories?.map(cat => (
+              {metadata?.categories?.map((category) => (
                 <TouchableOpacity
-                  key={cat.id}
-                  onPress={() => setCategoryId(cat.id)}
-                  style={[styles.tag, categoryId === cat.id ? styles.tagActive : styles.tagInactive]}
+                  key={category.id}
+                  onPress={() => setCategoryId(category.id)}
+                  style={[styles.tag, categoryId === category.id ? styles.tagActive : styles.tagInactive]}
                 >
-                  <Text style={categoryId === cat.id ? styles.tagTextActive : styles.tagTextInactive}>
-                    {cat.name}
+                  <Text style={categoryId === category.id ? styles.tagTextActive : styles.tagTextInactive}>
+                    {category.name}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -255,9 +327,7 @@ export default function ItemsScreen() {
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                <Text style={styles.saveBtnText}>
-                  {editingItem ? 'Update Item' : 'Save to Library'}
-                </Text>
+                <Text style={styles.saveBtnText}>{editingItem ? 'Update Item' : 'Save to Library'}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -274,54 +344,148 @@ const styles = StyleSheet.create({
   titleRowActions: { flexDirection: 'row', alignItems: 'center' },
   title: { fontSize: 24, fontWeight: '800', color: '#111827' },
   addBtn: { backgroundColor: '#eff6ff', padding: 8, borderRadius: 12 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f3f4f6', paddingHorizontal: 12, height: 44, borderRadius: 12 },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 12,
+    height: 44,
+    borderRadius: 12,
+  },
   searchInput: { flex: 1, marginLeft: 8, fontSize: 16, color: '#111827' },
   listContent: { padding: 16 },
-  itemCard: { backgroundColor: '#f9fafb', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#f3f4f6', marginBottom: 12 },
+  itemCard: {
+    backgroundColor: '#f9fafb',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+    marginBottom: 12,
+  },
   itemInfo: { flex: 1 },
   itemName: { fontSize: 18, fontWeight: '700', color: '#111827' },
   badgeRow: { flexDirection: 'row', marginTop: 8, gap: 8 },
-  badge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ffffff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#e5e7eb' },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
   badgeText: { fontSize: 12, color: '#4b5563', marginLeft: 4 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyContainer: { alignItems: 'center', marginTop: 40 },
   emptyText: { color: '#9ca3af', fontSize: 16 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContent: { backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
   modalTitle: { fontSize: 20, fontWeight: '700', marginBottom: 20 },
-  label: { fontSize: 12, fontWeight: '700', color: '#9ca3af', marginBottom: 8, textTransform: 'uppercase' },
-  modalInput: { backgroundColor: '#f3f4f6', padding: 16, borderRadius: 12, marginBottom: 16, fontSize: 16 },
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#9ca3af',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  modalInput: {
+    backgroundColor: '#f3f4f6',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    fontSize: 16,
+  },
+  storePreferenceContainer: {
+    marginBottom: 24,
+    gap: 10,
+  },
+  storePreferenceRow: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: '#f9fafb',
+  },
+  storeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  storeColorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 8,
+  },
+  storeNameText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  segmentedContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  segment: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  segmentSelected: {
+    backgroundColor: '#2563eb',
+  },
+  segmentUnselected: {
+    backgroundColor: '#f3f4f6',
+  },
+  segmentText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  segmentTextSelected: {
+    color: '#ffffff',
+  },
+  segmentTextUnselected: {
+    color: '#374151',
+  },
+  commentInput: {
+    marginTop: 10,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    color: '#111827',
+  },
   tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
   tag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
   tagActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
   tagInactive: { backgroundColor: 'white', borderColor: '#d1d5db' },
-  tagDefault: { borderColor: '#fbbf24', borderWidth: 2 },
-  splitTag: {
-    flexDirection: 'row',
-    borderRadius: 999,
-    borderWidth: 1,
-    overflow: 'hidden',
-    alignItems: 'center',
-  },
-  tagMain: {
-    paddingLeft: 12,
-    paddingRight: 8,
-    paddingVertical: 6,
-  },
-  tagStar: {
-    paddingRight: 10,
-    paddingLeft: 4,
-    paddingVertical: 6,
-    borderLeftWidth: 1,
-    borderLeftColor: 'rgba(255,255,255,0.3)',
-    height: '100%',
-    justifyContent: 'center',
-  },
   tagTextActive: { color: 'white', fontWeight: '600' },
   tagTextInactive: { color: '#374151' },
   modalActions: { flexDirection: 'row', gap: 12 },
-  cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center' },
-  saveBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#2563eb', alignItems: 'center' },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+  },
+  saveBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+  },
   cancelBtnText: { fontWeight: '700', color: '#4b5563' },
   saveBtnText: { fontWeight: '700', color: 'white' },
 });

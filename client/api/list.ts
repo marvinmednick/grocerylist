@@ -16,6 +16,16 @@ export interface ListItem {
   archived_at?: string | null;
   store?: { name: string; color_code: string };
   category?: { name: string; sort_order: number };
+  warnings?: Array<{
+    type: string;
+    store_id?: string;
+    store_name?: string;
+    comment?: string | null;
+    preferred_stores?: string[];
+    entered?: string;
+    standard?: string[];
+  }>;
+  master_item?: { short_name: string | null };
 }
 
 // --- Local mutation tracking ---
@@ -73,7 +83,8 @@ export const useShoppingList = (onRemoteChange?: (event: string, itemName?: stri
         .select(`
           *,
           store:stores!store_id(name, color_code),
-          category:categories!category_id(name, sort_order)
+          category:categories!category_id(name, sort_order),
+          master_item:items!item_id(short_name)
         `)
         .is('archived_at', null)
         .order('added_at', { ascending: false });
@@ -123,6 +134,15 @@ export interface ListItemInsert {
   item_id?: string | null;
   store_id?: string | null;
   category_id?: string | null;
+  warnings?: Array<{
+    type: string;
+    store_id?: string;
+    store_name?: string;
+    comment?: string | null;
+    preferred_stores?: string[];
+    entered?: string;
+    standard?: string[];
+  }>;
 }
 
 export const useAddToList = () => {

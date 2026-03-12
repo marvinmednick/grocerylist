@@ -113,7 +113,7 @@ describe('ShoppingListScreen Interactions', () => {
   it('defaults to shopping mode on mount', () => {
     render(<ShoppingListScreen />, { wrapper });
     expect(screen.getByTestId('cart-icon-container')).toBeTruthy();
-    expect(screen.getByTestId('pencil-icon')).toBeTruthy();
+    expect(screen.queryByTestId('pencil-icon')).toBeNull();
   });
 
   it('mode toggle switches from shopping to planning', () => {

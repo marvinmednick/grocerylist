@@ -4,7 +4,7 @@ import { StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useHousehold } from '@/lib/household';
 import { Settings } from '../Settings';
-import { useHouseholdMemberColors, useHouseholdName, useUpdateProfile } from '@/api/profile';
+import { useHouseholdMemberColors, useHouseholdName, useMyProfile, useUpdateProfile } from '@/api/profile';
 import { useAppTheme } from '@/lib/theme';
 
 jest.mock('@/api/profile');
@@ -22,6 +22,7 @@ jest.mock('@/lib/household', () => {
 const mockUseHousehold = useHousehold as jest.Mock;
 const mockUseHouseholdMemberColors = useHouseholdMemberColors as jest.Mock;
 const mockUseHouseholdName = useHouseholdName as jest.Mock;
+const mockUseMyProfile = useMyProfile as jest.Mock;
 const mockUseUpdateProfile = useUpdateProfile as jest.Mock;
 const mockUseAppTheme = useAppTheme as jest.Mock;
 
@@ -51,6 +52,16 @@ describe('Settings', () => {
     });
     mockUseHouseholdMemberColors.mockReturnValue({ data: [] });
     mockUseHouseholdName.mockReturnValue({ data: 'The Smiths', isLoading: false });
+    mockUseMyProfile.mockReturnValue({
+      data: {
+        warning_preferences: {
+          avoided: 'toast_and_badge',
+          unavailable: 'toast_and_badge',
+          non_preferred: 'badge_only',
+          non_standard_qty: 'badge_only',
+        },
+      },
+    });
     mockUseUpdateProfile.mockReturnValue({ mutate });
     mockUseAppTheme.mockReturnValue({ isDark: false, toggleTheme });
   });
@@ -117,6 +128,12 @@ describe('Settings', () => {
       display_name: 'Alice Cooper',
       display_name_short: 'AC',
       color: '#16a34a',
+      warning_preferences: {
+        avoided: 'toast_and_badge',
+        unavailable: 'toast_and_badge',
+        non_preferred: 'badge_only',
+        non_standard_qty: 'badge_only',
+      },
     });
   });
 
@@ -136,5 +153,48 @@ describe('Settings', () => {
   it('renders household name from useHouseholdName', () => {
     render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
     expect(screen.getByText('The Smiths')).toBeTruthy();
+  });
+
+  it('renders Warnings section with four warning type rows', () => {
+    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    expect(screen.getByText('Store Avoidance')).toBeTruthy();
+    expect(screen.getByText('Store Unavailable')).toBeTruthy();
+    expect(screen.getByText('Non-Preferred Store')).toBeTruthy();
+    expect(screen.getByText('Non-Standard Qty')).toBeTruthy();
+  });
+
+  it('renders segmented controls with correct options', () => {
+    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    expect(screen.getByTestId('warning-pref-avoided-toast_and_badge')).toBeTruthy();
+    expect(screen.getByTestId('warning-pref-avoided-badge_only')).toBeTruthy();
+    expect(screen.getByTestId('warning-pref-avoided-off')).toBeTruthy();
+    expect(screen.getAllByText('Toast + Badge').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Badge').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Off').length).toBeGreaterThan(0);
+  });
+
+  it('renders only Badge/Off for non_preferred type', () => {
+    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    expect(screen.getByTestId('warning-pref-non_preferred-badge_only')).toBeTruthy();
+    expect(screen.getByTestId('warning-pref-non_preferred-off')).toBeTruthy();
+    expect(screen.queryByTestId('warning-pref-non_preferred-toast_and_badge')).toBeNull();
+  });
+
+  it('selects the correct default segment based on profile data', () => {
+    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+
+    const avoidedSelected = StyleSheet.flatten(
+      screen.getByTestId('warning-pref-avoided-toast_and_badge').props.style
+    );
+    const nonPreferredSelected = StyleSheet.flatten(
+      screen.getByTestId('warning-pref-non_preferred-badge_only').props.style
+    );
+    const unavailableOff = StyleSheet.flatten(
+      screen.getByTestId('warning-pref-unavailable-off').props.style
+    );
+
+    expect(avoidedSelected.backgroundColor).toBe('#2563eb');
+    expect(nonPreferredSelected.backgroundColor).toBe('#2563eb');
+    expect(unavailableOff.backgroundColor).toBe('#f3f4f6');
   });
 });

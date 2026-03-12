@@ -78,10 +78,15 @@ Each user profile is assigned a distinct color for identity across the app (chec
 Cycles from the top if the household has more than 7 members. Soft conflict warning in Settings if a user picks a color already used by a household member.
 
 ### Semantic Colors
-[TBD — decide during /design sessions]
-- Warning / caution states
-- Disabled / inactive state
-- Purchased / completed item strikethrough color
+
+| Role | Hex | Tailwind | Used for |
+|------|-----|----------|----------|
+| Warning (high severity) | `#f59e0b` | amber-500 | Avoided store badges, warning toasts |
+| Warning (critical) | `#ef4444` | red-500 | Unavailable store badges |
+| Warning (informational) | `#6b7280` | gray-500 | Non-preferred store, non-standard qty badges |
+
+- Disabled / inactive state: [TBD]
+- Purchased / completed item strikethrough color: [TBD]
 
 ---
 
@@ -311,3 +316,9 @@ When a new visual or interaction pattern is established during a `/design` sessi
 | Trip/list row owner display | Show owner name only for other users' trips, not your own; format: `"· Name"` before item count | F9 | Keeps list clean for single-user households; absence of name = "mine" |
 | Owner name in modal header | Append `" · Name"` at end of header only when trip belongs to another user | F9 | Consistent with row pattern; your own modal headers stay clean |
 | Profile color picker | Row of 7 filled circles (32px); selected circle shows white inner ring via 2px border | F7 | Extension of chip selection pattern; color circles replace text chips |
+| Active store selector in header | Store name + ▾ chevron replaces "Shopping List" title; tap opens dropdown picker | F12 | Store context is more useful than a static title |
+| Store selector dropdown | Color dot + name per row, checkmark on active, "+ Add new store" at bottom | F12 | First dropdown picker pattern in the app |
+| Multi-line list item row | Line 1: name (15px/500), Line 2: qty · category · store (12px muted, dot-separated). Auto height ~52-56px | F13 | Replaces single-line 48px row for better density |
+| Warning badge system | Per-type icon + color: AlertTriangle/amber (avoided), XCircle/red (unavailable), Info/gray (non-preferred), HelpCircle/gray (non-standard qty). 14px lucide icons | F13 | First warning/caution visual in the app; shape + color for accessibility |
+| Warning badge tap → popover | Tap badge shows absolutely-positioned tooltip with detail text; dismiss on tap-outside | F13 | First tooltip/popover pattern in the app |
+| Warning toast styling | Amber-tinted background variant of Toast.tsx; 4s duration; combines all warnings from one add | F13 | Extension of existing Toast component |

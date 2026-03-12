@@ -17,6 +17,12 @@ CREATE TABLE profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
     display_name TEXT,
+    warning_preferences JSONB DEFAULT '{
+      "avoided": "toast_and_badge",
+      "unavailable": "toast_and_badge",
+      "non_preferred": "badge_only",
+      "non_standard_qty": "badge_only"
+    }',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX profiles_household_idx ON profiles(household_id);
@@ -24,11 +30,14 @@ CREATE INDEX profiles_household_idx ON profiles(household_id);
 -- 4. STORES
 CREATE TABLE stores (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL UNIQUE,
+    household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
     color_code TEXT DEFAULT '#000000',
     icon TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT stores_name_household_unique UNIQUE (name, household_id)
 );
+CREATE INDEX stores_household_idx ON stores(household_id);
 
 -- 5. CATEGORIES
 CREATE TABLE categories (
@@ -51,9 +60,9 @@ CREATE TABLE items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     default_category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    default_store_id UUID REFERENCES stores(id) ON DELETE SET NULL,
     default_unit_id UUID REFERENCES units(id) ON DELETE SET NULL,
     default_qty TEXT,
+    short_name TEXT,
     alternate_qtys TEXT[] DEFAULT '{}',
     search_tokens TSVECTOR,
     household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
@@ -89,20 +98,25 @@ CREATE TABLE list_items (
     added_at TIMESTAMPTZ DEFAULT NOW(),
     purchased_at TIMESTAMPTZ,
     archived_at TIMESTAMPTZ,
+    warnings JSONB DEFAULT '[]',
     added_by UUID,
     household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX list_items_household_idx ON list_items(household_id);
 
--- 10. ITEM_STORES (Many-to-Many)
-CREATE TABLE item_stores (
-    item_id UUID REFERENCES items(id) ON DELETE CASCADE,
-    store_id UUID REFERENCES stores(id) ON DELETE CASCADE,
-    is_preferred BOOLEAN DEFAULT FALSE,
+-- 10. ITEM_STORE_PREFERENCES
+CREATE TABLE item_store_preferences (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    store_id UUID NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+    status TEXT NOT NULL CHECK (status IN ('preferred', 'avoided', 'unavailable')),
+    comment TEXT,
     household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
-    PRIMARY KEY (item_id, store_id)
+    CONSTRAINT item_store_preferences_item_store_unique UNIQUE (item_id, store_id)
 );
+CREATE INDEX item_store_preferences_item_idx ON item_store_preferences(item_id);
+CREATE INDEX item_store_preferences_household_idx ON item_store_preferences(household_id);
 
 -- ============================================================
 -- RLS Helper Function
@@ -122,7 +136,7 @@ ALTER TABLE units ENABLE ROW LEVEL SECURITY;
 ALTER TABLE items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE list_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shopping_trips ENABLE ROW LEVEL SECURITY;
-ALTER TABLE item_stores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE item_store_preferences ENABLE ROW LEVEL SECURITY;
 
 -- Profiles
 CREATE POLICY "Users can read own profile" ON profiles
@@ -140,8 +154,21 @@ CREATE POLICY "Authenticated users can create households" ON households
 
 -- Public Read (Categories, Stores, Units)
 CREATE POLICY "Public read categories" ON categories FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Public read stores" ON stores FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Public read units" ON units FOR SELECT TO authenticated USING (true);
+
+-- Stores: household-scoped
+CREATE POLICY "Household members can read stores" ON stores
+    FOR SELECT TO authenticated
+    USING (household_id = get_my_household_id());
+CREATE POLICY "Household members can insert stores" ON stores
+    FOR INSERT TO authenticated
+    WITH CHECK (household_id = get_my_household_id());
+CREATE POLICY "Household members can update stores" ON stores
+    FOR UPDATE TO authenticated
+    USING (household_id = get_my_household_id());
+CREATE POLICY "Household members can delete stores" ON stores
+    FOR DELETE TO authenticated
+    USING (household_id = get_my_household_id());
 
 -- Items: household-scoped
 CREATE POLICY "Household members can manage items" ON items
@@ -149,8 +176,8 @@ CREATE POLICY "Household members can manage items" ON items
     USING (household_id = get_my_household_id())
     WITH CHECK (household_id = get_my_household_id());
 
--- Item_stores: household-scoped
-CREATE POLICY "Household members can manage item_stores" ON item_stores
+-- Item store preferences: household-scoped
+CREATE POLICY "Household members can manage item_store_preferences" ON item_store_preferences
     FOR ALL TO authenticated
     USING (household_id = get_my_household_id())
     WITH CHECK (household_id = get_my_household_id());
@@ -192,12 +219,17 @@ INSERT INTO categories (name, sort_order) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- Stores
-INSERT INTO stores (name, color_code) VALUES
-('Costco', '#005596'),
-('Whole Foods', '#00674b'),
-('Safeway', '#e31837'),
-('Trader Joe''s', '#bc2026')
-ON CONFLICT (name) DO NOTHING;
+INSERT INTO stores (household_id, name, color_code)
+SELECT default_household.id, store_data.name, store_data.color_code
+FROM (SELECT id FROM households LIMIT 1) AS default_household
+CROSS JOIN (
+  VALUES
+    ('Costco', '#005596'),
+    ('Whole Foods', '#00674b'),
+    ('Safeway', '#e31837'),
+    ('Trader Joe''s', '#bc2026')
+) AS store_data(name, color_code)
+ON CONFLICT (name, household_id) DO NOTHING;
 
 -- Units
 INSERT INTO units (name, abbreviation) VALUES

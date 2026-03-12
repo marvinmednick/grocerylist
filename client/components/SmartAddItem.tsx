@@ -1,49 +1,45 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Modal, Keyboard } from 'react-native';
 import { Search, X, ChevronRight } from 'lucide-react-native';
-import { useSearchItems, useCreateMasterItem } from '@/api/items';
+import { computeWarnings, useSearchItems, useCreateMasterItem } from '@/api/items';
 import { useAddToList, useDeleteListItem } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
 
-export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
+interface SmartAddItemProps {
+  disabled?: boolean;
+  activeStoreId: string;
+}
+
+export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemProps) {
   const [query, setQuery] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  
-  // Local state for dropdown selections: itemId -> { qty, storeId }
-  const [selections, setSelections] = useState<Record<string, { qty: string, storeId: string }>>({});
+  const [selections, setSelections] = useState<Record<string, { qty: string }>>({});
 
-  // Local state for the Edit Form
   const [editQty, setEditQty] = useState('');
   const [editStoreId, setEditStoreId] = useState('');
   const [editCategoryId, setEditCategoryId] = useState('');
 
-  // API Hooks
   const { data: results = [] } = useSearchItems(query);
   const { mutateAsync: addItem } = useAddToList();
-  const { mutateAsync: createMasterItem } = useCreateMasterItem(); 
+  const { mutateAsync: createMasterItem } = useCreateMasterItem();
   const { mutateAsync: deleteItem } = useDeleteListItem();
   const { data: metadata } = useMetadata();
   const { pushAction } = useUndo();
 
   const getSelection = (item: any) => {
-    return selections[item.id] || { 
-      qty: item.default_qty || '1', 
-      storeId: item.default_store_id 
+    return selections[item.id] || {
+      qty: item.default_qty || '1',
     };
   };
 
   const toggleSelection = (itemId: string, updates: any) => {
-    const item = results.find(r => r.id === itemId);
-    setSelections(prev => ({
+    const item = results.find((result) => result.id === itemId);
+    setSelections((prev) => ({
       ...prev,
-      [itemId]: { ...getSelection(item), ...updates }
+      [itemId]: { ...getSelection(item), ...updates },
     }));
-  };
-
-  const handleSearch = (text: string) => {
-    setQuery(text);
   };
 
   const clearAndClose = () => {
@@ -57,14 +53,22 @@ export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
   const onCommitAdd = async (item: any) => {
     const selection = getSelection(item);
     const name = item.name;
-    
+    const warnings = computeWarnings(
+      item.item_store_preferences,
+      activeStoreId,
+      selection.qty,
+      item.default_qty,
+      item.alternate_qtys
+    );
+
     const forwardAction = async () => {
       return await addItem({
         name: item.name,
         item_id: item.id,
         quantity: selection.qty,
-        store_id: selection.storeId,
+        store_id: activeStoreId || null,
         category_id: item.default_category_id,
+        warnings,
       });
     };
 
@@ -77,11 +81,11 @@ export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
         await deleteItem(tracker.currentId);
       },
       redo: async () => {
-        const r = await forwardAction();
-        tracker.currentId = r.id;
-      }
+        const redone = await forwardAction();
+        tracker.currentId = redone.id;
+      },
     });
-    
+
     clearAndClose();
   };
 
@@ -92,8 +96,9 @@ export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
         name: query,
         item_id: null,
         quantity: '1',
-        store_id: metadata?.stores?.[0]?.id, 
-        category_id: metadata?.categories?.find(c => c.name === 'Other')?.id,
+        store_id: activeStoreId || null,
+        category_id: metadata?.categories?.find((category) => category.name === 'Other')?.id,
+        warnings: [],
       });
     };
 
@@ -106,9 +111,9 @@ export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
         await deleteItem(tracker.currentId);
       },
       redo: async () => {
-        const r = await forwardAction();
-        tracker.currentId = r.id;
-      }
+        const redone = await forwardAction();
+        tracker.currentId = redone.id;
+      },
     });
 
     clearAndClose();
@@ -117,8 +122,8 @@ export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
   const onEditAdd = (item: any) => {
     setSelectedItem(item);
     setEditQty(item.default_qty || '1');
-    setEditStoreId(item.default_store_id || metadata?.stores?.[0]?.id);
-    setEditCategoryId(item.default_category_id || metadata?.categories?.[0]?.id);
+    setEditStoreId(activeStoreId || metadata?.stores?.[0]?.id || '');
+    setEditCategoryId(item.default_category_id || metadata?.categories?.[0]?.id || '');
     setIsEditing(true);
   };
 
@@ -131,40 +136,52 @@ export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
         const newItem = await createMasterItem({
           name: itemName,
           default_qty: editQty,
-          default_store_id: editStoreId,
           default_category_id: editCategoryId,
         });
         itemId = newItem.id;
       } catch (err) {
         console.error('Failed to create master item:', err);
+        return;
       }
     }
+
+    const warnings = selectedItem?.id
+      ? computeWarnings(
+          selectedItem.item_store_preferences,
+          editStoreId,
+          editQty,
+          selectedItem.default_qty,
+          selectedItem.alternate_qtys
+        )
+      : [];
 
     const forwardAction = async () => {
       return await addItem({
         name: itemName,
         item_id: itemId || null,
         quantity: editQty,
-        store_id: editStoreId,
+        store_id: editStoreId || null,
         category_id: editCategoryId,
+        warnings,
       });
     };
 
     const result = await forwardAction();
+    const tracker = { currentId: result.id };
 
     pushAction({
       label: `Added ${itemName}`,
       undo: async () => {
-        await deleteItem(result.id);
+        await deleteItem(tracker.currentId);
       },
       redo: async () => {
-        await forwardAction();
-      }
+        const redone = await forwardAction();
+        tracker.currentId = redone.id;
+      },
     });
 
     clearAndClose();
   };
-
 
   return (
     <View style={[styles.container, disabled && { opacity: 0.6 }]}>
@@ -172,20 +189,19 @@ export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
         <Search size={20} color="#9ca3af" style={styles.searchIcon} />
         <TextInput
           style={styles.input}
-          placeholder={disabled ? "Loading household..." : "Add item..."}
+          placeholder={disabled ? 'Loading household...' : 'Add item...'}
           value={query}
-          onChangeText={handleSearch}
+          onChangeText={setQuery}
           placeholderTextColor="#9ca3af"
           editable={!disabled}
         />
         {query.length > 0 && !disabled && (
-           <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn}>
-             <X size={18} color="#6b7280" />
-           </TouchableOpacity>
+          <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn}>
+            <X size={18} color="#6b7280" />
+          </TouchableOpacity>
         )}
       </View>
 
-      {/* Grouped Dropdown */}
       {(results.length > 0 || query.length > 1) && (
         <View style={styles.dropdown}>
           {results.length > 0 && (
@@ -193,63 +209,36 @@ export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
               <Text style={styles.sectionHeaderText}>BEST MATCHES</Text>
             </View>
           )}
-          
+
           {results.map((item) => {
             const selection = getSelection(item);
-            
+
             return (
               <View key={item.id} style={styles.resultRowComplex}>
                 <View style={styles.resultMainSection}>
-                  <TouchableOpacity 
-                    style={styles.resultHeader}
-                    onPress={() => onCommitAdd(item)}
-                  >
+                  <TouchableOpacity style={styles.resultHeader} onPress={() => onCommitAdd(item)}>
                     <Text style={styles.resultName}>{item.name}</Text>
                   </TouchableOpacity>
 
-                  {/* Inline Qty Pills */}
                   <View style={styles.inlinePillRow}>
                     <Text style={styles.inlineLabel}>Qty: </Text>
-                    {[item.default_qty || '1', ...(item.alternate_qtys || [])].map((q: string) => {
-                      const isActive = selection.qty === q;
+                    {[item.default_qty || '1', ...(item.alternate_qtys || [])].map((qtyOption: string) => {
+                      const isActive = selection.qty === qtyOption;
                       return (
-                        <TouchableOpacity 
-                          key={q} 
+                        <TouchableOpacity
+                          key={qtyOption}
                           style={[styles.inlinePill, isActive && styles.pillActiveBlue]}
-                          onPress={() => toggleSelection(item.id, { qty: q })}
+                          onPress={() => toggleSelection(item.id, { qty: qtyOption })}
                         >
-                          <Text style={[styles.inlinePillText, isActive && styles.pillTextActive]}>{q}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-
-                  {/* Inline Store Pills */}
-                  <View style={styles.inlinePillRow}>
-                    <Text style={styles.inlineLabel}>Store: </Text>
-                    {Array.from(new Set([
-                      item.default_store_id, 
-                      ...(item.item_stores?.map((s: any) => s.store.id) || [])
-                    ])).filter(Boolean).map((sid: any) => {
-                      const storeName = sid === item.default_store_id 
-                        ? (item.store?.name || 'Any Store')
-                        : item.item_stores?.find((s: any) => s.store.id === sid)?.store.name;
-                      
-                      const isActive = selection.storeId === sid;
-                      return (
-                        <TouchableOpacity 
-                          key={sid} 
-                          style={[styles.inlinePill, isActive && styles.pillActiveGreen]}
-                          onPress={() => toggleSelection(item.id, { storeId: sid })}
-                        >
-                          <Text style={[styles.inlinePillText, isActive && styles.pillTextActive]}>{storeName}</Text>
+                          <Text style={[styles.inlinePillText, isActive && styles.pillTextActive]}>{qtyOption}</Text>
                         </TouchableOpacity>
                       );
                     })}
                   </View>
                 </View>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
+                  testID={`edit-add-${item.id}`}
                   style={styles.resultEditBtn}
                   onPress={() => onEditAdd(item)}
                 >
@@ -258,35 +247,29 @@ export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
               </View>
             );
           })}
-          
-          {/* Create New / One Off */}
+
           <View style={styles.createRow}>
-             <TouchableOpacity 
-                style={styles.createMain}
-                onPress={onOneOffAdd}
-              >
-                <Text style={styles.createText}>Add "{query}" (One-time)</Text>
+            <TouchableOpacity style={styles.createMain} onPress={onOneOffAdd}>
+              <Text style={styles.createText}>Add "{query}" (One-time)</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-                style={styles.createEditBtn}
-                onPress={() => onEditAdd({ name: query, id: null })}
-              >
-                 <ChevronRight size={20} color="#2563eb" />
+            <TouchableOpacity
+              testID="edit-add-one-off"
+              style={styles.createEditBtn}
+              onPress={() => onEditAdd({ name: query, id: null })}
+            >
+              <ChevronRight size={20} color="#2563eb" />
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      {/* Inline-Edit "Form" Modal */}
       <Modal visible={isEditing} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              Edit: {selectedItem?.name || query}
-            </Text>
-            
+            <Text style={styles.modalTitle}>Edit: {selectedItem?.name || query}</Text>
+
             <Text style={styles.label}>Quantity</Text>
-            <TextInput 
+            <TextInput
               style={styles.modalInput}
               value={editQty}
               onChangeText={setEditQty}
@@ -297,17 +280,14 @@ export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
               <View style={{ marginBottom: 16 }}>
                 <Text style={styles.label}>Usual Quantities</Text>
                 <View style={styles.tagsContainer}>
-                  {selectedItem.alternate_qtys.map((q: string) => (
+                  {selectedItem.alternate_qtys.map((qtyOption: string) => (
                     <TouchableOpacity
-                      key={q}
-                      onPress={() => setEditQty(q)}
-                      style={[
-                        styles.tag,
-                        editQty === q ? styles.tagActive : styles.tagInactive
-                      ]}
+                      key={qtyOption}
+                      onPress={() => setEditQty(qtyOption)}
+                      style={[styles.tag, editQty === qtyOption ? styles.tagActive : styles.tagInactive]}
                     >
-                      <Text style={editQty === q ? styles.tagTextActive : styles.tagTextInactive}>
-                        {q}
+                      <Text style={editQty === qtyOption ? styles.tagTextActive : styles.tagTextInactive}>
+                        {qtyOption}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -317,14 +297,12 @@ export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
 
             <Text style={styles.label}>Store</Text>
             <View style={styles.tagsContainer}>
-              {metadata?.stores?.map(store => (
+              {metadata?.stores?.map((store) => (
                 <TouchableOpacity
                   key={store.id}
+                  testID={`edit-store-${store.id}`}
                   onPress={() => setEditStoreId(store.id)}
-                  style={[
-                    styles.tag,
-                    editStoreId === store.id ? styles.tagActive : styles.tagInactive
-                  ]}
+                  style={[styles.tag, editStoreId === store.id ? styles.tagActive : styles.tagInactive]}
                 >
                   <Text style={editStoreId === store.id ? styles.tagTextActive : styles.tagTextInactive}>
                     {store.name}
@@ -334,16 +312,10 @@ export function SmartAddItem({ disabled = false }: { disabled?: boolean }) {
             </View>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity 
-                style={[styles.actionBtn, styles.cancelBtn]}
-                onPress={() => setIsEditing(false)}
-              >
+              <TouchableOpacity style={[styles.actionBtn, styles.cancelBtn]} onPress={() => setIsEditing(false)}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.actionBtn, styles.saveBtn]}
-                onPress={onSaveEdited}
-              >
+              <TouchableOpacity style={[styles.actionBtn, styles.saveBtn]} onPress={onSaveEdited}>
                 <Text style={styles.saveText}>Add to List</Text>
               </TouchableOpacity>
             </View>
@@ -428,10 +400,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#2563eb',
     borderColor: '#2563eb',
   },
-  pillActiveGreen: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
-  },
   pillTextActive: {
     color: '#ffffff',
     fontWeight: '700',
@@ -440,11 +408,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
-  },
-  resultSubtext: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
   },
   inlinePillRow: {
     flexDirection: 'row',

@@ -5,6 +5,22 @@ interface UpdateProfilePayload {
   display_name: string;
   display_name_short: string;
   color: string;
+  warning_preferences?: WarningPreferences;
+}
+
+export interface WarningPreferences {
+  avoided: 'toast_and_badge' | 'badge_only' | 'off';
+  unavailable: 'toast_and_badge' | 'badge_only' | 'off';
+  non_preferred: 'badge_only' | 'off';
+  non_standard_qty: 'toast_and_badge' | 'badge_only' | 'off';
+}
+
+interface MyProfile {
+  household_id: string;
+  display_name: string | null;
+  display_name_short: string | null;
+  color: string | null;
+  warning_preferences: WarningPreferences | null;
 }
 
 export interface HouseholdMember {
@@ -18,7 +34,7 @@ export const useUpdateProfile = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ display_name, display_name_short, color }: UpdateProfilePayload) => {
+    mutationFn: async ({ display_name, display_name_short, color, warning_preferences }: UpdateProfilePayload) => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -29,7 +45,7 @@ export const useUpdateProfile = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .update({ display_name, display_name_short, color })
+        .update({ display_name, display_name_short, color, warning_preferences })
         .eq('id', session.user.id);
 
       if (error) {
@@ -61,6 +77,33 @@ export const useHouseholdName = (householdId: string | null) => {
       return data.name as string;
     },
     enabled: !!householdId,
+  });
+};
+
+export const useMyProfile = () => {
+  return useQuery({
+    queryKey: ['my_profile'],
+    queryFn: async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        return null;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data as MyProfile;
+    },
   });
 };
 

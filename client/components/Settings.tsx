@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -9,9 +10,16 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { useHousehold } from '@/lib/household';
-import { useHouseholdMemberColors, useHouseholdName, useUpdateProfile } from '@/api/profile';
+import {
+  useHouseholdMemberColors,
+  useHouseholdName,
+  useMyProfile,
+  useUpdateProfile,
+  WarningPreferences,
+} from '@/api/profile';
 import { useAppTheme } from '@/lib/theme';
 
 interface SettingsProps {
@@ -30,8 +38,39 @@ export const PROFILE_COLORS = [
   { name: 'Pink', hex: '#db2777' },
 ];
 
+const DEFAULT_WARNING_PREFS: WarningPreferences = {
+  avoided: 'toast_and_badge',
+  unavailable: 'toast_and_badge',
+  non_preferred: 'badge_only',
+  non_standard_qty: 'badge_only',
+};
+
+const WARNING_OPTIONS: Record<string, Array<{ label: string; value: string }>> = {
+  avoided: [
+    { label: 'Toast + Badge', value: 'toast_and_badge' },
+    { label: 'Badge', value: 'badge_only' },
+    { label: 'Off', value: 'off' },
+  ],
+  unavailable: [
+    { label: 'Toast + Badge', value: 'toast_and_badge' },
+    { label: 'Badge', value: 'badge_only' },
+    { label: 'Off', value: 'off' },
+  ],
+  non_preferred: [
+    { label: 'Badge', value: 'badge_only' },
+    { label: 'Off', value: 'off' },
+  ],
+  non_standard_qty: [
+    { label: 'Toast + Badge', value: 'toast_and_badge' },
+    { label: 'Badge', value: 'badge_only' },
+    { label: 'Off', value: 'off' },
+  ],
+};
+
 export const Settings: React.FC<SettingsProps> = ({ visible, onClose, renderInline = false }) => {
+  const insets = useSafeAreaInsets();
   const { displayName, displayNameShort, avatarColor, householdId } = useHousehold();
+  const { data: myProfile } = useMyProfile();
   const { data: memberColors = [] } = useHouseholdMemberColors(householdId);
   const { data: householdName, isLoading: isHouseholdNameLoading } = useHouseholdName(householdId);
   const { mutate } = useUpdateProfile();
@@ -40,14 +79,16 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose, renderInli
   const [nameInput, setNameInput] = useState(displayName ?? '');
   const [shortNameInput, setShortNameInput] = useState(displayNameShort ?? '');
   const [selectedColor, setSelectedColor] = useState(avatarColor ?? PROFILE_COLORS[0].hex);
+  const [warningPrefs, setWarningPrefs] = useState<WarningPreferences>(DEFAULT_WARNING_PREFS);
 
   useEffect(() => {
     if (visible) {
       setNameInput(displayName ?? '');
       setShortNameInput(displayNameShort ?? '');
       setSelectedColor(avatarColor ?? PROFILE_COLORS[0].hex);
+      setWarningPrefs(myProfile?.warning_preferences ?? DEFAULT_WARNING_PREFS);
     }
-  }, [visible, displayName, displayNameShort, avatarColor]);
+  }, [visible, displayName, displayNameShort, avatarColor, myProfile?.warning_preferences]);
 
   const colorInUse = useMemo(
     () => memberColors.includes(selectedColor),
@@ -59,6 +100,7 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose, renderInli
       display_name: nameInput,
       display_name_short: shortNameInput,
       color: selectedColor,
+      warning_preferences: warningPrefs,
     });
   };
 
@@ -67,7 +109,11 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose, renderInli
   }
 
   const content = (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.scrollView}
+      contentContainerStyle={[styles.container, { paddingTop: insets.top || 20 }]}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.header}>
         <Text style={styles.title}>Settings</Text>
         <TouchableOpacity testID="settings-close-button" onPress={onClose} style={styles.closeButton}>
@@ -132,6 +178,94 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose, renderInli
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Warnings</Text>
+
+        <View style={styles.warningRow}>
+          <Text style={styles.warningLabel}>Store Avoidance</Text>
+          <View style={styles.segmentedContainer}>
+            {WARNING_OPTIONS.avoided.map((option) => {
+              const selected = warningPrefs.avoided === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  testID={`warning-pref-avoided-${option.value}`}
+                  onPress={() => setWarningPrefs((prev) => ({ ...prev, avoided: option.value as WarningPreferences['avoided'] }))}
+                  style={[styles.segment, selected ? styles.segmentSelected : styles.segmentUnselected]}
+                >
+                  <Text style={[styles.segmentText, selected ? styles.segmentTextSelected : styles.segmentTextUnselected]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.warningRow}>
+          <Text style={styles.warningLabel}>Store Unavailable</Text>
+          <View style={styles.segmentedContainer}>
+            {WARNING_OPTIONS.unavailable.map((option) => {
+              const selected = warningPrefs.unavailable === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  testID={`warning-pref-unavailable-${option.value}`}
+                  onPress={() => setWarningPrefs((prev) => ({ ...prev, unavailable: option.value as WarningPreferences['unavailable'] }))}
+                  style={[styles.segment, selected ? styles.segmentSelected : styles.segmentUnselected]}
+                >
+                  <Text style={[styles.segmentText, selected ? styles.segmentTextSelected : styles.segmentTextUnselected]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.warningRow}>
+          <Text style={styles.warningLabel}>Non-Preferred Store</Text>
+          <View style={styles.segmentedContainer}>
+            {WARNING_OPTIONS.non_preferred.map((option) => {
+              const selected = warningPrefs.non_preferred === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  testID={`warning-pref-non_preferred-${option.value}`}
+                  onPress={() => setWarningPrefs((prev) => ({ ...prev, non_preferred: option.value as WarningPreferences['non_preferred'] }))}
+                  style={[styles.segment, selected ? styles.segmentSelected : styles.segmentUnselected]}
+                >
+                  <Text style={[styles.segmentText, selected ? styles.segmentTextSelected : styles.segmentTextUnselected]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.warningRow}>
+          <Text style={styles.warningLabel}>Non-Standard Qty</Text>
+          <View style={styles.segmentedContainer}>
+            {WARNING_OPTIONS.non_standard_qty.map((option) => {
+              const selected = warningPrefs.non_standard_qty === option.value;
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  testID={`warning-pref-non_standard_qty-${option.value}`}
+                  onPress={() => setWarningPrefs((prev) => ({ ...prev, non_standard_qty: option.value as WarningPreferences['non_standard_qty'] }))}
+                  style={[styles.segment, selected ? styles.segmentSelected : styles.segmentUnselected]}
+                >
+                  <Text style={[styles.segmentText, selected ? styles.segmentTextSelected : styles.segmentTextUnselected]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionTitle}>Household</Text>
         {isHouseholdNameLoading ? (
           <ActivityIndicator size="small" color="#2563eb" />
@@ -139,7 +273,7 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose, renderInli
           <Text style={styles.householdName}>{householdName ?? ''}</Text>
         )}
       </View>
-    </View>
+    </ScrollView>
   );
 
   if (renderInline) {
@@ -154,11 +288,15 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose, renderInli
 };
 
 const styles = StyleSheet.create({
-  container: {
+  scrollView: {
     flex: 1,
     backgroundColor: '#ffffff',
+  },
+  container: {
+    flexGrow: 1,
+    backgroundColor: '#ffffff',
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingBottom: 24,
   },
   header: {
     flexDirection: 'row',
@@ -246,5 +384,40 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#111827',
     fontWeight: '600',
+  },
+  warningRow: {
+    marginBottom: 14,
+  },
+  warningLabel: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  segmentedContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  segment: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  segmentSelected: {
+    backgroundColor: '#2563eb',
+  },
+  segmentUnselected: {
+    backgroundColor: '#f3f4f6',
+  },
+  segmentText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  segmentTextSelected: {
+    color: '#ffffff',
+  },
+  segmentTextUnselected: {
+    color: '#374151',
   },
 });

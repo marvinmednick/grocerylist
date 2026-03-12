@@ -14,9 +14,13 @@
 | F10 | Dark Mode Visual Implementation | Backlog | — | [#27](https://github.com/marvinmednick/grocerylist/issues/27) |
 | F11 | Trip Notes | Backlog | — | [#40](https://github.com/marvinmednick/grocerylist/issues/40) |
 | F9 | Trip History View | Done | [specs/F9-trip-history.md](specs/F9-trip-history.md) · [design](docs/design/F9-trip-history.md) | [#11](https://github.com/marvinmednick/grocerylist/issues/11) |
+| F12 | Smart Entry Model | In Review | [specs/F12-smart-entry-model.md](specs/F12-smart-entry-model.md) · [design](docs/design/F12-smart-entry-model.md) | [#42](https://github.com/marvinmednick/grocerylist/issues/42) |
+| F13 | List Display Density & Warnings | In Review | [specs/F13-list-display-warnings.md](specs/F13-list-display-warnings.md) · [design](docs/design/F13-list-display-warnings.md) | [#43](https://github.com/marvinmednick/grocerylist/issues/43) |
+| F14 | Free-form Input Parsing | Backlog | — | [#44](https://github.com/marvinmednick/grocerylist/issues/44) |
 
-**Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `In Review` → `Done`
+**Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `Needs Fixes` → `In Review` → `Done`
 (`Designed` is optional — features with clear requirements can go `Backlog` → `Specced` directly)
+(`Needs Fixes` = review found blocking issues, implementor must act; `In Review` = review passed, ready to ship)
 
 ## Future Features (Unscheduled)
 

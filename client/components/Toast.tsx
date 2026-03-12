@@ -6,10 +6,20 @@ interface ToastProps {
   visible: boolean;
   onDismiss: () => void;
   duration?: number;
+  variant?: 'default' | 'warning';
 }
 
-export const Toast: React.FC<ToastProps> = ({ message, visible, onDismiss, duration = 3000 }) => {
+export const Toast: React.FC<ToastProps> = ({
+  message,
+  visible,
+  onDismiss,
+  duration,
+  variant = 'default',
+}) => {
   const opacity = useRef(new Animated.Value(0)).current;
+  const effectiveDuration = duration ?? (variant === 'warning' ? 4000 : 3000);
+  const containerStyle = variant === 'warning' ? styles.warningContainer : styles.container;
+  const textStyle = variant === 'warning' ? styles.warningText : styles.text;
 
   useEffect(() => {
     if (visible) {
@@ -25,19 +35,19 @@ export const Toast: React.FC<ToastProps> = ({ message, visible, onDismiss, durat
           duration: 200,
           useNativeDriver: true,
         }).start(() => onDismiss());
-      }, duration);
+      }, effectiveDuration);
 
       return () => clearTimeout(timer);
     } else {
       opacity.setValue(0);
     }
-  }, [visible, duration, onDismiss, opacity]);
+  }, [visible, effectiveDuration, onDismiss, opacity]);
 
   if (!visible) return null;
 
   return (
-    <Animated.View style={[styles.container, { opacity }]}>
-      <Text style={styles.text}>{message}</Text>
+    <Animated.View testID="toast-container" style={[containerStyle, { opacity }]}>
+      <Text style={textStyle}>{message}</Text>
     </Animated.View>
   );
 };
@@ -61,6 +71,29 @@ const styles = StyleSheet.create({
   },
   text: {
     color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  warningContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: '#fffbeb',
+    borderWidth: 1,
+    borderColor: '#fbbf24',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  warningText: {
+    color: '#92400e',
     fontSize: 14,
     fontWeight: '600',
   },
