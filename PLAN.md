@@ -15,7 +15,7 @@
 | F11 | Trip Notes | Backlog | — | [#40](https://github.com/marvinmednick/grocerylist/issues/40) |
 | F9 | Trip History View | Done | [specs/F9-trip-history.md](specs/F9-trip-history.md) · [design](docs/design/F9-trip-history.md) | [#11](https://github.com/marvinmednick/grocerylist/issues/11) |
 | F12 | Smart Entry Model | Done | [specs/F12-smart-entry-model.md](specs/F12-smart-entry-model.md) · [design](docs/design/F12-smart-entry-model.md) | [#42](https://github.com/marvinmednick/grocerylist/issues/42) |
-| F13 | List Display Density & Warnings | In Review | [specs/F13-list-display-warnings.md](specs/F13-list-display-warnings.md) · [design](docs/design/F13-list-display-warnings.md) | [#43](https://github.com/marvinmednick/grocerylist/issues/43) |
+| F13 | List Display Density & Warnings | Done | [specs/F13-list-display-warnings.md](specs/F13-list-display-warnings.md) · [design](docs/design/F13-list-display-warnings.md) | [#43](https://github.com/marvinmednick/grocerylist/issues/43) |
 | F14 | Free-form Input Parsing | Backlog | — | [#44](https://github.com/marvinmednick/grocerylist/issues/44) |
 
 **Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `Needs Fixes` → `In Review` → `Done`

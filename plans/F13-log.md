@@ -16,3 +16,7 @@
 - **Result:** Passed — no blocking issues
 - **Tests:** 146/146 passed
 - **Non-blocking:** (none new)
+
+## 2026-03-11 — Shipped
+- **Commit:** `feat: implement F12 smart entry model and F13 list display warnings (closes #42, closes #43)`
+- **Closes:** #43
