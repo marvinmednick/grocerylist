@@ -22,6 +22,7 @@ You DO NOT redesign architecture unless explicitly told. If implementing the spe
 10. **Never delete code without explaining the impact** — describe what will break or what the deletion enables.
 11. **Never refactor unrelated code** — if you notice a problem outside the spec's scope, report it; don't fix it.
 12. **Ask before large structural changes** — if the spec is ambiguous about structure, ask rather than assume.
+13. **Every modal or full-screen view must use safe area insets and be scrollable** — see CODING.md section 7 for details. This applies to all `<Modal>` components and any screen that takes over the viewport.
 
 ## Project-Specific Architecture Boundaries
 

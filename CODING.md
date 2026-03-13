@@ -223,6 +223,20 @@ const styles = StyleSheet.create({
 <View className="flex-1 bg-white" />
 ```
 
+### 7. Modal / Full-Screen View Requirements
+
+Every modal and full-screen view **must** follow these rules:
+
+1. **Safe area insets:** Apply `useSafeAreaInsets()` from `react-native-safe-area-context` to the outermost content container. At minimum, apply `paddingTop: insets.top` to prevent content from sliding under the notch/Dynamic Island/status bar. Apply `paddingBottom: insets.bottom` when action buttons sit at the bottom edge.
+
+2. **Scrollable content:** Wrap modal body content in a `ScrollView`. Even if content fits on the current screen, it may grow (e.g., more stores added, more preferences). Always include `keyboardShouldPersistTaps="handled"` when the modal contains `TextInput` fields.
+
+3. **Style split for ScrollView modals:** When replacing a `View` wrapper with `ScrollView`, split the style into a container style (on `style`) for layout properties like `borderRadius` and `maxHeight`, and a content style (on `contentContainerStyle`) for padding. This prevents ScrollView from collapsing its layout.
+
+**Reference implementation:** `components/Settings.tsx` — uses `ScrollView` with `keyboardShouldPersistTaps="handled"`, applies `paddingTop: insets.top` via `contentContainerStyle`.
+
+**Common mistake:** Using a plain `View` for modal content with fixed `paddingBottom` instead of safe area insets. This works on some devices but clips content or overlaps the status bar on others.
+
 ## Supabase Query Patterns
 
 **Read with joins (the standard pattern):**
