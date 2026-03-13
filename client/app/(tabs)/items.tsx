@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Modal, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Modal, ScrollView, StyleSheet } from 'react-native';
 import { Search, Tag, Store, Plus } from 'lucide-react-native';
 import { useAllItems, useCreateMasterItem, useUpdateMasterItem, MasterItem, ItemStorePreference } from '@/api/items';
 import { useMetadata } from '@/api/metadata';
@@ -226,8 +226,12 @@ export default function ItemsScreen() {
       )}
 
       <Modal visible={isModalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <View style={[styles.modalOverlay, { paddingTop: insets.top }]}>
+          <ScrollView
+            style={styles.modalContent}
+            contentContainerStyle={styles.modalContentContainer}
+            keyboardShouldPersistTaps="handled"
+          >
             <Text style={styles.modalTitle}>{editingItem ? 'Edit Item' : 'New Master Item'}</Text>
 
             <Text style={styles.label}>Item Name</Text>
@@ -330,7 +334,7 @@ export default function ItemsScreen() {
                 <Text style={styles.saveBtnText}>{editingItem ? 'Update Item' : 'Save to Library'}</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         </View>
       </Modal>
     </View>
@@ -384,6 +388,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    maxHeight: '100%',
+  },
+  modalContentContainer: {
     padding: 24,
     paddingBottom: 40,
   },
