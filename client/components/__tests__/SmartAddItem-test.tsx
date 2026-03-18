@@ -222,4 +222,92 @@ describe('SmartAddItem', () => {
       );
     });
   });
+
+  it('renders an "Other" chip in the qty pill row for each result item', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+
+    await waitFor(() => {
+      expect(screen.getByText('Milk')).toBeTruthy();
+    });
+
+    expect(screen.getByText('Other')).toBeTruthy();
+  });
+
+  it('opens the freeform qty input when "Other" chip is tapped', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByText('Other'));
+
+    expect(screen.getByPlaceholderText('e.g. 3 lbs')).toBeTruthy();
+  });
+
+  it('confirms freeform qty via Return and adds with that qty', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByText('Other'));
+    const input = screen.getByPlaceholderText('e.g. 3 lbs');
+    fireEvent.changeText(input, '3 lbs');
+    fireEvent(input, 'submitEditing');
+    fireEvent.press(screen.getByText('Milk'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          quantity: '3 lbs',
+        })
+      );
+    });
+  });
+
+  it('shows the typed custom value as the active "Other" chip label after confirm', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByText('Other'));
+    const input = screen.getByPlaceholderText('e.g. 3 lbs');
+    fireEvent.changeText(input, '1 qt');
+    fireEvent(input, 'submitEditing');
+
+    expect(screen.getByText('1 qt')).toBeTruthy();
+    expect(screen.queryByText('Other')).toBeNull();
+  });
+
+  it('does nothing when Return is pressed on empty "Other" input', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByText('Other'));
+    const input = screen.getByPlaceholderText('e.g. 3 lbs');
+    fireEvent.changeText(input, '');
+    fireEvent(input, 'submitEditing');
+    fireEvent.press(screen.getByText('Milk'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          quantity: '1 gal',
+        })
+      );
+    });
+  });
+
+  it('resets "Other" chip label when a predefined chip is selected after custom qty', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByText('Other'));
+    const input = screen.getByPlaceholderText('e.g. 3 lbs');
+    fireEvent.changeText(input, '1 qt');
+    fireEvent(input, 'submitEditing');
+
+    expect(screen.getByText('1 qt')).toBeTruthy();
+    fireEvent.press(screen.getByText('1 gal'));
+
+    expect(screen.getByText('Other')).toBeTruthy();
+    expect(screen.queryByText('1 qt')).toBeNull();
+  });
 });

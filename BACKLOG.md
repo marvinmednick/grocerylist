@@ -6,4 +6,8 @@ See WORKFLOW.md §8 (Backlog Triage) for the full process.
 
 ---
 
-_(empty — all items triaged to GitHub Issues)_
+## Deferred from Specs
+
+- [ ] Save custom qty back to item's `alternate_qtys` — use-once only per design; user may want this later. (deferred from F15)
+- [ ] Qty selection for one-off item adds — one-off row has no chip bar; separate feature if needed. (deferred from F15)
+- [ ] Freeform qty input on already-added list items (in-place editing) — separate feature. (deferred from F15)

@@ -17,6 +17,7 @@
 | F12 | Smart Entry Model | Done | [specs/F12-smart-entry-model.md](specs/F12-smart-entry-model.md) · [design](docs/design/F12-smart-entry-model.md) | [#42](https://github.com/marvinmednick/grocerylist/issues/42) |
 | F13 | List Display Density & Warnings | Done | [specs/F13-list-display-warnings.md](specs/F13-list-display-warnings.md) · [design](docs/design/F13-list-display-warnings.md) | [#43](https://github.com/marvinmednick/grocerylist/issues/43) |
 | F14 | Free-form Input Parsing | Backlog | — | [#44](https://github.com/marvinmednick/grocerylist/issues/44) |
+| F15 | Freeform Qty "Other" Chip | In Review | [specs/F15-freeform-qty-other-chip.md](specs/F15-freeform-qty-other-chip.md) · [design](docs/design/F15-freeform-qty-other-chip.md) | [#58](https://github.com/marvinmednick/grocerylist/issues/58) |
 
 **Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `Needs Fixes` → `In Review` → `Done`
 (`Designed` is optional — features with clear requirements can go `Backlog` → `Specced` directly)

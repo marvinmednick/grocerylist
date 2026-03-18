@@ -322,3 +322,4 @@ When a new visual or interaction pattern is established during a `/design` sessi
 | Warning badge system | Per-type icon + color: AlertTriangle/amber (avoided), XCircle/red (unavailable), Info/gray (non-preferred), HelpCircle/gray (non-standard qty). 14px lucide icons | F13 | First warning/caution visual in the app; shape + color for accessibility |
 | Warning badge tap → popover | Tap badge shows absolutely-positioned tooltip with detail text; dismiss on tap-outside | F13 | First tooltip/popover pattern in the app |
 | Warning toast styling | Amber-tinted background variant of Toast.tsx; 4s duration; combines all warnings from one add | F13 | Extension of existing Toast component |
+| Freeform input popover | Absolutely-positioned floating card with a single TextInput, confirmed via keyboard Return; no explicit OK button; anchored near the triggering element | F15 | First interactive input popover in the app; test on device for keyboard coverage |

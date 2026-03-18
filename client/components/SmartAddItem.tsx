@@ -16,6 +16,8 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
   const [isEditing, setIsEditing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [selections, setSelections] = useState<Record<string, { qty: string }>>({});
+  const [otherQtyPopoverItemId, setOtherQtyPopoverItemId] = useState<string | null>(null);
+  const [otherQtyInput, setOtherQtyInput] = useState('');
 
   const [editQty, setEditQty] = useState('');
   const [editStoreId, setEditStoreId] = useState('');
@@ -47,6 +49,8 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
     setIsEditing(false);
     setSelectedItem(null);
     setSelections({});
+    setOtherQtyPopoverItemId(null);
+    setOtherQtyInput('');
     Keyboard.dismiss();
   };
 
@@ -212,6 +216,8 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
 
           {results.map((item) => {
             const selection = getSelection(item);
+            const qtyOptions = [item.default_qty || '1', ...(item.alternate_qtys || [])];
+            const hasCustomQty = !qtyOptions.includes(selection.qty);
 
             return (
               <View key={item.id} style={styles.resultRowComplex}>
@@ -222,7 +228,7 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
 
                   <View style={styles.inlinePillRow}>
                     <Text style={styles.inlineLabel}>Qty: </Text>
-                    {[item.default_qty || '1', ...(item.alternate_qtys || [])].map((qtyOption: string) => {
+                    {qtyOptions.map((qtyOption: string) => {
                       const isActive = selection.qty === qtyOption;
                       return (
                         <TouchableOpacity
@@ -234,7 +240,39 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
                         </TouchableOpacity>
                       );
                     })}
+                    <TouchableOpacity
+                      style={[styles.inlinePill, hasCustomQty && styles.pillActiveBlue]}
+                      onPress={() => {
+                        setOtherQtyPopoverItemId(item.id);
+                        setOtherQtyInput('');
+                      }}
+                    >
+                      <Text style={[styles.inlinePillText, hasCustomQty && styles.pillTextActive]}>
+                        {hasCustomQty ? selection.qty : 'Other'}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
+
+                  {otherQtyPopoverItemId === item.id && (
+                    <View style={styles.otherQtyPopover}>
+                      <TextInput
+                        style={styles.otherQtyInput}
+                        value={otherQtyInput}
+                        onChangeText={setOtherQtyInput}
+                        placeholder="e.g. 3 lbs"
+                        placeholderTextColor="#9ca3af"
+                        autoFocus
+                        returnKeyType="done"
+                        onSubmitEditing={() => {
+                          const trimmed = otherQtyInput.trim();
+                          if (trimmed) {
+                            toggleSelection(item.id, { qty: trimmed });
+                          }
+                          setOtherQtyPopoverItemId(null);
+                        }}
+                      />
+                    </View>
+                  )}
                 </View>
 
                 <TouchableOpacity
@@ -435,6 +473,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#4b5563',
+  },
+  otherQtyPopover: {
+    marginTop: 6,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  otherQtyInput: {
+    fontSize: 13,
+    color: '#111827',
+    height: 32,
   },
   resultEditBtn: {
     paddingHorizontal: 16,
