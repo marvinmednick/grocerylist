@@ -158,8 +158,8 @@ The avatar menu uses a `Pressable` backdrop for dismissal. `onLongPress` for the
 # Step 2: Optionally ask Claude Code: "Review plans/F1-plan.md against the spec"
 
 # Step 3: Implement with approved plan
-./implement F1 --plan-approved
-./implement F1 --tool aider --plan-approved --model <model-flag>
+./implement F1
+./implement F1 --tool aider --model <model-flag>
 ```
 
 **Same-session path (Gemini only — stays in interactive loop):**
