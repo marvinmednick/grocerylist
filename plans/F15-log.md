@@ -13,3 +13,7 @@
 - **Tests:** 14/14 passed (8 pre-existing + 6 new F15 tests)
 - **Non-blocking:** none
 - **Suggestions:** Verify popover visual on device — dropdown has `overflow: 'hidden'`; inline rendering should be fine but worth a quick check
+
+## 2026-03-17 — Shipped
+- **Commit:** `feat: add "Other" chip with freeform qty popover to add flow (closes #58)`
+- **Closes:** #58
