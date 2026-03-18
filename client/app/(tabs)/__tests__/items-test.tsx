@@ -106,7 +106,7 @@ describe('ItemsScreen', () => {
 
     fireEvent.press(screen.getByText('Peanut Butter - 16oz'));
     fireEvent.press(screen.getByTestId('store-pref-store-1-preferred'));
-    fireEvent.press(screen.getByText('Update Item'));
+    fireEvent.press(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(updateMutateAsync).toHaveBeenCalledWith(
@@ -134,7 +134,7 @@ describe('ItemsScreen', () => {
 
     fireEvent.press(screen.getByText('Peanut Butter - 16oz'));
     fireEvent.changeText(screen.getByDisplayValue('Peanut Butter'), 'Peanut Butter Crunchy');
-    fireEvent.press(screen.getByText('Update Item'));
+    fireEvent.press(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(pushAction).toHaveBeenCalledWith(
@@ -167,7 +167,7 @@ describe('ItemsScreen', () => {
 
     fireEvent.press(screen.getByText('Peanut Butter - 16oz'));
     fireEvent.changeText(screen.getByDisplayValue('PB'), 'PButter');
-    fireEvent.press(screen.getByText('Update Item'));
+    fireEvent.press(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(updateMutateAsync).toHaveBeenCalledWith(

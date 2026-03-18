@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, Platform, Pressable } from 'react-native';
-import { CheckCircle2, Circle, Archive, RotateCcw, RotateCw, Trash2, GripVertical, ShoppingCart, Pencil, Check } from 'lucide-react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, Platform, Pressable, KeyboardAvoidingView, ScrollView } from 'react-native';
+import { CheckCircle2, Circle, Archive, RotateCcw, RotateCw, Trash2, GripVertical, ShoppingCart, Pencil, Check, X } from 'lucide-react-native';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { SmartAddItem } from '@/components/SmartAddItem';
 import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, useEndTrip, useDeleteListItem, useRevertArchival, ListItem } from '@/api/list';
@@ -542,30 +542,33 @@ export default function ShoppingListScreen() {
         </View>
       )}
       <Modal visible={isEditModalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Item</Text>
               <TouchableOpacity onPress={handleDelete} style={styles.deleteBtn}><Trash2 size={20} color="#ef4444" /></TouchableOpacity>
+              <Text style={styles.modalTitle}>Edit Item</Text>
+              <TouchableOpacity onPress={() => setIsEditModalVisible(false)} style={styles.modalCloseBtn}><X size={20} color="#6b7280" /></TouchableOpacity>
             </View>
-            <Text style={styles.label}>Name</Text>
-            <TextInput style={styles.modalInput} value={editName} onChangeText={setEditName} />
-            <Text style={styles.label}>Quantity</Text>
-            <TextInput style={styles.modalInput} value={editQty} onChangeText={setEditQty} />
-            <Text style={styles.label}>Store</Text>
-            <View style={styles.tagsContainer}>
-              {metadata?.stores?.map(store => (
-                <TouchableOpacity key={store.id} onPress={() => setEditStoreId(store.id)} style={[styles.tag, editStoreId === store.id ? styles.tagActive : styles.tagInactive]}>
-                  <Text style={editStoreId === store.id ? styles.tagTextActive : styles.tagTextInactive}>{store.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <Text style={styles.label}>Name</Text>
+              <TextInput style={styles.modalInput} value={editName} onChangeText={setEditName} />
+              <Text style={styles.label}>Quantity</Text>
+              <TextInput style={styles.modalInput} value={editQty} onChangeText={setEditQty} />
+              <Text style={styles.label}>Store</Text>
+              <View style={styles.tagsContainer}>
+                {metadata?.stores?.map(store => (
+                  <TouchableOpacity key={store.id} onPress={() => setEditStoreId(store.id)} style={[styles.tag, editStoreId === store.id ? styles.tagActive : styles.tagInactive]}>
+                    <Text style={editStoreId === store.id ? styles.tagTextActive : styles.tagTextInactive}>{store.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
             <View style={styles.modalActions}>
               <TouchableOpacity style={[styles.actionBtn, styles.cancelBtn]} onPress={() => setIsEditModalVisible(false)}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
-              <TouchableOpacity style={[styles.actionBtn, styles.saveBtn]} onPress={handleSaveEdit}><Text style={styles.saveText}>Save Changes</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.actionBtn, styles.saveBtn]} onPress={handleSaveEdit}><Text style={styles.saveText}>Save</Text></TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
       <Toast
         message={toast.message}
@@ -616,10 +619,11 @@ const styles = StyleSheet.create({
   globalEndTripText: { color: 'white', fontWeight: '700', fontSize: 16, marginLeft: 8 },
   emptyContainer: { padding: 32, alignItems: 'center', marginTop: 40 },
   emptyText: { color: '#9ca3af', fontSize: 16 },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContent: { backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalOverlay: { flex: 1, justifyContent: 'center', paddingHorizontal: 16, backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalContent: { backgroundColor: 'white', borderRadius: 16, padding: 24 },
   modalTitle: { fontSize: 20, fontWeight: '700' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  modalCloseBtn: { padding: 8 },
   deleteBtn: { padding: 8, backgroundColor: '#fee2e2', borderRadius: 8 },
   label: { fontSize: 12, fontWeight: '700', color: '#9ca3af', marginBottom: 8, textTransform: 'uppercase' },
   modalInput: { backgroundColor: '#f3f4f6', padding: 16, borderRadius: 12, marginBottom: 16, fontSize: 16 },
@@ -629,8 +633,8 @@ const styles = StyleSheet.create({
   tagInactive: { backgroundColor: 'white', borderColor: '#d1d5db' },
   tagTextActive: { color: 'white', fontWeight: '600' },
   tagTextInactive: { color: '#374151' },
-  modalActions: { flexDirection: 'row', gap: 16 },
-  actionBtn: { flex: 1, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8 },
+  actionBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, alignItems: 'center' },
   cancelBtn: { backgroundColor: '#e5e7eb' },
   saveBtn: { backgroundColor: '#2563eb' },
   cancelText: { fontWeight: '700', color: '#374151' },

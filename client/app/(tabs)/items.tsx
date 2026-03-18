@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Modal, ScrollView, StyleSheet } from 'react-native';
-import { Search, Tag, Store, Plus } from 'lucide-react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Modal, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { Search, Tag, Store, Plus, X } from 'lucide-react-native';
 import { useAllItems, useCreateMasterItem, useUpdateMasterItem, MasterItem, ItemStorePreference } from '@/api/items';
 import { useMetadata } from '@/api/metadata';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -226,116 +226,119 @@ export default function ItemsScreen() {
       )}
 
       <Modal visible={isModalVisible} animationType="slide" transparent={true}>
-        <View style={[styles.modalOverlay, { paddingTop: insets.top }]}>
-          <ScrollView
-            style={styles.modalContent}
-            contentContainerStyle={styles.modalContentContainer}
-            keyboardShouldPersistTaps="handled"
-          >
-            <Text style={styles.modalTitle}>{editingItem ? 'Edit Item' : 'New Master Item'}</Text>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{editingItem ? 'Edit Item' : 'New Master Item'}</Text>
+              <TouchableOpacity onPress={() => setIsModalVisible(false)} style={styles.modalCloseBtn}>
+                <X size={20} color="#6b7280" />
+              </TouchableOpacity>
+            </View>
 
-            <Text style={styles.label}>Item Name</Text>
-            <TextInput style={styles.modalInput} value={name} onChangeText={setName} placeholder="e.g. Milk" />
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <Text style={styles.label}>Item Name</Text>
+              <TextInput style={styles.modalInput} value={name} onChangeText={setName} placeholder="e.g. Milk" />
 
-            <Text style={styles.label}>Short Name (optional)</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={shortName}
-              onChangeText={setShortName}
-              placeholder="e.g. PB, OJ"
-            />
+              <Text style={styles.label}>Short Name (optional)</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={shortName}
+                onChangeText={setShortName}
+                placeholder="e.g. PB, OJ"
+              />
 
-            <Text style={styles.label}>Default Quantity</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={qty}
-              onChangeText={setQty}
-              placeholder="e.g. 1 gal"
-            />
+              <Text style={styles.label}>Default Quantity</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={qty}
+                onChangeText={setQty}
+                placeholder="e.g. 1 gal"
+              />
 
-            <Text style={styles.label}>Alternate Quantities (comma separated)</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={altQtys}
-              onChangeText={setAltQtys}
-              placeholder="e.g. 1/2 gal, 2 gal"
-            />
+              <Text style={styles.label}>Alternate Quantities (comma separated)</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={altQtys}
+                onChangeText={setAltQtys}
+                placeholder="e.g. 1/2 gal, 2 gal"
+              />
 
-            <Text style={styles.label}>Store Preferences</Text>
-            <View style={styles.storePreferenceContainer}>
-              {metadata?.stores?.map((store) => {
-                const preference = storePreferences[store.id] || { status: 'neutral', comment: '' };
+              <Text style={styles.label}>Store Preferences</Text>
+              <View style={styles.storePreferenceContainer}>
+                {metadata?.stores?.map((store) => {
+                  const preference = storePreferences[store.id] || { status: 'neutral', comment: '' };
 
-                return (
-                  <View key={store.id} style={styles.storePreferenceRow} testID={`store-pref-row-${store.id}`}>
-                    <View style={styles.storeHeaderRow}>
-                      <View style={[styles.storeColorDot, { backgroundColor: store.color_code }]} />
-                      <Text style={styles.storeNameText}>{store.name}</Text>
-                    </View>
+                  return (
+                    <View key={store.id} style={styles.storePreferenceRow} testID={`store-pref-row-${store.id}`}>
+                      <View style={styles.storeHeaderRow}>
+                        <View style={[styles.storeColorDot, { backgroundColor: store.color_code }]} />
+                        <Text style={styles.storeNameText}>{store.name}</Text>
+                      </View>
 
-                    <View style={styles.segmentedContainer}>
-                      {STATUS_OPTIONS.map((option) => {
-                        const selected = preference.status === option.value;
-                        return (
-                          <TouchableOpacity
-                            key={`${store.id}-${option.value}`}
-                            testID={`store-pref-${store.id}-${option.value}`}
-                            onPress={() => updateStoreStatus(store.id, option.value)}
-                            style={[styles.segment, selected ? styles.segmentSelected : styles.segmentUnselected]}
-                          >
-                            <Text
-                              style={[
-                                styles.segmentText,
-                                selected ? styles.segmentTextSelected : styles.segmentTextUnselected,
-                              ]}
+                      <View style={styles.segmentedContainer}>
+                        {STATUS_OPTIONS.map((option) => {
+                          const selected = preference.status === option.value;
+                          return (
+                            <TouchableOpacity
+                              key={`${store.id}-${option.value}`}
+                              testID={`store-pref-${store.id}-${option.value}`}
+                              onPress={() => updateStoreStatus(store.id, option.value)}
+                              style={[styles.segment, selected ? styles.segmentSelected : styles.segmentUnselected]}
                             >
-                              {option.label}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
+                              <Text
+                                style={[
+                                  styles.segmentText,
+                                  selected ? styles.segmentTextSelected : styles.segmentTextUnselected,
+                                ]}
+                              >
+                                {option.label}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+
+                      {preference.status !== 'neutral' ? (
+                        <TextInput
+                          testID={`store-pref-comment-${store.id}`}
+                          style={styles.commentInput}
+                          value={preference.comment}
+                          onChangeText={(text) => updateStoreComment(store.id, text)}
+                          placeholder="Comment"
+                          placeholderTextColor="#9ca3af"
+                        />
+                      ) : null}
                     </View>
+                  );
+                })}
+              </View>
 
-                    {preference.status !== 'neutral' ? (
-                      <TextInput
-                        testID={`store-pref-comment-${store.id}`}
-                        style={styles.commentInput}
-                        value={preference.comment}
-                        onChangeText={(text) => updateStoreComment(store.id, text)}
-                        placeholder="Comment"
-                        placeholderTextColor="#9ca3af"
-                      />
-                    ) : null}
-                  </View>
-                );
-              })}
-            </View>
-
-            <Text style={styles.label}>Category</Text>
-            <View style={styles.tagsContainer}>
-              {metadata?.categories?.map((category) => (
-                <TouchableOpacity
-                  key={category.id}
-                  onPress={() => setCategoryId(category.id)}
-                  style={[styles.tag, categoryId === category.id ? styles.tagActive : styles.tagInactive]}
-                >
-                  <Text style={categoryId === category.id ? styles.tagTextActive : styles.tagTextInactive}>
-                    {category.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+              <Text style={styles.label}>Category</Text>
+              <View style={styles.tagsContainer}>
+                {metadata?.categories?.map((category) => (
+                  <TouchableOpacity
+                    key={category.id}
+                    onPress={() => setCategoryId(category.id)}
+                    style={[styles.tag, categoryId === category.id ? styles.tagActive : styles.tagInactive]}
+                  >
+                    <Text style={categoryId === category.id ? styles.tagTextActive : styles.tagTextInactive}>
+                      {category.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsModalVisible(false)}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                <Text style={styles.saveBtnText}>{editingItem ? 'Update Item' : 'Save to Library'}</Text>
+                <Text style={styles.saveBtnText}>Save</Text>
               </TouchableOpacity>
             </View>
-          </ScrollView>
-        </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -383,18 +386,16 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyContainer: { alignItems: 'center', marginTop: 40 },
   emptyText: { color: '#9ca3af', fontSize: 16 },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
+  modalOverlay: { flex: 1, justifyContent: 'center', paddingHorizontal: 16, backgroundColor: 'rgba(0,0,0,0.5)' },
   modalContent: {
     backgroundColor: 'white',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '100%',
-  },
-  modalContentContainer: {
+    borderRadius: 16,
     padding: 24,
-    paddingBottom: 40,
+    maxHeight: '85%',
   },
-  modalTitle: { fontSize: 20, fontWeight: '700', marginBottom: 20 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  modalCloseBtn: { padding: 4 },
+  modalTitle: { fontSize: 20, fontWeight: '700' },
   label: {
     fontSize: 12,
     fontWeight: '700',
@@ -478,18 +479,18 @@ const styles = StyleSheet.create({
   tagInactive: { backgroundColor: 'white', borderColor: '#d1d5db' },
   tagTextActive: { color: 'white', fontWeight: '600' },
   tagTextInactive: { color: '#374151' },
-  modalActions: { flexDirection: 'row', gap: 12 },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8 },
   cancelBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
     backgroundColor: '#f3f4f6',
     alignItems: 'center',
   },
   saveBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
     backgroundColor: '#2563eb',
     alignItems: 'center',
   },

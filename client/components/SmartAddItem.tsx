@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, Modal, Keyboard } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, Modal, Keyboard, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { Search, X, ChevronRight } from 'lucide-react-native';
 import { computeWarnings, useSearchItems, useCreateMasterItem } from '@/api/items';
 import { useAddToList, useDeleteListItem } from '@/api/list';
@@ -302,52 +302,59 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
       )}
 
       <Modal visible={isEditing} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit: {selectedItem?.name || query}</Text>
-
-            <Text style={styles.label}>Quantity</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={editQty}
-              onChangeText={setEditQty}
-              placeholder="e.g. 1 gal"
-            />
-
-            {selectedItem?.alternate_qtys?.length > 0 && (
-              <View style={{ marginBottom: 16 }}>
-                <Text style={styles.label}>Usual Quantities</Text>
-                <View style={styles.tagsContainer}>
-                  {selectedItem.alternate_qtys.map((qtyOption: string) => (
-                    <TouchableOpacity
-                      key={qtyOption}
-                      onPress={() => setEditQty(qtyOption)}
-                      style={[styles.tag, editQty === qtyOption ? styles.tagActive : styles.tagInactive]}
-                    >
-                      <Text style={editQty === qtyOption ? styles.tagTextActive : styles.tagTextInactive}>
-                        {qtyOption}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            <Text style={styles.label}>Store</Text>
-            <View style={styles.tagsContainer}>
-              {metadata?.stores?.map((store) => (
-                <TouchableOpacity
-                  key={store.id}
-                  testID={`edit-store-${store.id}`}
-                  onPress={() => setEditStoreId(store.id)}
-                  style={[styles.tag, editStoreId === store.id ? styles.tagActive : styles.tagInactive]}
-                >
-                  <Text style={editStoreId === store.id ? styles.tagTextActive : styles.tagTextInactive}>
-                    {store.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{selectedItem?.name || query}</Text>
+              <TouchableOpacity onPress={() => setIsEditing(false)} style={styles.modalCloseBtn}>
+                <X size={24} color="#6b7280" />
+              </TouchableOpacity>
             </View>
+
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <Text style={styles.label}>Quantity</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editQty}
+                onChangeText={setEditQty}
+                placeholder="e.g. 1 gal"
+              />
+
+              {selectedItem?.alternate_qtys?.length > 0 && (
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={styles.label}>Usual Quantities</Text>
+                  <View style={styles.tagsContainer}>
+                    {selectedItem.alternate_qtys.map((qtyOption: string) => (
+                      <TouchableOpacity
+                        key={qtyOption}
+                        onPress={() => setEditQty(qtyOption)}
+                        style={[styles.tag, editQty === qtyOption ? styles.tagActive : styles.tagInactive]}
+                      >
+                        <Text style={editQty === qtyOption ? styles.tagTextActive : styles.tagTextInactive}>
+                          {qtyOption}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              <Text style={styles.label}>Store</Text>
+              <View style={styles.tagsContainer}>
+                {metadata?.stores?.map((store) => (
+                  <TouchableOpacity
+                    key={store.id}
+                    testID={`edit-store-${store.id}`}
+                    onPress={() => setEditStoreId(store.id)}
+                    style={[styles.tag, editStoreId === store.id ? styles.tagActive : styles.tagInactive]}
+                  >
+                    <Text style={editStoreId === store.id ? styles.tagTextActive : styles.tagTextInactive}>
+                      {store.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={[styles.actionBtn, styles.cancelBtn]} onPress={() => setIsEditing(false)}>
@@ -358,7 +365,7 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -521,20 +528,27 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
     backgroundColor: 'white',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderRadius: 16,
     padding: 24,
-    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  modalCloseBtn: {
+    padding: 4,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    marginBottom: 16,
   },
   label: {
     fontSize: 12,
@@ -578,12 +592,14 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
-    gap: 16,
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 8,
   },
   actionBtn: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
     alignItems: 'center',
   },
   cancelBtn: {

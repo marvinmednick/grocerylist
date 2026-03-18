@@ -156,24 +156,70 @@ Do not use `ScrollView` for lists of unknown/variable length — use `FlatList`.
 
 ## 7. Modals
 
-**Established pattern:** React Native `<Modal>` component (not a third-party sheet library).
+React Native `<Modal>` component (not a third-party sheet library). Two patterns depending on content type:
+
+---
+
+### 7a. Dialog Modals (forms, short confirmations)
+
+Used for: editing a list item, adding a master item, creating a store, adding an item to the list with options.
 
 ```
-Structure:
-  <Modal visible={...} animationType="slide" transparent={false}>
-    <SafeAreaView>
-      [Header row: title left, close button right]
-      [Content: FlatList or ScrollView]
-    </SafeAreaView>
-  </Modal>
+<Modal animationType="slide" transparent={true}>
+  <KeyboardAvoidingView behavior={ios ? 'padding' : 'height'} style={modalOverlay}>
+    <View style={modalContent}>
+      <View style={modalHeader}>
+        [destructive icon btn (optional, left)] · [title] · [X close btn (right)]
+      </View>
+      <ScrollView keyboardShouldPersistTaps="handled">
+        [form fields]
+      </ScrollView>
+      <View style={modalActions}>
+        [Cancel btn] [Primary btn]   ← right-justified, compact
+      </View>
+    </View>
+  </KeyboardAvoidingView>
+</Modal>
 ```
 
-- Close button: top-right corner of the modal header
-- Animation: `animationType="slide"` (slides up from bottom)
-- Use for: detail views, item editing, trip detail drill-down
-- Do **not** use `Alert` for detail content — `Alert` is for confirmations only (see Dialogs)
+**Overlay** (`modalOverlay`): `flex: 1, justifyContent: 'center', paddingHorizontal: 16, backgroundColor: 'rgba(0,0,0,0.5)'`
 
-[TBD: preferred close button visual — X icon, "Close" text label, or both?]
+**Card** (`modalContent`): `backgroundColor: 'white', borderRadius: 16, padding: 24` — add `maxHeight: '85%'` when the form may be tall.
+
+**Header** (`modalHeader`): `flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16`
+- Title: just the item/screen name — no "Edit:" prefix
+- Close button: `X` icon (24px), gray (`#6b7280`), top-right — always present
+- Destructive action (delete): `Trash2` icon in `#fee2e2` background pill, top-left — only when the action is available. Keeps destructive action visually separated from close.
+
+**Action row** (`modalActions`): `flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8`
+- Buttons: `paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10` — compact, not full-width
+- Cancel: gray (`#e5e7eb` / `#f3f4f6` bg, `#374151` text)
+- Primary: blue (`#2563eb` bg, white text)
+- Label: short and action-focused — "Save", "Add", not "Save Changes" or "Update Item"
+
+**Keyboard**: `KeyboardAvoidingView` prevents the keyboard from covering action buttons. `ScrollView` with `keyboardShouldPersistTaps="handled"` inside so chip/tag taps work while keyboard is open.
+
+---
+
+### 7b. Full-Screen Modals (detail views, settings, multi-step flows)
+
+Used for: trip history detail, Settings, multi-user trip end dialog.
+
+```
+<Modal animationType="slide" transparent={false}>
+  <SafeAreaView>  {/* or manual insets.top padding on header */}
+    <View style={header}>
+      [title (flex: 1)] · [X close btn (right)]
+    </View>
+    [FlatList or ScrollView for content]
+    [footer action row if needed]
+  </SafeAreaView>
+</Modal>
+```
+
+- Full white background, no overlay dimming
+- Header close button: `X` icon, top-right
+- Footer actions (if present): full-width row, `flex: 1` buttons — appropriate for large-screen navigational modals
 
 ---
 
@@ -323,3 +369,4 @@ When a new visual or interaction pattern is established during a `/design` sessi
 | Warning badge tap → popover | Tap badge shows absolutely-positioned tooltip with detail text; dismiss on tap-outside | F13 | First tooltip/popover pattern in the app |
 | Warning toast styling | Amber-tinted background variant of Toast.tsx; 4s duration; combines all warnings from one add | F13 | Extension of existing Toast component |
 | Freeform input popover | Absolutely-positioned floating card with a single TextInput, confirmed via keyboard Return; no explicit OK button; anchored near the triggering element | F15 | First interactive input popover in the app; test on device for keyboard coverage |
+| Dialog modal pattern | Centered card (not bottom sheet); KAV + ScrollView inside; compact right-justified buttons; X close top-right; destructive icon top-left when present; title = item name only (no "Edit:" prefix) | UI cleanup | See §7a for full spec |

@@ -1,14 +1,17 @@
 import React, { useMemo, useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { Check, X } from 'lucide-react-native';
 import { useCreateStore, useMetadata } from '@/api/metadata';
 
 const STORE_COLORS = [
@@ -120,41 +123,48 @@ export const StoreSelector: React.FC<StoreSelectorProps> = ({ activeStoreId, onS
       ) : null}
 
       <Modal visible={isCreateModalOpen} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>New Store</Text>
-
-            <Text style={styles.label}>Name</Text>
-            <TextInput
-              testID="new-store-name-input"
-              style={styles.input}
-              value={newStoreName}
-              onChangeText={setNewStoreName}
-              placeholder="Store name"
-              placeholderTextColor="#9ca3af"
-            />
-
-            <Text style={styles.label}>Color</Text>
-            <View style={styles.colorRow}>
-              {STORE_COLORS.map((color) => {
-                const isSelected = color === newStoreColor;
-                return (
-                  <TouchableOpacity
-                    key={color}
-                    testID={`store-color-${color}`}
-                    onPress={() => setNewStoreColor(color)}
-                    style={[
-                      styles.colorCircle,
-                      {
-                        backgroundColor: color,
-                        borderWidth: 2,
-                        borderColor: isSelected ? 'white' : 'transparent',
-                      },
-                    ]}
-                  />
-                );
-              })}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>New Store</Text>
+              <TouchableOpacity onPress={closeCreateModal} style={styles.modalCloseBtn}>
+                <X size={20} color="#6b7280" />
+              </TouchableOpacity>
             </View>
+
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <Text style={styles.label}>Name</Text>
+              <TextInput
+                testID="new-store-name-input"
+                style={styles.input}
+                value={newStoreName}
+                onChangeText={setNewStoreName}
+                placeholder="Store name"
+                placeholderTextColor="#9ca3af"
+              />
+
+              <Text style={styles.label}>Color</Text>
+              <View style={styles.colorRow}>
+                {STORE_COLORS.map((color) => {
+                  const isSelected = color === newStoreColor;
+                  return (
+                    <TouchableOpacity
+                      key={color}
+                      testID={`store-color-${color}`}
+                      onPress={() => setNewStoreColor(color)}
+                      style={[
+                        styles.colorCircle,
+                        {
+                          backgroundColor: color,
+                          borderWidth: 2,
+                          borderColor: isSelected ? 'white' : 'transparent',
+                        },
+                      ]}
+                    />
+                  );
+                })}
+              </View>
+            </ScrollView>
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelButton} onPress={closeCreateModal}>
@@ -169,7 +179,7 @@ export const StoreSelector: React.FC<StoreSelectorProps> = ({ activeStoreId, onS
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -254,20 +264,20 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalCard: {
     backgroundColor: '#ffffff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderRadius: 16,
     padding: 24,
-    paddingBottom: 40,
   },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  modalCloseBtn: { padding: 4 },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    marginBottom: 16,
     color: '#111827',
   },
   label: {
@@ -300,13 +310,15 @@ const styles = StyleSheet.create({
   },
   modalActions: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'flex-end',
+    gap: 8,
+    marginTop: 8,
   },
   cancelButton: {
-    flex: 1,
     backgroundColor: '#e5e7eb',
     borderRadius: 10,
-    paddingVertical: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     alignItems: 'center',
   },
   cancelButtonText: {
@@ -314,10 +326,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   addButton: {
-    flex: 1,
     backgroundColor: '#2563eb',
     borderRadius: 10,
-    paddingVertical: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     alignItems: 'center',
   },
   addButtonDisabled: {
