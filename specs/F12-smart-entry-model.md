@@ -382,14 +382,18 @@ export function computeWarnings(
     }
   }
 
-  // Check non-standard qty (applies to master items only)
-  if (quantity && defaultQty) {
-    const standardQtys = [defaultQty, ...(alternateQtys || [])];
-    if (!standardQtys.includes(quantity)) {
+  // Check non-standard qty — fires when quantity is set and at least one standard qty exists.
+  // Gating on defaultQty alone is too strict: alternateQtys without a defaultQty still define
+  // a standard set. The filter removes nulls, so standard.length > 0 is the correct gate.
+  if (quantity) {
+    const standard = [defaultQty, ...(alternateQtys ?? [])].filter(
+      (value): value is string => Boolean(value && value.trim().length > 0)
+    );
+    if (standard.length > 0 && !standard.includes(quantity)) {
       warnings.push({
         type: 'non_standard_qty',
         entered: quantity,
-        standard: standardQtys,
+        standard,
       });
     }
   }

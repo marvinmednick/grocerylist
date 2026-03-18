@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Modal, Keyboard, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { Search, X, ChevronRight } from 'lucide-react-native';
-import { computeWarnings, useSearchItems, useCreateMasterItem } from '@/api/items';
+import { computeWarnings, useSearchItems, useCreateMasterItem, MasterItem } from '@/api/items';
 import { useAddToList, useDeleteListItem } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
@@ -11,10 +11,13 @@ interface SmartAddItemProps {
   activeStoreId: string;
 }
 
+// EditTarget covers both master items (from search) and one-off items (no master record yet)
+type EditTarget = MasterItem | { name: string; id: null };
+
 export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemProps) {
   const [query, setQuery] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [selectedItem, setSelectedItem] = useState<EditTarget | null>(null);
   const [selections, setSelections] = useState<Record<string, { qty: string }>>({});
   const [otherQtyPopoverItemId, setOtherQtyPopoverItemId] = useState<string | null>(null);
   const [otherQtyInput, setOtherQtyInput] = useState('');
@@ -30,13 +33,13 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
   const { data: metadata } = useMetadata();
   const { pushAction } = useUndo();
 
-  const getSelection = (item: any) => {
+  const getSelection = (item: MasterItem) => {
     return selections[item.id] || {
       qty: item.default_qty || '1',
     };
   };
 
-  const toggleSelection = (itemId: string, updates: any) => {
+  const toggleSelection = (itemId: string, updates: { qty: string }) => {
     const item = results.find((result) => result.id === itemId);
     setSelections((prev) => ({
       ...prev,
@@ -54,7 +57,7 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
     Keyboard.dismiss();
   };
 
-  const onCommitAdd = async (item: any) => {
+  const onCommitAdd = async (item: MasterItem) => {
     const selection = getSelection(item);
     const name = item.name;
     const warnings = computeWarnings(
@@ -123,7 +126,7 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
     clearAndClose();
   };
 
-  const onEditAdd = (item: any) => {
+  const onEditAdd = (item: EditTarget) => {
     setSelectedItem(item);
     setEditQty(item.default_qty || '1');
     setEditStoreId(activeStoreId || metadata?.stores?.[0]?.id || '');
