@@ -44,7 +44,7 @@ File → Triage → Investigate → /resolve → /complete
 Create batch issue → /resolve [batch-N] → ./implement I[batch-N] → /review → /complete [batch-N]
 ```
 
-Use when 2–5 small bugs share the same subsystem and can be handed to the implementor in a single pass. See [§9 Batch Bug Fixes](#9-batch-bug-fixes) for the full process.
+Use when 2–5 small bugs share the same subsystem and can be handed to the implementor in a single pass. See [§9 Batch Bug Fixes](#9-batch-bug-fixes) for the full process. For grouping enhancements into a planned feature, see [§10 Issue Filtering and Search](#10-issue-filtering-and-search) for the `feature:F[N]` label scheme.
 
 ### Other Commands
 
@@ -707,7 +707,73 @@ gh issue close N2 --comment "Fixed in batch #[batch-N]."
 
 ---
 
-### 10. Updating CODING.md
+#### Feature batch labels
+
+The same `batched` label is also applied when issues are grouped into a **feature batch** — multiple enhancements or bugs collected under a single F-number in `PLAN.md`. A second label `feature:F[N]` identifies which feature they belong to.
+
+```bash
+# Create the feature batch label (one-time per feature)
+gh label create "feature:F18" --description "Batched into F18: Warning System Improvements" --color "5319e7"
+
+# Apply to each constituent issue
+gh issue edit 47 --add-label "batched,feature:F18"
+gh issue edit 50 --add-label "batched,feature:F18"
+```
+
+`PLAN.md` is the source of truth for batch composition. Labels are a reflection of it — update both together.
+
+---
+
+### 10. Issue Filtering and Search
+
+#### `gh issue list` vs `gh search issues`
+
+| Command | Supports negation | Notes |
+|---------|------------------|-------|
+| `gh issue list --label X` | No | AND filter, positives only; infers repo from git remote |
+| `gh search issues "NOT label:X"` | Yes | Full GitHub search syntax; requires explicit `--repo` |
+
+The GitHub web UI search bar also supports negation: type `-label:batched` in the filter box on the Issues tab.
+
+#### Common filters
+
+```bash
+# Unbatched open issues — what still needs planning
+gh search issues --repo marvinmednick/grocerylist --state open "NOT label:batched"
+
+# Issues in a specific feature batch
+gh issue list --label "feature:F18"
+
+# All issues that have been batched (any feature)
+gh issue list --label batched
+
+# Open bugs only
+gh issue list --label bug --state open
+
+# Issues with no labels — triage inbox
+gh search issues --repo marvinmednick/grocerylist --state open "no:label"
+```
+
+#### Shell aliases
+
+Short-form aliases for the above are in `gh-aliases.sh` (project root). Source for the current session:
+
+```bash
+source gh-aliases.sh
+```
+
+| Alias | What it shows |
+|-------|--------------|
+| `gi` | All open issues |
+| `gi-open` | Unbatched open issues (what still needs planning) |
+| `gi-batched` | All issues batched into any feature |
+| `gi-batch feature:F18` | Issues in a specific feature batch |
+| `gi-bugs` | Open bugs |
+| `gi-triage` | Issues with no labels |
+
+---
+
+### 11. Updating CODING.md
 
 When a new coding pattern is established that implementors need to follow on future features, update `CODING.md` to document it. This typically happens when:
 - A new mandatory pattern is introduced (e.g. a new provider that must be wrapped)
@@ -775,6 +841,7 @@ All workflow commands are available in both **Claude Code** and **Codex CLI**:
 | See all features and status | Open `PLAN.md` |
 | See small deferred items | Open `BACKLOG.md` |
 | See GitHub issues | `gh issue list` or https://github.com/marvinmednick/grocerylist/issues |
+| Filter issues (unbatched, by feature, etc.) | `source gh-aliases.sh` then `gi-open`, `gi-batch feature:F18`, etc. — see §10 |
 
 ---
 
@@ -783,6 +850,7 @@ All workflow commands are available in both **Claude Code** and **Codex CLI**:
 | File | Read when |
 |------|-----------|
 | `WORKFLOW.md` | Learning or explaining the process (this file) |
+| `gh-aliases.sh` | Source for short `gi-*` GitHub issue filter aliases (`source gh-aliases.sh`) |
 | `CLAUDE.md` | Starting a Claude session — project guidance and architecture |
 | `AGENT.md` | Starting any implementation session — behavioral rules for all tools |
 | `CODING.md` | Starting any implementation session — coding conventions and patterns |
