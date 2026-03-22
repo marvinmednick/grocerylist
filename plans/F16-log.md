@@ -34,3 +34,7 @@
 - **Migration:** `20250101000012` applied to remote ✅
 - **Non-blocking:** Comment row uses ` - ` (hyphen) not ` — ` (em dash); summary label trailing space in JSX
 - **Status:** In Review — ready to ship
+
+## 2026-03-21 — Shipped
+- **Commit:** `feat: redesign store preferences UI in item edit modal (closes #61)`
+- **Closes:** #61

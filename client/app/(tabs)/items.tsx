@@ -369,7 +369,7 @@ export default function ItemsScreen() {
 
                 {summaryRows.map((group) => (
                   <View key={`summary-${group.status}`} style={styles.summaryRow}>
-                    <Text style={styles.summaryLabel}>{group.label}: </Text>
+                    <Text style={styles.summaryLabel}>{group.label}:</Text>
                     <View style={styles.summaryStores}>
                       {group.matchingStores.map((store) => (
                         <TouchableOpacity
@@ -397,7 +397,7 @@ export default function ItemsScreen() {
                       style={styles.commentRow}
                       onPress={() => setSelectedPrefStoreId(store.id)}
                     >
-                      <Text style={styles.commentRowText}>{store.name} - "{storePreferences[store.id]?.comment || ''}"</Text>
+                      <Text style={styles.commentRowText}>{store.name} — "{storePreferences[store.id]?.comment || ''}"</Text>
                     </TouchableOpacity>
                   ))
                 )}

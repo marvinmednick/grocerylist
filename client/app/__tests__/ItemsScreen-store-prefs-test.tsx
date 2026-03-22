@@ -221,7 +221,7 @@ describe('ItemsScreen store preferences redesign', () => {
 
     fireEvent.changeText(screen.getByTestId('inline-comment-input'), 'Only on sale');
 
-    expect(screen.getByText('Market - "Only on sale"')).toBeTruthy();
+    expect(screen.getByText('Market — "Only on sale"')).toBeTruthy();
   });
 
   it('no Save Comment button is rendered', () => {
@@ -238,10 +238,10 @@ describe('ItemsScreen store preferences redesign', () => {
     selectPreferenceStore('store-1');
 
     fireEvent.changeText(screen.getByTestId('inline-comment-input'), 'Only on sale');
-    expect(screen.getByText('Market - "Only on sale"')).toBeTruthy();
+    expect(screen.getByText('Market — "Only on sale"')).toBeTruthy();
 
     fireEvent.changeText(screen.getByTestId('inline-comment-input'), '');
-    expect(screen.queryByText('Market - "Only on sale"')).toBeNull();
+    expect(screen.queryByText('Market — "Only on sale"')).toBeNull();
 
     await act(async () => {
       fireEvent.press(screen.getByTestId('item-modal-save-btn'));
