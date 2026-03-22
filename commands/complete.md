@@ -40,7 +40,7 @@ If there are no uncommitted changes (already committed): skip to Step 3.
 
 Otherwise, review all changes and draft a commit message:
 - Use `feat:` for features, `fix:` for bugs, `chore:` for cleanup/tasks
-- Include `closes #[N]` to cross-reference the GitHub issue
+- Reference issues with plain `#[N]` (e.g. `refs #59, #60, #65`) for traceability — do **not** use `closes #N` in commit messages; GitHub's auto-close via commit keyword is unreliable for multiple issues and issues are closed explicitly in Step 3
 - Summarize *what* was implemented, not just "closes issue"
 - Subject line under 72 characters; use a body for meaningful detail
 
@@ -52,24 +52,33 @@ git commit -m "..."
 
 ---
 
-## Step 3 — Close Issue and Update Tracking
-
-Close the GitHub issue with a brief closing comment:
-```bash
-gh issue close [N] --comment "Implemented and reviewed."
-```
+## Step 3 — Close Issues and Update Tracking
 
 **If this is a feature (F[N]):**
+
+Read the spec file (`specs/F[N]-*.md`) and extract the `Closes:` field from the tracking metadata comment. This lists every issue to close (the tracking issue + any batched sub-issues). Close each one individually — do not rely on commit message keywords:
+
+```bash
+gh issue close [N] --comment "Implemented and reviewed."
+# repeat for every issue number in the Closes: list
+```
+
+If the spec predates this `Closes:` field (older specs may lack it), check the spec body for a batched-issues table and close those manually as well.
+
 Update the feature's Status in PLAN.md from `In Review` to `Done`.
 
 Append a Shipped entry to `plans/F[N]-log.md`:
 ```markdown
 ## [DATE] — Shipped
-- **Commit:** `[commit message]`
-- **Closes:** #[N]
+- **Commit:** `[commit message subject]`
+- **Closed:** #[N], #[M], ... (all issues from the Closes: field)
 ```
 
 **If this is a non-feature issue:**
+Close the single issue:
+```bash
+gh issue close [N] --comment "Implemented and reviewed."
+```
 No PLAN.md update needed.
 
 ---
