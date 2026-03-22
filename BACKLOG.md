@@ -7,3 +7,11 @@ See WORKFLOW.md §8 (Backlog Triage) for the full process.
 ---
 
 _(empty — all items triaged to GitHub Issues)_
+
+## Deferred from Specs
+
+### From F16
+- [ ] Comment row separator uses ` - ` (hyphen) instead of ` — ` (em dash) in `items.tsx:400`. (found in F16 review)
+- [ ] Summary label text has trailing space inside `<Text>` tag (`{group.label}: `). (found in F16 review)
+
+_(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assigned preference → discarded, pill state provides sufficient feedback.)_
