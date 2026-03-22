@@ -175,4 +175,60 @@ describe('ShoppingListScreen Interactions', () => {
     fireEvent.press(screen.getByTestId('checkbox-1'));
     expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ id: '1', is_purchased: true }));
   });
+
+  it('shows usual quantity chips for master-backed items and chip tap updates edit quantity', async () => {
+    mockUseShoppingList.mockReturnValue({
+      data: [
+        {
+          id: '1',
+          item_id: 'master-1',
+          name: 'Milk',
+          quantity: '1L',
+          is_purchased: false,
+          store_id: 'store1',
+          store: { name: 'Grocery Store' },
+          category: { name: 'Dairy' },
+          master_item: { short_name: null, default_qty: '1 gal', alternate_qtys: ['2 gal'] },
+        },
+      ],
+      isLoading: false,
+    });
+
+    render(<ShoppingListScreen />, { wrapper });
+    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+
+    expect(await screen.findByText('Usual Quantities')).toBeTruthy();
+    expect(screen.getByText('1 gal')).toBeTruthy();
+    expect(screen.getByText('2 gal')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('2 gal'));
+    expect(screen.getByDisplayValue('2 gal')).toBeTruthy();
+  });
+
+  it('does not show usual quantity chips for one-off list items', async () => {
+    mockUseShoppingList.mockReturnValue({
+      data: [
+        {
+          id: '1',
+          item_id: null,
+          name: 'One-off Milk',
+          quantity: '1',
+          is_purchased: false,
+          store_id: 'store1',
+          store: { name: 'Grocery Store' },
+          category: { name: 'Dairy' },
+          master_item: null,
+        },
+      ],
+      isLoading: false,
+    });
+
+    render(<ShoppingListScreen />, { wrapper });
+    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit Item')).toBeTruthy();
+    });
+    expect(screen.queryByText('Usual Quantities')).toBeNull();
+  });
 });

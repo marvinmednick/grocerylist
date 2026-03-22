@@ -29,6 +29,7 @@ describe('SmartAddItem', () => {
 
   const pushAction = jest.fn();
   const addItem = jest.fn();
+  const createMasterItem = jest.fn();
 
   const baseItem = {
     id: 'master-1',
@@ -42,11 +43,12 @@ describe('SmartAddItem', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     addItem.mockResolvedValue({ id: 'list-1' });
+    createMasterItem.mockResolvedValue({ id: 'master-2' });
 
     mockUseSearchItems.mockImplementation((query: string) => ({
       data: query.length >= 2 ? [baseItem] : [],
     }));
-    mockUseCreateMasterItem.mockReturnValue({ mutateAsync: jest.fn() });
+    mockUseCreateMasterItem.mockReturnValue({ mutateAsync: createMasterItem });
     mockUseAddToList.mockReturnValue({ mutateAsync: addItem });
     mockUseDeleteListItem.mockReturnValue({ mutateAsync: jest.fn() });
     mockUseMetadata.mockReturnValue({
@@ -223,7 +225,7 @@ describe('SmartAddItem', () => {
     });
   });
 
-  it('renders an "Other" chip in the qty pill row for each result item', async () => {
+  it('renders scoped "Other" chips for both result and one-off rows', async () => {
     render(<SmartAddItem activeStoreId="store-1" />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
@@ -232,14 +234,15 @@ describe('SmartAddItem', () => {
       expect(screen.getByText('Milk')).toBeTruthy();
     });
 
-    expect(screen.getByText('Other')).toBeTruthy();
+    expect(screen.getByTestId('result-qty-chip-other-master-1')).toBeTruthy();
+    expect(screen.getByTestId('one-off-qty-chip-other')).toBeTruthy();
   });
 
   it('opens the freeform qty input when "Other" chip is tapped', async () => {
     render(<SmartAddItem activeStoreId="store-1" />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
-    fireEvent.press(await screen.findByText('Other'));
+    fireEvent.press(await screen.findByTestId('result-qty-chip-other-master-1'));
 
     expect(screen.getByPlaceholderText('e.g. 3 lbs')).toBeTruthy();
   });
@@ -248,7 +251,7 @@ describe('SmartAddItem', () => {
     render(<SmartAddItem activeStoreId="store-1" />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
-    fireEvent.press(await screen.findByText('Other'));
+    fireEvent.press(await screen.findByTestId('result-qty-chip-other-master-1'));
     const input = screen.getByPlaceholderText('e.g. 3 lbs');
     fireEvent.changeText(input, '3 lbs');
     fireEvent(input, 'submitEditing');
@@ -267,20 +270,19 @@ describe('SmartAddItem', () => {
     render(<SmartAddItem activeStoreId="store-1" />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
-    fireEvent.press(await screen.findByText('Other'));
+    fireEvent.press(await screen.findByTestId('result-qty-chip-other-master-1'));
     const input = screen.getByPlaceholderText('e.g. 3 lbs');
     fireEvent.changeText(input, '1 qt');
     fireEvent(input, 'submitEditing');
 
     expect(screen.getByText('1 qt')).toBeTruthy();
-    expect(screen.queryByText('Other')).toBeNull();
   });
 
   it('does nothing when Return is pressed on empty "Other" input', async () => {
     render(<SmartAddItem activeStoreId="store-1" />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
-    fireEvent.press(await screen.findByText('Other'));
+    fireEvent.press(await screen.findByTestId('result-qty-chip-other-master-1'));
     const input = screen.getByPlaceholderText('e.g. 3 lbs');
     fireEvent.changeText(input, '');
     fireEvent(input, 'submitEditing');
@@ -299,7 +301,7 @@ describe('SmartAddItem', () => {
     render(<SmartAddItem activeStoreId="store-1" />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
-    fireEvent.press(await screen.findByText('Other'));
+    fireEvent.press(await screen.findByTestId('result-qty-chip-other-master-1'));
     const input = screen.getByPlaceholderText('e.g. 3 lbs');
     fireEvent.changeText(input, '1 qt');
     fireEvent(input, 'submitEditing');
@@ -307,7 +309,125 @@ describe('SmartAddItem', () => {
     expect(screen.getByText('1 qt')).toBeTruthy();
     fireEvent.press(screen.getByText('1 gal'));
 
-    expect(screen.getByText('Other')).toBeTruthy();
+    expect(screen.getByTestId('result-qty-chip-other-master-1')).toBeTruthy();
     expect(screen.queryByText('1 qt')).toBeNull();
+  });
+
+  it('shows three actions in one-off edit modal and two for master edit modal', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
+    fireEvent.press(screen.getByTestId('edit-add-one-off'));
+
+    expect(await screen.findByText('Cancel')).toBeTruthy();
+    expect(screen.getByText('Add to List')).toBeTruthy();
+    expect(screen.getByText('Save to Master & Add')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Cancel'));
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByTestId('edit-add-master-1'));
+
+    expect(await screen.findByText('Cancel')).toBeTruthy();
+    expect(screen.getByText('Add to List')).toBeTruthy();
+    expect(screen.queryByText('Save to Master & Add')).toBeNull();
+  });
+
+  it('one-off edit Add to List uses null item_id and does not create master item', async () => {
+    mockUseSearchItems.mockImplementation(() => ({ data: [] }));
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
+    fireEvent.press(screen.getByTestId('edit-add-one-off'));
+    fireEvent.press(await screen.findByText('Add to List'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Dragonfruit',
+          item_id: null,
+          category_id: null,
+        })
+      );
+    });
+    expect(createMasterItem).not.toHaveBeenCalled();
+  });
+
+  it('one-off edit Save to Master & Add creates master item then adds with non-null item_id', async () => {
+    mockUseSearchItems.mockImplementation(() => ({ data: [] }));
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
+    fireEvent.press(screen.getByTestId('edit-add-one-off'));
+    fireEvent.press(await screen.findByText('Save to Master & Add'));
+
+    await waitFor(() => {
+      expect(createMasterItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Dragonfruit',
+        })
+      );
+    });
+    expect(addItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        item_id: 'master-2',
+      })
+    );
+  });
+
+  it('shows one-off qty chips and quick add defaults to quantity 1 with null category', async () => {
+    mockUseSearchItems.mockImplementation(() => ({ data: [] }));
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
+
+    expect(screen.getByTestId('one-off-qty-chip-1')).toBeTruthy();
+    expect(screen.getByTestId('one-off-qty-chip-other')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Add "Dragonfruit" (One-time)'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          quantity: '1',
+          category_id: null,
+        })
+      );
+    });
+  });
+
+  it('one-off qty other chip submit updates quick add quantity payload', async () => {
+    mockUseSearchItems.mockImplementation(() => ({ data: [] }));
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
+    fireEvent.press(screen.getByTestId('one-off-qty-chip-other'));
+    fireEvent.changeText(screen.getByPlaceholderText('e.g. 3 lbs'), '3 lbs');
+    fireEvent(screen.getByPlaceholderText('e.g. 3 lbs'), 'submitEditing');
+    fireEvent.press(screen.getByText('Add "Dragonfruit" (One-time)'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          quantity: '3 lbs',
+        })
+      );
+    });
+  });
+
+  it('one-off edit Add to List keeps category null when unset', async () => {
+    mockUseSearchItems.mockImplementation(() => ({ data: [] }));
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
+    fireEvent.press(screen.getByTestId('edit-add-one-off'));
+    fireEvent.press(await screen.findByText('Add to List'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category_id: null,
+        })
+      );
+    });
   });
 });

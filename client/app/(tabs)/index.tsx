@@ -64,6 +64,7 @@ export default function ShoppingListScreen() {
   const [editingItem, setEditingItem] = useState<ListItem | null>(null);
   const [editName, setEditName] = useState('');
   const [editQty, setEditQty] = useState('');
+  const [editQtyChips, setEditQtyChips] = useState<string[]>([]);
   const [editStoreId, setEditStoreId] = useState('');
   const memberMap = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
 
@@ -157,9 +158,15 @@ export default function ShoppingListScreen() {
   };
 
   const openEditModal = (item: ListItem) => {
+    const masterDefaultQty = item.master_item?.default_qty ?? null;
+    const masterAltQtys = item.master_item?.alternate_qtys ?? [];
+    const chips = masterDefaultQty
+      ? [masterDefaultQty, ...masterAltQtys]
+      : masterAltQtys;
     setEditingItem(item);
     setEditName(item.name);
     setEditQty(item.quantity || '');
+    setEditQtyChips(chips);
     setEditStoreId(item.store_id || '');
     setIsEditModalVisible(true);
   };
@@ -554,6 +561,24 @@ export default function ShoppingListScreen() {
               <TextInput style={styles.modalInput} value={editName} onChangeText={setEditName} />
               <Text style={styles.label}>Quantity</Text>
               <TextInput style={styles.modalInput} value={editQty} onChangeText={setEditQty} />
+              {editQtyChips.length > 0 ? (
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={styles.label}>Usual Quantities</Text>
+                  <View style={styles.tagsContainer}>
+                    {editQtyChips.map((chip) => (
+                      <TouchableOpacity
+                        key={chip}
+                        onPress={() => setEditQty(chip)}
+                        style={[styles.tag, editQty === chip ? styles.tagActive : styles.tagInactive]}
+                      >
+                        <Text style={editQty === chip ? styles.tagTextActive : styles.tagTextInactive}>
+                          {chip}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
               <Text style={styles.label}>Store</Text>
               <View style={styles.tagsContainer}>
                 {metadata?.stores?.map(store => (

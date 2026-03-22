@@ -21,6 +21,9 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
   const [selections, setSelections] = useState<Record<string, { qty: string }>>({});
   const [otherQtyPopoverItemId, setOtherQtyPopoverItemId] = useState<string | null>(null);
   const [otherQtyInput, setOtherQtyInput] = useState('');
+  const [oneOffQty, setOneOffQty] = useState('1');
+  const [oneOffQtyPopoverOpen, setOneOffQtyPopoverOpen] = useState(false);
+  const [oneOffQtyInput, setOneOffQtyInput] = useState('');
 
   const [editQty, setEditQty] = useState('');
   const [editStoreId, setEditStoreId] = useState('');
@@ -54,6 +57,9 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
     setSelections({});
     setOtherQtyPopoverItemId(null);
     setOtherQtyInput('');
+    setOneOffQty('1');
+    setOneOffQtyPopoverOpen(false);
+    setOneOffQtyInput('');
     Keyboard.dismiss();
   };
 
@@ -102,9 +108,9 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
       return await addItem({
         name: query,
         item_id: null,
-        quantity: '1',
+        quantity: oneOffQty,
         store_id: activeStoreId || null,
-        category_id: metadata?.categories?.find((category) => category.name === 'Other')?.id,
+        category_id: null,
         warnings: [],
       });
     };
@@ -130,8 +136,38 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
     setSelectedItem(item);
     setEditQty(item.default_qty || '1');
     setEditStoreId(activeStoreId || metadata?.stores?.[0]?.id || '');
-    setEditCategoryId(item.default_category_id || metadata?.categories?.[0]?.id || '');
+    setEditCategoryId(item.default_category_id || '');
     setIsEditing(true);
+  };
+
+  const onOneOffEditAdd = async () => {
+    const itemName = selectedItem?.name || query;
+    const forwardAction = async () => {
+      return await addItem({
+        name: itemName,
+        item_id: null,
+        quantity: editQty,
+        store_id: editStoreId || null,
+        category_id: editCategoryId || null,
+        warnings: [],
+      });
+    };
+
+    const result = await forwardAction();
+    const tracker = { currentId: result.id };
+
+    pushAction({
+      label: `Added ${itemName}`,
+      undo: async () => {
+        await deleteItem(tracker.currentId);
+      },
+      redo: async () => {
+        const redone = await forwardAction();
+        tracker.currentId = redone.id;
+      },
+    });
+
+    clearAndClose();
   };
 
   const onSaveEdited = async () => {
@@ -143,7 +179,7 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
         const newItem = await createMasterItem({
           name: itemName,
           default_qty: editQty,
-          default_category_id: editCategoryId,
+          default_category_id: editCategoryId || null,
         });
         itemId = newItem.id;
       } catch (err) {
@@ -168,7 +204,7 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
         item_id: itemId || null,
         quantity: editQty,
         store_id: editStoreId || null,
-        category_id: editCategoryId,
+        category_id: editCategoryId || null,
         warnings,
       });
     };
@@ -244,6 +280,7 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
                       );
                     })}
                     <TouchableOpacity
+                      testID={`result-qty-chip-other-${item.id}`}
                       style={[styles.inlinePill, hasCustomQty && styles.pillActiveBlue]}
                       onPress={() => {
                         setOtherQtyPopoverItemId(item.id);
@@ -290,9 +327,53 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
           })}
 
           <View style={styles.createRow}>
-            <TouchableOpacity style={styles.createMain} onPress={onOneOffAdd}>
-              <Text style={styles.createText}>Add "{query}" (One-time)</Text>
-            </TouchableOpacity>
+            <View style={styles.createMain}>
+              <TouchableOpacity style={styles.createMainButton} onPress={onOneOffAdd}>
+                <Text style={styles.createText}>Add "{query}" (One-time)</Text>
+              </TouchableOpacity>
+              <View style={styles.inlinePillRow}>
+                <Text style={styles.inlineLabel}>Qty: </Text>
+                <TouchableOpacity
+                  testID="one-off-qty-chip-1"
+                  style={[styles.inlinePill, oneOffQty === '1' && styles.pillActiveBlue]}
+                  onPress={() => setOneOffQty('1')}
+                >
+                  <Text style={[styles.inlinePillText, oneOffQty === '1' && styles.pillTextActive]}>1</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  testID="one-off-qty-chip-other"
+                  style={[styles.inlinePill, oneOffQty !== '1' && styles.pillActiveBlue]}
+                  onPress={() => {
+                    setOneOffQtyInput('');
+                    setOneOffQtyPopoverOpen(true);
+                  }}
+                >
+                  <Text style={[styles.inlinePillText, oneOffQty !== '1' && styles.pillTextActive]}>
+                    {oneOffQty !== '1' ? oneOffQty : 'Other'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {oneOffQtyPopoverOpen && (
+                <View style={styles.otherQtyPopover}>
+                  <TextInput
+                    style={styles.otherQtyInput}
+                    value={oneOffQtyInput}
+                    onChangeText={setOneOffQtyInput}
+                    placeholder="e.g. 3 lbs"
+                    placeholderTextColor="#9ca3af"
+                    autoFocus
+                    returnKeyType="done"
+                    onSubmitEditing={() => {
+                      const trimmed = oneOffQtyInput.trim();
+                      if (trimmed.length > 0) {
+                        setOneOffQty(trimmed);
+                      }
+                      setOneOffQtyPopoverOpen(false);
+                    }}
+                  />
+                </View>
+              )}
+            </View>
             <TouchableOpacity
               testID="edit-add-one-off"
               style={styles.createEditBtn}
@@ -363,9 +444,20 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
               <TouchableOpacity style={[styles.actionBtn, styles.cancelBtn]} onPress={() => setIsEditing(false)}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionBtn, styles.saveBtn]} onPress={onSaveEdited}>
-                <Text style={styles.saveText}>Add to List</Text>
-              </TouchableOpacity>
+              {selectedItem?.id ? (
+                <TouchableOpacity style={[styles.actionBtn, styles.saveBtn]} onPress={onSaveEdited}>
+                  <Text style={styles.saveText}>Add to List</Text>
+                </TouchableOpacity>
+              ) : (
+                <>
+                  <TouchableOpacity style={[styles.actionBtn, styles.saveBtn]} onPress={onOneOffEditAdd}>
+                    <Text style={styles.saveText}>Add to List</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionBtn, styles.cancelBtn]} onPress={onSaveEdited}>
+                    <Text style={styles.cancelText}>Save to Master & Add</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -514,8 +606,11 @@ const styles = StyleSheet.create({
   createMain: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 8,
     backgroundColor: '#eff6ff',
+  },
+  createMainButton: {
+    paddingVertical: 4,
   },
   createText: {
     color: '#2563eb',

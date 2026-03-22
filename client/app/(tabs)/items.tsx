@@ -75,7 +75,7 @@ export default function ItemsScreen() {
       setQty('');
       setAltQtys('');
       setStorePreferences(initializeStorePreferences());
-      setCategoryId(metadata?.categories?.[0]?.id || '');
+      setCategoryId('');
     }
     setSelectedPrefStoreId('');
     setPrefDropdownOpen(false);
@@ -120,7 +120,7 @@ export default function ItemsScreen() {
         .split(',')
         .map((value) => value.trim())
         .filter((value) => value.length > 0),
-      default_category_id: categoryId,
+      default_category_id: categoryId || null,
       store_preferences: buildStorePreferencesPayload(),
     };
 
@@ -180,7 +180,7 @@ export default function ItemsScreen() {
         <View style={styles.titleRow}>
           <Text style={styles.title}>Master Database</Text>
           <View style={styles.titleRowActions}>
-            <TouchableOpacity style={styles.addBtn} onPress={() => openModal()}>
+            <TouchableOpacity testID="open-new-item-modal-btn" style={styles.addBtn} onPress={() => openModal()}>
               <Plus size={24} color="#2563eb" />
             </TouchableOpacity>
             <HeaderActions />
@@ -405,9 +405,18 @@ export default function ItemsScreen() {
 
               <Text style={styles.label}>Category</Text>
               <View style={styles.tagsContainer}>
+                <TouchableOpacity
+                  testID="category-chip-none"
+                  key="none"
+                  onPress={() => setCategoryId('')}
+                  style={[styles.tag, categoryId === '' ? styles.tagActive : styles.tagInactive]}
+                >
+                  <Text style={categoryId === '' ? styles.tagTextActive : styles.tagTextInactive}>None</Text>
+                </TouchableOpacity>
                 {metadata?.categories?.map((category) => (
                   <TouchableOpacity
                     key={category.id}
+                    testID={`category-chip-${category.id}`}
                     onPress={() => setCategoryId(category.id)}
                     style={[styles.tag, categoryId === category.id ? styles.tagActive : styles.tagInactive]}
                   >

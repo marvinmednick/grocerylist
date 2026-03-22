@@ -192,4 +192,59 @@ describe('ItemsScreen', () => {
       );
     });
   });
+
+  it('shows "None" category chip and renders it before mapped categories in new item modal', () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByTestId('open-new-item-modal-btn'));
+
+    const noneChip = screen.getByTestId('category-chip-none');
+    const categoryChips = screen.getAllByTestId(/category-chip-/);
+
+    expect(noneChip).toBeTruthy();
+    expect(screen.getByText('None')).toBeTruthy();
+    expect(categoryChips[0].props.testID).toBe('category-chip-none');
+  });
+
+  it('"None" category chip is active by default for new item modal', () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByTestId('open-new-item-modal-btn'));
+
+    const noneChip = screen.getByTestId('category-chip-none');
+    const style = Array.isArray(noneChip.props.style) ? noneChip.props.style : [noneChip.props.style];
+    const isActive = style.some((entry: { backgroundColor?: string }) => entry?.backgroundColor === '#2563eb');
+
+    expect(isActive).toBe(true);
+  });
+
+  it('saving new item with "None" category sends default_category_id null', async () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByTestId('open-new-item-modal-btn'));
+    fireEvent.changeText(screen.getByPlaceholderText('e.g. Milk'), 'Dragonfruit');
+    fireEvent.press(screen.getByTestId('item-modal-save-btn'));
+
+    await waitFor(() => {
+      expect(createMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Dragonfruit',
+          default_category_id: null,
+        })
+      );
+    });
+  });
+
+  it('tapping a real category chip deactivates "None"', () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByTestId('open-new-item-modal-btn'));
+    fireEvent.press(screen.getByTestId('category-chip-cat-1'));
+
+    const noneChip = screen.getByTestId('category-chip-none');
+    const style = Array.isArray(noneChip.props.style) ? noneChip.props.style : [noneChip.props.style];
+    const isActive = style.some((entry: { backgroundColor?: string }) => entry?.backgroundColor === '#2563eb');
+
+    expect(isActive).toBe(false);
+  });
 });

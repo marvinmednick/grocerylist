@@ -25,7 +25,11 @@ export interface ListItem {
     entered?: string;
     standard?: string[];
   }>;
-  master_item?: { short_name: string | null };
+  master_item?: {
+    short_name: string | null;
+    default_qty: string | null;
+    alternate_qtys: string[] | null;
+  } | null;
 }
 
 // --- Local mutation tracking ---
@@ -84,7 +88,7 @@ export const useShoppingList = (onRemoteChange?: (event: string, itemName?: stri
           *,
           store:stores!store_id(name, color_code),
           category:categories!category_id(name, sort_order),
-          master_item:items!item_id(short_name)
+          master_item:items!item_id(short_name, default_qty, alternate_qtys)
         `)
         .is('archived_at', null)
         .order('added_at', { ascending: false });
