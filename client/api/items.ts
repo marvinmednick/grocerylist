@@ -4,14 +4,14 @@ import { useHousehold } from '@/lib/household';
 
 export interface ItemStorePreference {
   store_id: string;
-  status: 'preferred' | 'avoided' | 'unavailable';
+  status: 'preferred' | 'avoided' | 'unavailable' | 'neutral';
   comment: string | null;
   store?: { id: string; name: string; color_code: string };
 }
 
 export interface StorePreferenceInput {
   store_id: string;
-  status: 'preferred' | 'avoided' | 'unavailable';
+  status: 'preferred' | 'avoided' | 'unavailable' | 'neutral';
   comment?: string | null;
 }
 

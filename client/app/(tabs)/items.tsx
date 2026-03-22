@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Modal, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { Search, Tag, Store, Plus, X } from 'lucide-react-native';
+import { Search, Tag, Store, Plus, X, ChevronDown } from 'lucide-react-native';
 import { useAllItems, useCreateMasterItem, useUpdateMasterItem, MasterItem, ItemStorePreference } from '@/api/items';
 import { useMetadata } from '@/api/metadata';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,7 +15,7 @@ const STATUS_OPTIONS: Array<{ label: string; value: PreferenceStatus }> = [
   { label: '—', value: 'neutral' },
   { label: 'Pref.', value: 'preferred' },
   { label: 'Avoid', value: 'avoided' },
-  { label: 'N/A', value: 'unavailable' },
+  { label: 'Unavailable', value: 'unavailable' },
 ];
 
 export default function ItemsScreen() {
@@ -36,6 +36,9 @@ export default function ItemsScreen() {
   const [altQtys, setAltQtys] = useState('');
   const [storePreferences, setStorePreferences] = useState<StorePreferencesState>({});
   const [categoryId, setCategoryId] = useState('');
+  const [selectedPrefStoreId, setSelectedPrefStoreId] = useState('');
+  const [prefDropdownOpen, setPrefDropdownOpen] = useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const initializeStorePreferences = (item: MasterItem | null = null): StorePreferencesState => {
     const base = Object.fromEntries(
@@ -74,16 +77,15 @@ export default function ItemsScreen() {
       setStorePreferences(initializeStorePreferences());
       setCategoryId(metadata?.categories?.[0]?.id || '');
     }
+    setSelectedPrefStoreId('');
+    setPrefDropdownOpen(false);
     setIsModalVisible(true);
   };
 
   const updateStoreStatus = (storeId: string, status: PreferenceStatus) => {
     setStorePreferences((prev) => ({
       ...prev,
-      [storeId]: {
-        status,
-        comment: status === 'neutral' ? '' : prev[storeId]?.comment || '',
-      },
+      [storeId]: { ...prev[storeId], status },
     }));
   };
 
@@ -99,10 +101,10 @@ export default function ItemsScreen() {
 
   const buildStorePreferencesPayload = () => {
     return Object.entries(storePreferences)
-      .filter(([, preference]) => preference.status !== 'neutral')
+      .filter(([, preference]) => preference.status !== 'neutral' || (preference.comment?.trim().length ?? 0) > 0)
       .map(([store_id, preference]) => ({
         store_id,
-        status: preference.status as 'preferred' | 'avoided' | 'unavailable',
+        status: preference.status as PreferenceStatus,
         comment: preference.comment || null,
       }));
   };
@@ -152,6 +154,25 @@ export default function ItemsScreen() {
 
     setIsModalVisible(false);
   };
+
+  const selectedPrefStore = metadata?.stores?.find((store) => store.id === selectedPrefStoreId) || null;
+  const selectedPrefStatus: PreferenceStatus = selectedPrefStoreId
+    ? (storePreferences[selectedPrefStoreId]?.status ?? 'neutral')
+    : 'neutral';
+
+  const summaryRows = (['preferred', 'avoided', 'unavailable'] as const)
+    .map((status) => {
+      const matchingStores = (metadata?.stores ?? [])
+        .filter((store) => storePreferences[store.id]?.status === status)
+        .sort((a, b) => a.name.localeCompare(b.name));
+      const label = STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
+      return { status, label, matchingStores };
+    })
+    .filter((group) => group.matchingStores.length > 0);
+
+  const commentRows = (metadata?.stores ?? []).filter(
+    (store) => (storePreferences[store.id]?.comment?.trim().length ?? 0) > 0
+  );
 
   return (
     <View style={styles.container}>
@@ -235,7 +256,7 @@ export default function ItemsScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView keyboardShouldPersistTaps="handled">
+            <ScrollView ref={scrollViewRef} keyboardShouldPersistTaps="handled">
               <Text style={styles.label}>Item Name</Text>
               <TextInput style={styles.modalInput} value={name} onChangeText={setName} placeholder="e.g. Milk" />
 
@@ -265,52 +286,121 @@ export default function ItemsScreen() {
 
               <Text style={styles.label}>Store Preferences</Text>
               <View style={styles.storePreferenceContainer}>
-                {metadata?.stores?.map((store) => {
-                  const preference = storePreferences[store.id] || { status: 'neutral', comment: '' };
+                <TouchableOpacity
+                  testID="pref-store-dropdown-trigger"
+                  style={styles.dropdownTrigger}
+                  onPress={() => setPrefDropdownOpen((prev) => !prev)}
+                >
+                  <View style={styles.dropdownValue}>
+                    {selectedPrefStore ? (
+                      <>
+                        <View style={[styles.storeColorDot, { backgroundColor: selectedPrefStore.color_code }]} />
+                        <Text style={styles.storeNameText}>{selectedPrefStore.name}</Text>
+                      </>
+                    ) : (
+                      <Text style={styles.dropdownPlaceholder}>Select store...</Text>
+                    )}
+                  </View>
+                  <ChevronDown size={16} color="#6b7280" />
+                </TouchableOpacity>
 
-                  return (
-                    <View key={store.id} style={styles.storePreferenceRow} testID={`store-pref-row-${store.id}`}>
-                      <View style={styles.storeHeaderRow}>
+                {prefDropdownOpen ? (
+                  <View style={styles.dropdownMenu}>
+                    {(metadata?.stores ?? []).map((store) => (
+                      <TouchableOpacity
+                        key={store.id}
+                        testID={`pref-store-option-${store.id}`}
+                        style={styles.dropdownOption}
+                        onPress={() => {
+                          setSelectedPrefStoreId(store.id);
+                          setPrefDropdownOpen(false);
+                        }}
+                      >
                         <View style={[styles.storeColorDot, { backgroundColor: store.color_code }]} />
                         <Text style={styles.storeNameText}>{store.name}</Text>
-                      </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ) : null}
 
-                      <View style={styles.segmentedContainer}>
-                        {STATUS_OPTIONS.map((option) => {
-                          const selected = preference.status === option.value;
-                          return (
-                            <TouchableOpacity
-                              key={`${store.id}-${option.value}`}
-                              testID={`store-pref-${store.id}-${option.value}`}
-                              onPress={() => updateStoreStatus(store.id, option.value)}
-                              style={[styles.segment, selected ? styles.segmentSelected : styles.segmentUnselected]}
-                            >
-                              <Text
-                                style={[
-                                  styles.segmentText,
-                                  selected ? styles.segmentTextSelected : styles.segmentTextUnselected,
-                                ]}
-                              >
-                                {option.label}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
+                <View style={styles.segmentedContainer}>
+                  {STATUS_OPTIONS.map((option) => {
+                    const selected = selectedPrefStatus === option.value;
+                    return (
+                      <TouchableOpacity
+                        key={`pref-pill-${option.value}`}
+                        testID={`pref-status-pill-${option.value}`}
+                        onPress={() => {
+                          if (!selectedPrefStoreId) return;
+                          updateStoreStatus(selectedPrefStoreId, option.value);
+                        }}
+                        style={[styles.segment, selected ? styles.segmentSelected : styles.segmentUnselected]}
+                      >
+                        <Text
+                          style={[
+                            styles.segmentText,
+                            selected ? styles.segmentTextSelected : styles.segmentTextUnselected,
+                          ]}
+                        >
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
 
-                      {preference.status !== 'neutral' ? (
-                        <TextInput
-                          testID={`store-pref-comment-${store.id}`}
-                          style={styles.commentInput}
-                          value={preference.comment}
-                          onChangeText={(text) => updateStoreComment(store.id, text)}
-                          placeholder="Comment"
-                          placeholderTextColor="#9ca3af"
-                        />
-                      ) : null}
+                {selectedPrefStoreId ? (
+                  <View style={styles.inlineCommentSection}>
+                    <Text style={styles.label}>Comment</Text>
+                    <TextInput
+                      testID="inline-comment-input"
+                      style={styles.modalInput}
+                      value={storePreferences[selectedPrefStoreId]?.comment ?? ''}
+                      onChangeText={(text) => updateStoreComment(selectedPrefStoreId, text)}
+                      onFocus={() => {
+                        setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+                      }}
+                      placeholder="Add a note about this store..."
+                      placeholderTextColor="#9ca3af"
+                      multiline
+                    />
+                  </View>
+                ) : null}
+
+                {summaryRows.map((group) => (
+                  <View key={`summary-${group.status}`} style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>{group.label}: </Text>
+                    <View style={styles.summaryStores}>
+                      {group.matchingStores.map((store) => (
+                        <TouchableOpacity
+                          key={`summary-store-${group.status}-${store.id}`}
+                          testID={`summary-store-${store.id}`}
+                          onPress={() => setSelectedPrefStoreId(store.id)}
+                        >
+                          <Text style={styles.summaryStoreName}>{store.name}</Text>
+                        </TouchableOpacity>
+                      ))}
                     </View>
-                  );
-                })}
+                  </View>
+                ))}
+              </View>
+
+              <Text style={styles.label}>All Store Comments</Text>
+              <View style={styles.storePreferenceContainer}>
+                {commentRows.length === 0 ? (
+                  <Text style={styles.emptyCommentText}>No comments yet.</Text>
+                ) : (
+                  commentRows.map((store) => (
+                    <TouchableOpacity
+                      key={`comment-row-${store.id}`}
+                      testID={`comment-row-${store.id}`}
+                      style={styles.commentRow}
+                      onPress={() => setSelectedPrefStoreId(store.id)}
+                    >
+                      <Text style={styles.commentRowText}>{store.name} - "{storePreferences[store.id]?.comment || ''}"</Text>
+                    </TouchableOpacity>
+                  ))
+                )}
               </View>
 
               <Text style={styles.label}>Category</Text>
@@ -333,13 +423,14 @@ export default function ItemsScreen() {
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsModalVisible(false)}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+              <TouchableOpacity testID="item-modal-save-btn" style={styles.saveBtn} onPress={handleSave}>
                 <Text style={styles.saveBtnText}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
     </View>
   );
 }
@@ -414,23 +505,44 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     gap: 10,
   },
-  storePreferenceRow: {
+  dropdownTrigger: {
     borderWidth: 1,
     borderColor: '#e5e7eb',
     borderRadius: 12,
     padding: 12,
     backgroundColor: '#f9fafb',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  storeHeaderRow: {
+  dropdownValue: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    gap: 8,
+  },
+  dropdownPlaceholder: {
+    color: '#9ca3af',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  dropdownMenu: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#ffffff',
+  },
+  dropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   storeColorDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    marginRight: 8,
   },
   storeNameText: {
     fontSize: 14,
@@ -463,14 +575,49 @@ const styles = StyleSheet.create({
   segmentTextUnselected: {
     color: '#374151',
   },
-  commentInput: {
-    marginTop: 10,
-    backgroundColor: '#ffffff',
+  inlineCommentSection: {
+    marginTop: 8,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 4,
+  },
+  summaryLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  summaryStores: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  summaryStoreName: {
+    fontSize: 13,
+    color: '#2563eb',
+    fontWeight: '600',
+  },
+  emptyCommentText: {
+    color: '#9ca3af',
+    fontSize: 14,
+  },
+  commentRow: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#e5e7eb',
     borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#f9fafb',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 10,
+  },
+  commentRowText: {
+    flex: 1,
+    fontSize: 14,
     color: '#111827',
   },
   tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },

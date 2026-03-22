@@ -110,7 +110,7 @@ CREATE TABLE item_store_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
     store_id UUID NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
-    status TEXT NOT NULL CHECK (status IN ('preferred', 'avoided', 'unavailable')),
+    status TEXT NOT NULL CHECK (status IN ('preferred', 'avoided', 'unavailable', 'neutral')),
     comment TEXT,
     household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
     CONSTRAINT item_store_preferences_item_store_unique UNIQUE (item_id, store_id)

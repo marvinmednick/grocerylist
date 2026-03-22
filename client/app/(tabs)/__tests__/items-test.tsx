@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ItemsScreen from '../items';
 import { useAllItems, useCreateMasterItem, useUpdateMasterItem } from '@/api/items';
@@ -95,18 +95,23 @@ describe('ItemsScreen', () => {
 
     fireEvent.press(screen.getByText('Peanut Butter - 16oz'));
 
-    expect(screen.getByTestId('store-pref-store-1-neutral')).toBeTruthy();
-    expect(screen.getByTestId('store-pref-store-1-preferred')).toBeTruthy();
-    expect(screen.getByTestId('store-pref-store-2-neutral')).toBeTruthy();
-    expect(screen.getByTestId('store-pref-store-2-preferred')).toBeTruthy();
+    expect(screen.getByTestId('pref-store-dropdown-trigger')).toBeTruthy();
+    expect(screen.getByTestId('pref-status-pill-neutral')).toBeTruthy();
+    expect(screen.getByTestId('pref-status-pill-preferred')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('pref-store-dropdown-trigger'));
+    expect(screen.getByTestId('pref-store-option-store-1')).toBeTruthy();
+    expect(screen.getByTestId('pref-store-option-store-2')).toBeTruthy();
   });
 
   it('sets preference to preferred when tapped', async () => {
+    jest.useFakeTimers();
     renderScreen();
 
     fireEvent.press(screen.getByText('Peanut Butter - 16oz'));
-    fireEvent.press(screen.getByTestId('store-pref-store-1-preferred'));
-    fireEvent.press(screen.getByText('Save'));
+    fireEvent.press(screen.getByTestId('pref-store-dropdown-trigger'));
+    fireEvent.press(screen.getByTestId('pref-store-option-store-1'));
+    fireEvent.press(screen.getByTestId('pref-status-pill-preferred'));
+    fireEvent.press(screen.getByTestId('item-modal-save-btn'));
 
     await waitFor(() => {
       expect(updateMutateAsync).toHaveBeenCalledWith(
@@ -118,15 +123,24 @@ describe('ItemsScreen', () => {
         })
       );
     });
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
   });
 
-  it('shows comment field when non-neutral status selected', () => {
+  it('shows inline comment input when a store is selected', () => {
+    jest.useFakeTimers();
     renderScreen();
 
     fireEvent.press(screen.getByText('Peanut Butter - 16oz'));
-    fireEvent.press(screen.getByTestId('store-pref-store-1-avoided'));
-
-    expect(screen.getByTestId('store-pref-comment-store-1')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('pref-store-dropdown-trigger'));
+    fireEvent.press(screen.getByTestId('pref-store-option-store-1'));
+    expect(screen.getByTestId('inline-comment-input')).toBeTruthy();
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
   });
 
   it('registers undo action on item save', async () => {
