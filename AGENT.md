@@ -128,11 +128,11 @@ Omitting any category means those files will be missing from the implementation.
   decisions that the spec already made.
 - After writing the plan file, output a summary and wait for the user to type `"approved"` before
   proceeding (same-session interactive mode). If invoked via `--plan` in a scripted context the
-  session will exit after writing — implementation runs separately via `--plan-approved`.
+  session will exit after writing — implementation runs separately via `./implement F[N]`, which auto-detects `plans/F[N]-plan-approved.md`.
 
 ### After approval
 
-When the user types `"approved"` (same-session path) or when invoked with `--plan-approved` (new-session path), implement the spec following the approved plan. If resuming a paused session, check `plans/F[N]-progress.md` first — read the actual file contents of any completed files to confirm their state, then continue with remaining files. Maintain the progress log throughout.
+When the user types `"approved"` (same-session path) or when `plans/F[N]-plan-approved.md` exists and `./implement F[N]` is run without `--plan` (new-session path), implement the spec following the approved plan. If resuming a paused session, check `plans/F[N]-progress.md` first — read the actual file contents of any completed files to confirm their state, then continue with remaining files. Maintain the progress log throughout.
 
 ## Mid-Implementation Pause
 

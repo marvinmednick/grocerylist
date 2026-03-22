@@ -61,4 +61,4 @@ When both you and the user confirm the plan is ready:
 1. Write the corrected plan to `plans/$ARGUMENTS-plan-approved.md` — this is the draft with
    all identified gaps filled in, not a copy of the unmodified draft
 2. Confirm: "Plan approved. Written to `plans/$ARGUMENTS-plan-approved.md`.
-   Ready to implement: `./implement $ARGUMENTS --plan-approved`"
+   Ready to implement: `./implement $ARGUMENTS` (auto-detects the approved plan file)"

@@ -19,6 +19,7 @@
 | F14 | Free-form Input Parsing | Backlog | — | [#44](https://github.com/marvinmednick/grocerylist/issues/44) |
 | F15 | Freeform Qty "Other" Chip | Done | [specs/F15-freeform-qty-other-chip.md](specs/F15-freeform-qty-other-chip.md) · [design](docs/design/F15-freeform-qty-other-chip.md) | [#58](https://github.com/marvinmednick/grocerylist/issues/58) |
 | F16 | Store Preferences UI Redesign | Done | [specs/F16-store-preferences-ui.md](specs/F16-store-preferences-ui.md) · [design](docs/design/F16-store-preferences-ui.md) | [#61](https://github.com/marvinmednick/grocerylist/issues/61) |
+| F17 | Item Entry Flow Polish | Done | [specs/F17-item-entry-polish.md](specs/F17-item-entry-polish.md) | [#67](https://github.com/marvinmednick/grocerylist/issues/67) |
 
 **Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `Needs Fixes` → `In Review` → `Done`
 (`Designed` is optional — features with clear requirements can go `Backlog` → `Specced` directly)

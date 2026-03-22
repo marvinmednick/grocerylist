@@ -562,7 +562,7 @@ export default function ShoppingListScreen() {
               <Text style={styles.label}>Quantity</Text>
               <TextInput style={styles.modalInput} value={editQty} onChangeText={setEditQty} />
               {editQtyChips.length > 0 ? (
-                <View style={{ marginBottom: 16 }}>
+                <View style={styles.usualQtySection}>
                   <Text style={styles.label}>Usual Quantities</Text>
                   <View style={styles.tagsContainer}>
                     {editQtyChips.map((chip) => (
@@ -653,6 +653,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 12, fontWeight: '700', color: '#9ca3af', marginBottom: 8, textTransform: 'uppercase' },
   modalInput: { backgroundColor: '#f3f4f6', padding: 16, borderRadius: 12, marginBottom: 16, fontSize: 16 },
   tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
+  usualQtySection: { marginBottom: 16 },
   tag: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
   tagActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
   tagInactive: { backgroundColor: 'white', borderColor: '#d1d5db' },

@@ -15,3 +15,4 @@ _(empty — all items triaged to GitHub Issues)_
 - [ ] Summary label text has trailing space inside `<Text>` tag (`{group.label}: `). (found in F16 review)
 
 _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assigned preference → discarded, pill state provides sufficient feedback.)_
+
