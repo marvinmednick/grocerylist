@@ -16,4 +16,8 @@ Spec written by Claude. Three issues batched: #53 (store edit), #54 (store delet
 - **Tests:** 216/216 passed
 - **Blocking:** Migration `20250101000013` exists locally but not applied to remote — store deletion will fail at runtime when trips reference the store
 - **Non-blocking:** incidental timer fixes in `index-interactions-test.tsx` (harmless)
-- **Next:** ~~Apply migration with `npx supabase db push`, then re-review~~ → Migration applied 2026-03-22; blocking issue resolved. Status → In Review.
+- **Next:** ~~Apply migration with `npx supabase db push`, then re-review~~ → Migration applied 2026-03-23; blocking issue resolved. Status → In Review.
+
+## 2026-03-23 — Shipped
+- **Commit:** `feat: store management UI — edit, delete, dropdown filter (refs #53, #54, #62)`
+- **Closed:** #53, #54, #62
