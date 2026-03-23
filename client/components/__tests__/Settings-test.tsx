@@ -67,22 +67,22 @@ describe('Settings', () => {
   });
 
   it('pre-fills display name from profile', () => {
-    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
     expect(screen.getByDisplayValue('Alice')).toBeTruthy();
   });
 
   it('pre-fills short name from profile', () => {
-    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
     expect(screen.getByDisplayValue('Ali')).toBeTruthy();
   });
 
   it('renders exactly 7 color circles', () => {
-    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
     expect(screen.getAllByTestId(/settings-color-/)).toHaveLength(7);
   });
 
   it('updates selected color ring and clears previous selection', () => {
-    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
 
     const blue = screen.getByTestId('settings-color-#2563eb');
     const green = screen.getByTestId('settings-color-#16a34a');
@@ -102,7 +102,7 @@ describe('Settings', () => {
 
   it('shows warning when selected color is used by another member', () => {
     mockUseHouseholdMemberColors.mockReturnValue({ data: ['#16a34a'] });
-    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
 
     fireEvent.press(screen.getByTestId('settings-color-#16a34a'));
     expect(screen.getByText('Another member uses this color')).toBeTruthy();
@@ -110,14 +110,14 @@ describe('Settings', () => {
 
   it('does not show warning when selected color is not in member colors', () => {
     mockUseHouseholdMemberColors.mockReturnValue({ data: ['#dc2626'] });
-    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
 
     fireEvent.press(screen.getByTestId('settings-color-#16a34a'));
     expect(screen.queryByText('Another member uses this color')).toBeNull();
   });
 
   it('calls mutate with display_name, display_name_short, color on save', () => {
-    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
 
     fireEvent.changeText(screen.getByTestId('settings-display-name-input'), 'Alice Cooper');
     fireEvent.changeText(screen.getByTestId('settings-short-name-input'), 'AC');
@@ -138,25 +138,25 @@ describe('Settings', () => {
   });
 
   it('toggles dark mode from switch', () => {
-    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
     fireEvent(screen.getByTestId('settings-dark-mode-switch'), 'valueChange', true);
     expect(toggleTheme).toHaveBeenCalledTimes(1);
   });
 
   it('calls onClose when X button is pressed', () => {
     const onClose = jest.fn();
-    render(<Settings visible={true} onClose={onClose} renderInline={true} />, { wrapper: createWrapper() });
+    render(<Settings visible={true} onClose={onClose} />, { wrapper: createWrapper() });
     fireEvent.press(screen.getByTestId('settings-close-button'));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('renders household name from useHouseholdName', () => {
-    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
     expect(screen.getByText('The Smiths')).toBeTruthy();
   });
 
   it('renders Warnings section with four warning type rows', () => {
-    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
     expect(screen.getByText('Store Avoidance')).toBeTruthy();
     expect(screen.getByText('Store Unavailable')).toBeTruthy();
     expect(screen.getByText('Non-Preferred Store')).toBeTruthy();
@@ -164,7 +164,7 @@ describe('Settings', () => {
   });
 
   it('renders segmented controls with correct options', () => {
-    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
     expect(screen.getByTestId('warning-pref-avoided-toast_and_badge')).toBeTruthy();
     expect(screen.getByTestId('warning-pref-avoided-badge_only')).toBeTruthy();
     expect(screen.getByTestId('warning-pref-avoided-off')).toBeTruthy();
@@ -174,14 +174,14 @@ describe('Settings', () => {
   });
 
   it('renders only Badge/Off for non_preferred type', () => {
-    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
     expect(screen.getByTestId('warning-pref-non_preferred-badge_only')).toBeTruthy();
     expect(screen.getByTestId('warning-pref-non_preferred-off')).toBeTruthy();
     expect(screen.queryByTestId('warning-pref-non_preferred-toast_and_badge')).toBeNull();
   });
 
   it('selects the correct default segment based on profile data', () => {
-    render(<Settings visible={true} onClose={jest.fn()} renderInline={true} />, { wrapper: createWrapper() });
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
 
     const avoidedSelected = StyleSheet.flatten(
       screen.getByTestId('warning-pref-avoided-toast_and_badge').props.style

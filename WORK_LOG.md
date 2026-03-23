@@ -13,3 +13,19 @@ This file tracks development progress during active work sessions. It gets clear
   - Committed unified command architecture (shared commands/, Codex skills, WORKFLOW.md updates)
 - **Tests**: 146 passed, 0 failed
 - **Next**: Push when ready; #39 test move still uncommitted in working tree
+---
+### 2026-03-22 11:09 - Issue triage, new issues, batch planning
+- **Completed**: Closed #17 (already done); created #68 (warnings in edit modal), #69 (warning toast bug); created feature:F18–F21 labels; labelled 13 issues as batched; added F18–F21 to PLAN.md
+- **Next**: Spec F18 (warning system) first — contains a bug (#69)
+---
+### 2026-03-22 11:18 - Document label scheme, filters, and shell aliases
+- **Completed**: Created gh-aliases.sh (project root, sourceable); added §10 Issue Filtering to WORKFLOW.md; extended §9 with feature batch label docs; updated Quick Reference and File Reference tables
+- **Next**: Spec F18 (warning system)
+---
+### 2026-03-22 14:20 - F18 spec written
+- **Completed**: specs/F18-warning-system-improvements.md; GitHub #70 created; PLAN.md updated (F18 → Specced); BACKLOG.md updated (#50 deferred); plans/F18-log.md created
+- **Next**: Implementor runs ./implement F18 --plan
+---
+### 2026-03-22 14:30 - Wrote F19 spec (Store Management UI)
+- **Completed**: specs/F19-store-management-ui.md, plans/F19-log.md; updated PLAN.md status to Specced
+- **Next**: Implement F19 or ship F18 first

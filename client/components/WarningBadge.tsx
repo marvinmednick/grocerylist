@@ -1,44 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { AlertTriangle, HelpCircle, Info, XCircle } from 'lucide-react-native';
-
-export interface Warning {
-  type: 'avoided' | 'unavailable' | 'non_preferred' | 'non_standard_qty';
-  store_id?: string;
-  store_name?: string;
-  comment?: string | null;
-  preferred_stores?: string[];
-  entered?: string;
-  standard?: string[];
-}
+import { getWarningText, type Warning } from '@/api/items';
 
 interface WarningBadgeProps {
   warnings?: Warning[];
 }
-
-const getWarningText = (warning: Warning): string => {
-  if (warning.type === 'avoided') {
-    const storeName = warning.store_name || warning.store_id || 'a store';
-    if (warning.comment) {
-      return `Avoided at ${storeName} — ${warning.comment}`;
-    }
-    return `Avoided at ${storeName}`;
-  }
-
-  if (warning.type === 'unavailable') {
-    const storeName = warning.store_name || warning.store_id || 'a store';
-    return `Unavailable at ${storeName}`;
-  }
-
-  if (warning.type === 'non_preferred') {
-    const stores = warning.preferred_stores?.join(', ') || 'none';
-    return `Preferred at: ${stores}`;
-  }
-
-  const entered = warning.entered || 'unknown';
-  const standard = warning.standard?.join(', ') || 'none';
-  return `Qty ${entered} is non-standard (usual: ${standard})`;
-};
 
 export const WarningBadge: React.FC<WarningBadgeProps> = ({ warnings }) => {
   const [isOpen, setIsOpen] = useState(false);

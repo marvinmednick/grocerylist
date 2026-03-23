@@ -43,6 +43,30 @@ export type Warning =
       standard: string[];
     };
 
+export const getWarningText = (warning: Warning): string => {
+  if (warning.type === 'avoided') {
+    const storeName = warning.store_name || warning.store_id || 'a store';
+    if (warning.comment) {
+      return `Avoided at ${storeName} — ${warning.comment}`;
+    }
+    return `Avoided at ${storeName}`;
+  }
+
+  if (warning.type === 'unavailable') {
+    const storeName = warning.store_name || warning.store_id || 'a store';
+    return `Unavailable at ${storeName}`;
+  }
+
+  if (warning.type === 'non_preferred') {
+    const stores = warning.preferred_stores?.join(', ') || 'none';
+    return `Preferred at: ${stores}`;
+  }
+
+  const entered = warning.entered || 'unknown';
+  const standard = warning.standard?.join(', ') || 'none';
+  return `Qty ${entered} is non-standard (usual: ${standard})`;
+};
+
 export const computeWarnings = (
   preferences: ItemStorePreference[] | null | undefined,
   activeStoreId: string | null | undefined,
@@ -121,6 +145,30 @@ export const useSearchItems = (query: string) => {
       return data as MasterItem[];
     },
     enabled: query.length >= 2,
+  });
+};
+
+export const useItemById = (itemId: string | null) => {
+  return useQuery({
+    queryKey: ['item', itemId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('items')
+        .select(`
+          *,
+          category:categories!default_category_id(name),
+          item_store_preferences(
+            store_id, status, comment,
+            store:stores(id, name, color_code)
+          )
+        `)
+        .eq('id', itemId)
+        .single();
+
+      if (error) throw error;
+      return data as MasterItem;
+    },
+    enabled: itemId !== null,
   });
 };
 

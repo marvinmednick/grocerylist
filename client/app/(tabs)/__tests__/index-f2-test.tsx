@@ -280,4 +280,23 @@ describe('ShoppingListScreen F2 behaviors', () => {
       );
     });
   });
+
+  it('opens multi-trip modal from End All Shopping Trips without using Alert for multiple purchasers', () => {
+    mockUseShoppingList.mockReturnValue({
+      data: [
+        buildItem({ id: 'item-1', purchased_by: 'user-1' }),
+        buildItem({ id: 'item-2', purchased_by: 'user-2', name: 'Bread' }),
+      ],
+      isLoading: false,
+    });
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    render(<ShoppingListScreen />, { wrapper });
+    fireEvent.press(screen.getByText('End All Shopping Trips'));
+
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(screen.getByTestId('multi-trip-modal')).toBeTruthy();
+
+    alertSpy.mockRestore();
+  });
 });

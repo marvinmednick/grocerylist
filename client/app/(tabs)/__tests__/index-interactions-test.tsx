@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import ShoppingListScreen from '../index';
 import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, useDeleteListItem, useEndTrip, useRevertArchival } from '@/api/list';
+import { useItemById } from '@/api/items';
 import { useUndo } from '@/api/undoContext';
 import { useMetadata } from '@/api/metadata';
 import { useHouseholdMembers } from '@/api/profile';
@@ -13,6 +14,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Mock all the hooks
 jest.mock('@/api/list');
+jest.mock('@/api/items', () => {
+  const actual = jest.requireActual('@/api/items');
+  return {
+    ...actual,
+    useItemById: jest.fn(),
+  };
+});
 jest.mock('@/api/undoContext', () => {
   const original = jest.requireActual('@/api/undoContext');
   return {
@@ -46,6 +54,7 @@ const mockUseAddToList = useAddToList as jest.Mock;
 const mockUseDeleteListItem = useDeleteListItem as jest.Mock;
 const mockUseEndTrip = useEndTrip as jest.Mock;
 const mockUseRevertArchival = useRevertArchival as jest.Mock;
+const mockUseItemById = useItemById as jest.Mock;
 const mockUseUndo = useUndo as jest.Mock;
 const mockUseMetadata = useMetadata as jest.Mock;
 const mockUseHouseholdMembers = useHouseholdMembers as jest.Mock;
@@ -92,6 +101,7 @@ describe('ShoppingListScreen Interactions', () => {
     mockUseDeleteListItem.mockReturnValue({ mutateAsync: jest.fn() });
     mockUseEndTrip.mockReturnValue({ mutateAsync: jest.fn() });
     mockUseRevertArchival.mockReturnValue({ mutateAsync: jest.fn() });
+    mockUseItemById.mockReturnValue({ data: null });
     mockUseUndo.mockReturnValue({
       undoLastAction: jest.fn(),
       redoLastAction: jest.fn(),
@@ -103,7 +113,13 @@ describe('ShoppingListScreen Interactions', () => {
     });
     mockUseMetadata.mockReturnValue({ data: { stores: [], categories: [] } });
     mockUseHouseholdMembers.mockReturnValue({ data: [] });
-    mockUseHousehold.mockReturnValue({ householdId: 'h1', isLoading: false });
+    mockUseHousehold.mockReturnValue({
+      displayName: 'Alice',
+      displayNameShort: 'Al',
+      avatarColor: '#2563eb',
+      householdId: 'h1',
+      isLoading: false,
+    });
   });
 
   afterEach(() => {
@@ -230,5 +246,71 @@ describe('ShoppingListScreen Interactions', () => {
       expect(screen.getByText('Edit Item')).toBeTruthy();
     });
     expect(screen.queryByText('Usual Quantities')).toBeNull();
+  });
+
+  it('shows warning callout in List Edit modal for master-linked item warnings', async () => {
+    mockUseShoppingList.mockReturnValue({
+      data: [
+        {
+          id: '1',
+          item_id: 'master-1',
+          name: 'Milk',
+          quantity: '1L',
+          is_purchased: false,
+          store_id: 'store1',
+          store: { name: 'Grocery Store' },
+          category: { name: 'Dairy' },
+          master_item: { short_name: null, default_qty: '1L', alternate_qtys: ['2L'] },
+        },
+      ],
+      isLoading: false,
+    });
+    mockUseItemById.mockReturnValue({
+      data: {
+        id: 'master-1',
+        default_qty: '1L',
+        alternate_qtys: ['2L'],
+        item_store_preferences: [
+          {
+            store_id: 'store1',
+            status: 'avoided',
+            comment: null,
+            store: { id: 'store1', name: 'Grocery Store', color_code: '#2563eb' },
+          },
+        ],
+      },
+    });
+
+    render(<ShoppingListScreen />, { wrapper });
+    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+
+    expect(await screen.findByText('Avoided at Grocery Store')).toBeTruthy();
+  });
+
+  it('does not show warning callout in List Edit modal for one-off list items', async () => {
+    mockUseShoppingList.mockReturnValue({
+      data: [
+        {
+          id: '1',
+          item_id: null,
+          name: 'One-off Milk',
+          quantity: '1',
+          is_purchased: false,
+          store_id: 'store1',
+          store: { name: 'Grocery Store' },
+          category: { name: 'Dairy' },
+          master_item: null,
+        },
+      ],
+      isLoading: false,
+    });
+
+    render(<ShoppingListScreen />, { wrapper });
+    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit Item')).toBeTruthy();
+    });
+    expect(screen.queryByTestId('warning-callout')).toBeNull();
   });
 });

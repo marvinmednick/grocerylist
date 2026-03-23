@@ -180,4 +180,80 @@ describe('items mutations', () => {
 
     expect(mockInvalidateQueries).not.toHaveBeenCalled();
   });
+
+  it('useUpdateMasterItem throws when householdId is null', async () => {
+    mockUseHousehold.mockReturnValue({ householdId: null });
+
+    const mutation = useUpdateMasterItem();
+
+    await expect(
+      mutation.mutateAsync({
+        id: 'item-1',
+        name: 'Milk',
+      })
+    ).rejects.toThrow('No household ID found');
+
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it('useUpdateMasterItem surfaces items update failure', async () => {
+    const itemsSingle = jest.fn().mockResolvedValue({ data: null, error: { message: 'update failed' } });
+    const itemsSelect = jest.fn().mockReturnValue({ single: itemsSingle });
+    const itemsEq = jest.fn().mockReturnValue({ select: itemsSelect });
+    const itemsUpdate = jest.fn().mockReturnValue({ eq: itemsEq });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'items') {
+        return { update: itemsUpdate };
+      }
+
+      return {};
+    });
+
+    const mutation = useUpdateMasterItem();
+
+    await expect(
+      mutation.mutateAsync({
+        id: 'item-1',
+        name: 'Milk',
+      })
+    ).rejects.toMatchObject({ message: 'update failed' });
+
+    expect(mockInvalidateQueries).not.toHaveBeenCalled();
+  });
+
+  it('useUpdateMasterItem surfaces item_store_preferences insert failure', async () => {
+    const itemsSingle = jest.fn().mockResolvedValue({ data: { id: 'item-1' }, error: null });
+    const itemsSelect = jest.fn().mockReturnValue({ single: itemsSingle });
+    const itemsEq = jest.fn().mockReturnValue({ select: itemsSelect });
+    const itemsUpdate = jest.fn().mockReturnValue({ eq: itemsEq });
+
+    const storesDeleteEq = jest.fn().mockResolvedValue({ error: null });
+    const storesDelete = jest.fn().mockReturnValue({ eq: storesDeleteEq });
+    const storesInsert = jest.fn().mockResolvedValue({ error: { message: 'insert failed' } });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'items') {
+        return { update: itemsUpdate };
+      }
+
+      if (table === 'item_store_preferences') {
+        return { delete: storesDelete, insert: storesInsert };
+      }
+
+      return {};
+    });
+
+    const mutation = useUpdateMasterItem();
+
+    await expect(
+      mutation.mutateAsync({
+        id: 'item-1',
+        name: 'Milk',
+        store_preferences: [{ store_id: 'store-1', status: 'preferred', comment: null }],
+      })
+    ).rejects.toMatchObject({ message: 'insert failed' });
+
+    expect(mockInvalidateQueries).not.toHaveBeenCalled();
+  });
 });

@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useHousehold } from '@/lib/household';
+import type { Warning } from '@/api/items';
 
 export interface ListItem {
   id: string;
@@ -16,15 +17,7 @@ export interface ListItem {
   archived_at?: string | null;
   store?: { name: string; color_code: string };
   category?: { name: string; sort_order: number };
-  warnings?: Array<{
-    type: string;
-    store_id?: string;
-    store_name?: string;
-    comment?: string | null;
-    preferred_stores?: string[];
-    entered?: string;
-    standard?: string[];
-  }>;
+  warnings?: Warning[];
   master_item?: {
     short_name: string | null;
     default_qty: string | null;
@@ -138,15 +131,7 @@ export interface ListItemInsert {
   item_id?: string | null;
   store_id?: string | null;
   category_id?: string | null;
-  warnings?: Array<{
-    type: string;
-    store_id?: string;
-    store_name?: string;
-    comment?: string | null;
-    preferred_stores?: string[];
-    entered?: string;
-    standard?: string[];
-  }>;
+  warnings?: Warning[];
 }
 
 export const useAddToList = () => {

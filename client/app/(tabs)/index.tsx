@@ -4,11 +4,13 @@ import { CheckCircle2, Circle, Archive, RotateCcw, RotateCw, Trash2, GripVertica
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { SmartAddItem } from '@/components/SmartAddItem';
 import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, useEndTrip, useDeleteListItem, useRevertArchival, ListItem } from '@/api/list';
+import { computeWarnings, useItemById } from '@/api/items';
 import { useUndo } from '@/api/undoContext';
 import { useMetadata } from '@/api/metadata';
 import { useHouseholdMembers } from '@/api/profile';
 import { Toast } from '@/components/Toast';
 import { WarningBadge } from '@/components/WarningBadge';
+import { WarningCallout } from '@/components/WarningCallout';
 import { StoreSelector } from '@/components/StoreSelector';
 import { useHousehold } from '@/lib/household';
 import { loadActiveStoreId, saveActiveStoreId } from '@/lib/activeStore';
@@ -30,7 +32,11 @@ export default function ShoppingListScreen() {
   const insets = useSafeAreaInsets();
   const { householdId, userId, avatarColor, isLoading: isHouseholdLoading } = useHousehold();
   const { data: members = [] } = useHouseholdMembers(householdId);
-  const [toast, setToast] = useState({ visible: false, message: '' });
+  const [toast, setToast] = useState<{ visible: boolean; message: string; variant: 'default' | 'warning' }>({
+    visible: false,
+    message: '',
+    variant: 'default',
+  });
   const [interactionMode, setInteractionMode] = useState<'shopping' | 'planning'>('shopping');
   const [isMultiTripModalVisible, setIsMultiTripModalVisible] = useState(false);
   const [multiTripContext, setMultiTripContext] = useState<MultiTripContextState | null>(null);
@@ -45,7 +51,7 @@ export default function ShoppingListScreen() {
     } else if (event === 'UPDATE' && itemName) {
       message = `${itemName} was updated`;
     }
-    setToast({ visible: true, message });
+    setToast({ visible: true, message, variant: 'default' });
   }, []);
 
   const { data: listItems, isLoading } = useShoppingList(handleRemoteChange);
@@ -66,6 +72,17 @@ export default function ShoppingListScreen() {
   const [editQty, setEditQty] = useState('');
   const [editQtyChips, setEditQtyChips] = useState<string[]>([]);
   const [editStoreId, setEditStoreId] = useState('');
+  const editMasterItemId = isEditModalVisible && editingItem?.item_id ? editingItem.item_id : null;
+  const { data: editMasterItem } = useItemById(editMasterItemId);
+  const editWarnings = editMasterItem
+    ? computeWarnings(
+        editMasterItem.item_store_preferences,
+        editStoreId,
+        editQty,
+        editMasterItem.default_qty,
+        editMasterItem.alternate_qtys
+      )
+    : [];
   const memberMap = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
 
   useEffect(() => {
@@ -517,7 +534,13 @@ export default function ShoppingListScreen() {
         </View>
       </View>
       <View style={styles.headerContainer}>
-        <SmartAddItem disabled={isHouseholdLoading} activeStoreId={activeStoreId} />
+        <SmartAddItem
+          disabled={isHouseholdLoading}
+          activeStoreId={activeStoreId}
+          onWarningToast={(message) => {
+            setToast({ visible: true, message, variant: 'warning' });
+          }}
+        />
       </View>
       {isLoading || isHouseholdLoading ? (
         <View style={styles.center}><ActivityIndicator size="large" color="#0000ff" /></View>
@@ -556,6 +579,9 @@ export default function ShoppingListScreen() {
               <Text style={styles.modalTitle}>Edit Item</Text>
               <TouchableOpacity onPress={() => setIsEditModalVisible(false)} style={styles.modalCloseBtn}><X size={20} color="#6b7280" /></TouchableOpacity>
             </View>
+            {editingItem?.item_id ? (
+              <WarningCallout warnings={editWarnings} />
+            ) : null}
             <ScrollView keyboardShouldPersistTaps="handled">
               <Text style={styles.label}>Name</Text>
               <TextInput style={styles.modalInput} value={editName} onChangeText={setEditName} />
@@ -598,7 +624,8 @@ export default function ShoppingListScreen() {
       <Toast
         message={toast.message}
         visible={toast.visible}
-        onDismiss={() => setToast({ visible: false, message: '' })}
+        variant={toast.variant}
+        onDismiss={() => setToast({ visible: false, message: '', variant: 'default' })}
       />
       <MultiTripModal
         visible={isMultiTripModalVisible}
@@ -645,7 +672,7 @@ const styles = StyleSheet.create({
   emptyContainer: { padding: 32, alignItems: 'center', marginTop: 40 },
   emptyText: { color: '#9ca3af', fontSize: 16 },
   modalOverlay: { flex: 1, justifyContent: 'center', paddingHorizontal: 16, backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContent: { backgroundColor: 'white', borderRadius: 16, padding: 24 },
+  modalContent: { backgroundColor: 'white', borderRadius: 16, padding: 24, maxHeight: '85%' },
   modalTitle: { fontSize: 20, fontWeight: '700' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   modalCloseBtn: { padding: 8 },

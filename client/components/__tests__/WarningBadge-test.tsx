@@ -1,6 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { WarningBadge } from '../WarningBadge';
+import type { Warning } from '@/api/items';
 
 describe('WarningBadge', () => {
   it('renders nothing when warnings is empty', () => {
@@ -60,5 +61,17 @@ describe('WarningBadge', () => {
 
     fireEvent.press(screen.getByTestId('warning-popover-overlay'));
     expect(screen.queryByText('Qty 3 is non-standard (usual: 1, 2)')).toBeNull();
+  });
+
+  it('accepts Warning type from api/items without type errors', () => {
+    const warning: Warning = {
+      type: 'avoided',
+      store_id: 'store-1',
+      store_name: 'Main Market',
+      comment: 'seasonal issue',
+    };
+
+    render(<WarningBadge warnings={[warning]} />);
+    expect(screen.getByTestId('warning-badge-trigger')).toBeTruthy();
   });
 });

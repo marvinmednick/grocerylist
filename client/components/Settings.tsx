@@ -25,7 +25,6 @@ import { useAppTheme } from '@/lib/theme';
 interface SettingsProps {
   visible: boolean;
   onClose: () => void;
-  renderInline?: boolean;
 }
 
 export const PROFILE_COLORS = [
@@ -67,7 +66,7 @@ const WARNING_OPTIONS: Record<string, Array<{ label: string; value: string }>> =
   ],
 };
 
-export const Settings: React.FC<SettingsProps> = ({ visible, onClose, renderInline = false }) => {
+export const Settings: React.FC<SettingsProps> = ({ visible, onClose }) => {
   const insets = useSafeAreaInsets();
   const { displayName, displayNameShort, avatarColor, householdId } = useHousehold();
   const { data: myProfile } = useMyProfile();
@@ -104,7 +103,7 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose, renderInli
     });
   };
 
-  if (!visible && !renderInline) {
+  if (!visible) {
     return null;
   }
 
@@ -275,10 +274,6 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose, renderInli
       </View>
     </ScrollView>
   );
-
-  if (renderInline) {
-    return content;
-  }
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>

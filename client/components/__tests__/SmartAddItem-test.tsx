@@ -6,6 +6,7 @@ import { useSearchItems, useCreateMasterItem } from '@/api/items';
 import { useAddToList, useDeleteListItem } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
+import { useMyProfile } from '@/api/profile';
 
 jest.mock('@/api/items', () => {
   const actual = jest.requireActual('@/api/items');
@@ -18,6 +19,7 @@ jest.mock('@/api/items', () => {
 jest.mock('@/api/list');
 jest.mock('@/api/metadata');
 jest.mock('@/api/undoContext');
+jest.mock('@/api/profile');
 
 describe('SmartAddItem', () => {
   const mockUseSearchItems = useSearchItems as jest.Mock;
@@ -26,6 +28,7 @@ describe('SmartAddItem', () => {
   const mockUseDeleteListItem = useDeleteListItem as jest.Mock;
   const mockUseMetadata = useMetadata as jest.Mock;
   const mockUseUndo = useUndo as jest.Mock;
+  const mockUseMyProfile = useMyProfile as jest.Mock;
 
   const pushAction = jest.fn();
   const addItem = jest.fn();
@@ -61,6 +64,16 @@ describe('SmartAddItem', () => {
       },
     });
     mockUseUndo.mockReturnValue({ pushAction });
+    mockUseMyProfile.mockReturnValue({
+      data: {
+        warning_preferences: {
+          avoided: 'toast_and_badge',
+          unavailable: 'toast_and_badge',
+          non_preferred: 'badge_only',
+          non_standard_qty: 'badge_only',
+        },
+      },
+    });
   });
 
   it('does not render store pills in dropdown rows', async () => {
@@ -209,6 +222,189 @@ describe('SmartAddItem', () => {
     });
   });
 
+  it('shows warning callout in Add Detail modal for master item warnings', async () => {
+    mockUseSearchItems.mockImplementation((query: string) => ({
+      data:
+        query.length >= 2
+          ? [
+              {
+                ...baseItem,
+                item_store_preferences: [
+                  {
+                    store_id: 'store-1',
+                    status: 'avoided',
+                    comment: null,
+                    store: { id: 'store-1', name: 'Market', color_code: '#2563eb' },
+                  },
+                ],
+              },
+            ]
+          : [],
+    }));
+
+    render(<SmartAddItem activeStoreId="store-1" />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByTestId('edit-add-master-1'));
+
+    expect(await screen.findByText('Avoided at Market')).toBeTruthy();
+  });
+
+  it('does not show warning callout in Add Detail modal for one-off item', async () => {
+    mockUseSearchItems.mockImplementation(() => ({ data: [] }));
+
+    render(<SmartAddItem activeStoreId="store-1" />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
+    fireEvent.press(screen.getByTestId('edit-add-one-off'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Add to List')).toBeTruthy();
+    });
+    expect(screen.queryByTestId('warning-callout')).toBeNull();
+  });
+
+  it('quick-add triggers warning toast when preference is toast_and_badge', async () => {
+    const onWarningToast = jest.fn();
+    mockUseSearchItems.mockImplementation((query: string) => ({
+      data:
+        query.length >= 2
+          ? [
+              {
+                ...baseItem,
+                item_store_preferences: [
+                  {
+                    store_id: 'store-1',
+                    status: 'avoided',
+                    comment: null,
+                    store: { id: 'store-1', name: 'Market', color_code: '#2563eb' },
+                  },
+                ],
+              },
+            ]
+          : [],
+    }));
+
+    render(<SmartAddItem activeStoreId="store-1" onWarningToast={onWarningToast} />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByText('Milk'));
+
+    await waitFor(() => {
+      expect(onWarningToast).toHaveBeenCalledWith(expect.stringContaining('Avoided at Market'));
+    });
+  });
+
+  it('quick-add does not trigger warning toast when preference is badge_only', async () => {
+    const onWarningToast = jest.fn();
+    mockUseMyProfile.mockReturnValue({
+      data: {
+        warning_preferences: {
+          avoided: 'badge_only',
+          unavailable: 'toast_and_badge',
+          non_preferred: 'badge_only',
+          non_standard_qty: 'badge_only',
+        },
+      },
+    });
+    mockUseSearchItems.mockImplementation((query: string) => ({
+      data:
+        query.length >= 2
+          ? [
+              {
+                ...baseItem,
+                item_store_preferences: [
+                  {
+                    store_id: 'store-1',
+                    status: 'avoided',
+                    comment: null,
+                    store: { id: 'store-1', name: 'Market', color_code: '#2563eb' },
+                  },
+                ],
+              },
+            ]
+          : [],
+    }));
+
+    render(<SmartAddItem activeStoreId="store-1" onWarningToast={onWarningToast} />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByText('Milk'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalled();
+    });
+    expect(onWarningToast).not.toHaveBeenCalled();
+  });
+
+  it('quick-add does not trigger warning toast when preference is off', async () => {
+    const onWarningToast = jest.fn();
+    mockUseMyProfile.mockReturnValue({
+      data: {
+        warning_preferences: {
+          avoided: 'off',
+          unavailable: 'toast_and_badge',
+          non_preferred: 'badge_only',
+          non_standard_qty: 'badge_only',
+        },
+      },
+    });
+    mockUseSearchItems.mockImplementation((query: string) => ({
+      data:
+        query.length >= 2
+          ? [
+              {
+                ...baseItem,
+                item_store_preferences: [
+                  {
+                    store_id: 'store-1',
+                    status: 'avoided',
+                    comment: null,
+                    store: { id: 'store-1', name: 'Market', color_code: '#2563eb' },
+                  },
+                ],
+              },
+            ]
+          : [],
+    }));
+
+    render(<SmartAddItem activeStoreId="store-1" onWarningToast={onWarningToast} />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByText('Milk'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalled();
+    });
+    expect(onWarningToast).not.toHaveBeenCalled();
+  });
+
+  it('Add Detail save triggers warning toast when warning exists and preference is toast_and_badge', async () => {
+    const onWarningToast = jest.fn();
+    mockUseSearchItems.mockImplementation((query: string) => ({
+      data:
+        query.length >= 2
+          ? [
+              {
+                ...baseItem,
+                item_store_preferences: [
+                  {
+                    store_id: 'store-1',
+                    status: 'avoided',
+                    comment: null,
+                    store: { id: 'store-1', name: 'Market', color_code: '#2563eb' },
+                  },
+                ],
+              },
+            ]
+          : [],
+    }));
+
+    render(<SmartAddItem activeStoreId="store-1" onWarningToast={onWarningToast} />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByTestId('edit-add-master-1'));
+    fireEvent.press(await screen.findByText('Add to List'));
+
+    await waitFor(() => {
+      expect(onWarningToast).toHaveBeenCalledWith(expect.stringContaining('Avoided at Market'));
+    });
+  });
+
   it('generates no warnings for one-off items', async () => {
     mockUseSearchItems.mockImplementation(() => ({ data: [] }));
     render(<SmartAddItem activeStoreId="store-1" />);
@@ -313,23 +509,22 @@ describe('SmartAddItem', () => {
     expect(screen.queryByText('1 qt')).toBeNull();
   });
 
-  it('shows three actions in one-off edit modal and two for master edit modal', async () => {
+  it('shows two actions in one-off edit modal and one for master edit modal', async () => {
     render(<SmartAddItem activeStoreId="store-1" />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
     fireEvent.press(screen.getByTestId('edit-add-one-off'));
 
-    expect(await screen.findByText('Cancel')).toBeTruthy();
-    expect(screen.getByText('Add to List')).toBeTruthy();
-    expect(screen.getByText('Save to Master & Add')).toBeTruthy();
+    expect(await screen.findByText('Add to List')).toBeTruthy();
+    expect(screen.getByText('Save & Add')).toBeTruthy();
+    expect(screen.queryByText('Cancel')).toBeNull();
 
-    fireEvent.press(screen.getByText('Cancel'));
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
     fireEvent.press(await screen.findByTestId('edit-add-master-1'));
 
-    expect(await screen.findByText('Cancel')).toBeTruthy();
-    expect(screen.getByText('Add to List')).toBeTruthy();
-    expect(screen.queryByText('Save to Master & Add')).toBeNull();
+    expect(await screen.findByText('Add to List')).toBeTruthy();
+    expect(screen.queryByText('Save & Add')).toBeNull();
+    expect(screen.queryByText('Cancel')).toBeNull();
   });
 
   it('one-off edit Add to List uses null item_id and does not create master item', async () => {
@@ -352,13 +547,13 @@ describe('SmartAddItem', () => {
     expect(createMasterItem).not.toHaveBeenCalled();
   });
 
-  it('one-off edit Save to Master & Add creates master item then adds with non-null item_id', async () => {
+  it('one-off edit Save & Add creates master item then adds with non-null item_id', async () => {
     mockUseSearchItems.mockImplementation(() => ({ data: [] }));
     render(<SmartAddItem activeStoreId="store-1" />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
     fireEvent.press(screen.getByTestId('edit-add-one-off'));
-    fireEvent.press(await screen.findByText('Save to Master & Add'));
+    fireEvent.press(await screen.findByText('Save & Add'));
 
     await waitFor(() => {
       expect(createMasterItem).toHaveBeenCalledWith(

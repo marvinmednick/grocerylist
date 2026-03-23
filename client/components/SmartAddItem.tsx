@@ -1,20 +1,30 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Modal, Keyboard, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { Search, X, ChevronRight } from 'lucide-react-native';
-import { computeWarnings, useSearchItems, useCreateMasterItem, MasterItem } from '@/api/items';
+import { computeWarnings, getWarningText, useSearchItems, useCreateMasterItem, type MasterItem, type Warning } from '@/api/items';
 import { useAddToList, useDeleteListItem } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
+import { useMyProfile } from '@/api/profile';
+import { WarningCallout } from '@/components/WarningCallout';
 
 interface SmartAddItemProps {
   disabled?: boolean;
   activeStoreId: string;
+  onWarningToast?: (message: string) => void;
 }
 
 // EditTarget covers both master items (from search) and one-off items (no master record yet)
 type EditTarget = MasterItem | { name: string; id: null };
 
-export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemProps) {
+const DEFAULT_WARNING_PREFS = {
+  avoided: 'toast_and_badge',
+  unavailable: 'toast_and_badge',
+  non_preferred: 'badge_only',
+  non_standard_qty: 'badge_only',
+} as const;
+
+export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }: SmartAddItemProps) {
   const [query, setQuery] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<EditTarget | null>(null);
@@ -28,12 +38,15 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
   const [editQty, setEditQty] = useState('');
   const [editStoreId, setEditStoreId] = useState('');
   const [editCategoryId, setEditCategoryId] = useState('');
+  const editQtyInputRef = useRef<TextInput>(null);
 
   const { data: results = [] } = useSearchItems(query);
   const { mutateAsync: addItem } = useAddToList();
   const { mutateAsync: createMasterItem } = useCreateMasterItem();
   const { mutateAsync: deleteItem } = useDeleteListItem();
   const { data: metadata } = useMetadata();
+  const myProfileQuery = useMyProfile();
+  const myProfile = myProfileQuery?.data;
   const { pushAction } = useUndo();
 
   const getSelection = (item: MasterItem) => {
@@ -63,7 +76,31 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
     Keyboard.dismiss();
   };
 
+  const maybeTriggerWarningToast = (warnings: Warning[]) => {
+    if (!onWarningToast || warnings.length === 0) {
+      return;
+    }
+
+    const prefs = myProfile?.warning_preferences ?? DEFAULT_WARNING_PREFS;
+    const shouldToast = warnings.some((warning) => {
+      if (warning.type === 'non_preferred') {
+        return false;
+      }
+      return prefs[warning.type] === 'toast_and_badge';
+    });
+
+    if (!shouldToast) {
+      return;
+    }
+
+    const message = warnings.map((warning) => getWarningText(warning)).join(' • ').trim();
+    if (message.length > 0) {
+      onWarningToast(message);
+    }
+  };
+
   const onCommitAdd = async (item: MasterItem) => {
+    Keyboard.dismiss();
     const selection = getSelection(item);
     const name = item.name;
     const warnings = computeWarnings(
@@ -100,6 +137,7 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
     });
 
     clearAndClose();
+    setTimeout(() => maybeTriggerWarningToast(warnings), 400);
   };
 
   const onOneOffAdd = async () => {
@@ -132,7 +170,19 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
     clearAndClose();
   };
 
+  const selectedMasterItem = selectedItem?.id ? selectedItem : null;
+  const editWarnings = selectedMasterItem
+    ? computeWarnings(
+        selectedMasterItem.item_store_preferences,
+        editStoreId,
+        editQty,
+        selectedMasterItem.default_qty,
+        selectedMasterItem.alternate_qtys
+      )
+    : [];
+
   const onEditAdd = (item: EditTarget) => {
+    Keyboard.dismiss();
     setSelectedItem(item);
     setEditQty(item.default_qty || '1');
     setEditStoreId(activeStoreId || metadata?.stores?.[0]?.id || '');
@@ -171,6 +221,7 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
   };
 
   const onSaveEdited = async () => {
+    editQtyInputRef.current?.blur();
     let itemId = selectedItem?.id;
     const itemName = selectedItem?.name || query;
 
@@ -224,6 +275,7 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
     });
 
     clearAndClose();
+    setTimeout(() => maybeTriggerWarningToast(warnings), 400);
   };
 
   return (
@@ -395,9 +447,14 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
               </TouchableOpacity>
             </View>
 
+            {selectedMasterItem ? (
+              <WarningCallout warnings={editWarnings} />
+            ) : null}
+
             <ScrollView keyboardShouldPersistTaps="handled">
               <Text style={styles.label}>Quantity</Text>
               <TextInput
+                ref={editQtyInputRef}
                 style={styles.modalInput}
                 value={editQty}
                 onChangeText={setEditQty}
@@ -441,20 +498,17 @@ export function SmartAddItem({ disabled = false, activeStoreId }: SmartAddItemPr
             </ScrollView>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={[styles.actionBtn, styles.cancelBtn]} onPress={() => setIsEditing(false)}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
               {selectedItem?.id ? (
-                <TouchableOpacity style={[styles.actionBtn, styles.saveBtn]} onPress={onSaveEdited}>
+                <TouchableOpacity style={[styles.actionBtn, styles.saveBtn, { flex: 1 }]} onPress={onSaveEdited}>
                   <Text style={styles.saveText}>Add to List</Text>
                 </TouchableOpacity>
               ) : (
                 <>
-                  <TouchableOpacity style={[styles.actionBtn, styles.saveBtn]} onPress={onOneOffEditAdd}>
+                  <TouchableOpacity style={[styles.actionBtn, styles.saveBtn, { flex: 1 }]} onPress={onOneOffEditAdd}>
                     <Text style={styles.saveText}>Add to List</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={[styles.actionBtn, styles.cancelBtn]} onPress={onSaveEdited}>
-                    <Text style={styles.cancelText}>Save to Master & Add</Text>
+                  <TouchableOpacity style={[styles.actionBtn, styles.cancelBtn, { flex: 1 }]} onPress={onSaveEdited}>
+                    <Text style={styles.cancelText}>Save & Add</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -634,6 +688,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 16,
     padding: 24,
+    maxHeight: '85%',
   },
   modalHeader: {
     flexDirection: 'row',
