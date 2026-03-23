@@ -20,7 +20,7 @@
 | F15 | Freeform Qty "Other" Chip | Done | [specs/F15-freeform-qty-other-chip.md](specs/F15-freeform-qty-other-chip.md) · [design](docs/design/F15-freeform-qty-other-chip.md) | [#58](https://github.com/marvinmednick/grocerylist/issues/58) |
 | F16 | Store Preferences UI Redesign | Done | [specs/F16-store-preferences-ui.md](specs/F16-store-preferences-ui.md) · [design](docs/design/F16-store-preferences-ui.md) | [#61](https://github.com/marvinmednick/grocerylist/issues/61) |
 | F17 | Item Entry Flow Polish | Done | [specs/F17-item-entry-polish.md](specs/F17-item-entry-polish.md) | [#67](https://github.com/marvinmednick/grocerylist/issues/67) |
-| F18 | Warning System Improvements | In Review | [specs/F18-warning-system-improvements.md](specs/F18-warning-system-improvements.md) | [#70](https://github.com/marvinmednick/grocerylist/issues/70) |
+| F18 | Warning System Improvements | Done | [specs/F18-warning-system-improvements.md](specs/F18-warning-system-improvements.md) | [#70](https://github.com/marvinmednick/grocerylist/issues/70) |
 | F19 | Store Management UI | Specced | [specs/F19-store-management-ui.md](specs/F19-store-management-ui.md) | [#53](https://github.com/marvinmednick/grocerylist/issues/53) [#54](https://github.com/marvinmednick/grocerylist/issues/54) [#62](https://github.com/marvinmednick/grocerylist/issues/62) |
 | F20 | Test Quality Sweep | Specced | [specs/F20-test-quality-sweep.md](specs/F20-test-quality-sweep.md) | [#71](https://github.com/marvinmednick/grocerylist/issues/71) |
 | F21 | Items Screen Enhancements | Backlog | — | [#44](https://github.com/marvinmednick/grocerylist/issues/44) [#64](https://github.com/marvinmednick/grocerylist/issues/64) |

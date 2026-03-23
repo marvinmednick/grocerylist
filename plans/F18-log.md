@@ -13,3 +13,8 @@
 - **Result:** Passed — no blocking issues
 - **Tests:** 196/196 passed
 - **Non-blocking:** `DEFAULT_WARNING_PREFS` duplicated in `SmartAddItem.tsx` and `Settings.tsx` — added to BACKLOG for extraction to `api/profile.ts`
+
+## 2026-03-22 — Shipped
+- **Commit:** `feat: warning system improvements (refs #70, #47, #68, #69)`
+- **Closed:** #70, #47, #68, #69
+- **iOS fixes applied post-review:** keyboard dismiss before modal open, toast 400ms delay, maxHeight 85% on modal, action row button layout (Cancel removed, Save to Master & Add → Save & Add)

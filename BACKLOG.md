@@ -16,7 +16,7 @@ _(empty — all items triaged to GitHub Issues)_
 
 ### From F18
 - [x] WarningBadge popover overlay uses hardcoded -300px offsets — replaced with Modal in F22. (deferred from F18, issue #50)
-- [ ] `DEFAULT_WARNING_PREFS` is duplicated in `SmartAddItem.tsx` and `Settings.tsx` — extract to shared constant in `api/profile.ts` alongside `WarningPreferences`. (found in F18 review)
+- [x] `DEFAULT_WARNING_PREFS` duplication → promoted to GitHub #72. (found in F18 review)
 
 _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assigned preference → discarded, pill state provides sufficient feedback.)_
 
