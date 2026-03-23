@@ -231,7 +231,7 @@ export default function ItemsScreen() {
                 <View style={styles.itemInfo}>
                   <Text style={styles.itemName}>
                     {item.name}
-                    {item.default_qty ? ` - ${item.default_qty}` : ''}
+                    {item.default_qty ? ` — ${item.default_qty}` : ''}
                   </Text>
                   <View style={styles.badgeRow}>
                     <View style={styles.badge}>

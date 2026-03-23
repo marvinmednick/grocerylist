@@ -93,7 +93,7 @@ describe('ItemsScreen', () => {
   it('renders status selector for each store in edit modal', () => {
     renderScreen();
 
-    fireEvent.press(screen.getByText('Peanut Butter - 16oz'));
+    fireEvent.press(screen.getByText('Peanut Butter — 16oz'));
 
     expect(screen.getByTestId('pref-store-dropdown-trigger')).toBeTruthy();
     expect(screen.getByTestId('pref-status-pill-neutral')).toBeTruthy();
@@ -107,7 +107,7 @@ describe('ItemsScreen', () => {
     jest.useFakeTimers();
     renderScreen();
 
-    fireEvent.press(screen.getByText('Peanut Butter - 16oz'));
+    fireEvent.press(screen.getByText('Peanut Butter — 16oz'));
     fireEvent.press(screen.getByTestId('pref-store-dropdown-trigger'));
     fireEvent.press(screen.getByTestId('pref-store-option-store-1'));
     fireEvent.press(screen.getByTestId('pref-status-pill-preferred'));
@@ -133,7 +133,7 @@ describe('ItemsScreen', () => {
     jest.useFakeTimers();
     renderScreen();
 
-    fireEvent.press(screen.getByText('Peanut Butter - 16oz'));
+    fireEvent.press(screen.getByText('Peanut Butter — 16oz'));
     fireEvent.press(screen.getByTestId('pref-store-dropdown-trigger'));
     fireEvent.press(screen.getByTestId('pref-store-option-store-1'));
     expect(screen.getByTestId('inline-comment-input')).toBeTruthy();
@@ -146,7 +146,7 @@ describe('ItemsScreen', () => {
   it('registers undo action on item save', async () => {
     renderScreen();
 
-    fireEvent.press(screen.getByText('Peanut Butter - 16oz'));
+    fireEvent.press(screen.getByText('Peanut Butter — 16oz'));
     fireEvent.changeText(screen.getByDisplayValue('Peanut Butter'), 'Peanut Butter Crunchy');
     fireEvent.press(screen.getByText('Save'));
 
@@ -162,7 +162,7 @@ describe('ItemsScreen', () => {
   it('renders Short Name input in edit modal', () => {
     renderScreen();
 
-    fireEvent.press(screen.getByText('Peanut Butter - 16oz'));
+    fireEvent.press(screen.getByText('Peanut Butter — 16oz'));
 
     expect(screen.getByText('Short Name (optional)')).toBeTruthy();
     expect(screen.getByDisplayValue('PB')).toBeTruthy();
@@ -171,7 +171,7 @@ describe('ItemsScreen', () => {
   it('populates short_name from item data when editing', () => {
     renderScreen();
 
-    fireEvent.press(screen.getByText('Peanut Butter - 16oz'));
+    fireEvent.press(screen.getByText('Peanut Butter — 16oz'));
 
     expect(screen.getByDisplayValue('PB')).toBeTruthy();
   });
@@ -179,7 +179,7 @@ describe('ItemsScreen', () => {
   it('sends short_name in update payload', async () => {
     renderScreen();
 
-    fireEvent.press(screen.getByText('Peanut Butter - 16oz'));
+    fireEvent.press(screen.getByText('Peanut Butter — 16oz'));
     fireEvent.changeText(screen.getByDisplayValue('PB'), 'PButter');
     fireEvent.press(screen.getByText('Save'));
 

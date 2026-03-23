@@ -11,8 +11,8 @@ _(empty — all items triaged to GitHub Issues)_
 ## Deferred from Specs
 
 ### From F16
-- [ ] Comment row separator uses ` - ` (hyphen) instead of ` — ` (em dash) in `items.tsx:400`. (found in F16 review)
-- [ ] Summary label text has trailing space inside `<Text>` tag (`{group.label}: `). (found in F16 review)
+- [x] Comment row separator: fixed hyphen → em dash in item card name display (`items.tsx`). Summary label trailing space was already clean.
+
 
 ### From F18
 - [x] WarningBadge popover overlay uses hardcoded -300px offsets — replaced with Modal in F22. (deferred from F18, issue #50)

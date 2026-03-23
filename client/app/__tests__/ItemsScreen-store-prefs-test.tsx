@@ -110,7 +110,7 @@ describe('ItemsScreen store preferences redesign', () => {
     );
 
   const openEditModal = () => {
-    fireEvent.press(screen.getByText('Peanut Butter - 16oz'));
+    fireEvent.press(screen.getByText('Peanut Butter — 16oz'));
   };
 
   const selectPreferenceStore = (storeId: string) => {
