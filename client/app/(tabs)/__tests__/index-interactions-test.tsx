@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import ShoppingListScreen from '../index';
 import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, useDeleteListItem, useEndTrip, useRevertArchival } from '@/api/list';
 import { useItemById } from '@/api/items';
@@ -193,6 +193,7 @@ describe('ShoppingListScreen Interactions', () => {
   });
 
   it('shows usual quantity chips for master-backed items and chip tap updates edit quantity', async () => {
+    jest.useFakeTimers();
     mockUseShoppingList.mockReturnValue({
       data: [
         {
@@ -219,6 +220,11 @@ describe('ShoppingListScreen Interactions', () => {
 
     fireEvent.press(screen.getByText('2 gal'));
     expect(screen.getByDisplayValue('2 gal')).toBeTruthy();
+
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+    jest.useRealTimers();
   });
 
   it('does not show usual quantity chips for one-off list items', async () => {

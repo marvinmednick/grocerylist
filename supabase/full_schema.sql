@@ -77,7 +77,7 @@ CREATE TABLE shopping_trips (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     started_at TIMESTAMPTZ DEFAULT NOW(),
     ended_at TIMESTAMPTZ,
-    primary_store_id UUID REFERENCES stores(id),
+    primary_store_id UUID REFERENCES stores(id) ON DELETE SET NULL,
     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'retroactive')),
     household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW()

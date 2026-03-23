@@ -17,6 +17,7 @@ const STATUS_OPTIONS: Array<{ label: string; value: PreferenceStatus }> = [
   { label: 'Avoid', value: 'avoided' },
   { label: 'Unavailable', value: 'unavailable' },
 ];
+const STORE_FILTER_THRESHOLD = 6;
 
 export default function ItemsScreen() {
   const insets = useSafeAreaInsets();
@@ -38,6 +39,7 @@ export default function ItemsScreen() {
   const [categoryId, setCategoryId] = useState('');
   const [selectedPrefStoreId, setSelectedPrefStoreId] = useState('');
   const [prefDropdownOpen, setPrefDropdownOpen] = useState(false);
+  const [prefStoreFilterText, setPrefStoreFilterText] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
 
   const initializeStorePreferences = (item: MasterItem | null = null): StorePreferencesState => {
@@ -78,6 +80,7 @@ export default function ItemsScreen() {
       setCategoryId('');
     }
     setSelectedPrefStoreId('');
+    setPrefStoreFilterText('');
     setPrefDropdownOpen(false);
     setIsModalVisible(true);
   };
@@ -159,10 +162,16 @@ export default function ItemsScreen() {
   const selectedPrefStatus: PreferenceStatus = selectedPrefStoreId
     ? (storePreferences[selectedPrefStoreId]?.status ?? 'neutral')
     : 'neutral';
+  const allPrefStores = metadata?.stores ?? [];
+  const filteredPrefStores = prefStoreFilterText.trim()
+    ? allPrefStores.filter((store) =>
+        store.name.toLowerCase().includes(prefStoreFilterText.toLowerCase())
+      )
+    : allPrefStores;
 
   const summaryRows = (['preferred', 'avoided', 'unavailable'] as const)
     .map((status) => {
-      const matchingStores = (metadata?.stores ?? [])
+      const matchingStores = allPrefStores
         .filter((store) => storePreferences[store.id]?.status === status)
         .sort((a, b) => a.name.localeCompare(b.name));
       const label = STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
@@ -170,7 +179,7 @@ export default function ItemsScreen() {
     })
     .filter((group) => group.matchingStores.length > 0);
 
-  const commentRows = (metadata?.stores ?? []).filter(
+  const commentRows = allPrefStores.filter(
     (store) => (storePreferences[store.id]?.comment?.trim().length ?? 0) > 0
   );
 
@@ -289,7 +298,10 @@ export default function ItemsScreen() {
                 <TouchableOpacity
                   testID="pref-store-dropdown-trigger"
                   style={styles.dropdownTrigger}
-                  onPress={() => setPrefDropdownOpen((prev) => !prev)}
+                  onPress={() => {
+                    setPrefStoreFilterText('');
+                    setPrefDropdownOpen((prev) => !prev);
+                  }}
                 >
                   <View style={styles.dropdownValue}>
                     {selectedPrefStore ? (
@@ -306,7 +318,18 @@ export default function ItemsScreen() {
 
                 {prefDropdownOpen ? (
                   <View style={styles.dropdownMenu}>
-                    {(metadata?.stores ?? []).map((store) => (
+                    {allPrefStores.length > STORE_FILTER_THRESHOLD ? (
+                      <TextInput
+                        testID="pref-store-filter-input"
+                        style={styles.storeFilterInput}
+                        value={prefStoreFilterText}
+                        onChangeText={setPrefStoreFilterText}
+                        placeholder="Filter stores..."
+                        placeholderTextColor="#9ca3af"
+                        autoFocus
+                      />
+                    ) : null}
+                    {filteredPrefStores.map((store) => (
                       <TouchableOpacity
                         key={store.id}
                         testID={`pref-store-option-${store.id}`}
@@ -314,12 +337,16 @@ export default function ItemsScreen() {
                         onPress={() => {
                           setSelectedPrefStoreId(store.id);
                           setPrefDropdownOpen(false);
+                          setPrefStoreFilterText('');
                         }}
                       >
                         <View style={[styles.storeColorDot, { backgroundColor: store.color_code }]} />
                         <Text style={styles.storeNameText}>{store.name}</Text>
                       </TouchableOpacity>
                     ))}
+                    {filteredPrefStores.length === 0 ? (
+                      <Text style={styles.noStoresText}>No stores match</Text>
+                    ) : null}
                   </View>
                 ) : null}
 
@@ -541,12 +568,26 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#ffffff',
   },
+  storeFilterInput: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: '#111827',
+  },
   dropdownOption: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
+  },
+  noStoresText: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: '#6b7280',
   },
   storeColorDot: {
     width: 10,
