@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Modal, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Search, Tag, Store, Plus, X, ChevronDown } from 'lucide-react-native';
-import { useAllItems, useCreateMasterItem, useUpdateMasterItem, MasterItem, ItemStorePreference } from '@/api/items';
+import { useAllItems, useCreateMasterItem, useUpdateMasterItem, MasterItem, ItemStorePreference, SortOption } from '@/api/items';
 import { useMetadata } from '@/api/metadata';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HeaderActions } from '@/components/HeaderActions';
@@ -18,14 +18,18 @@ const STATUS_OPTIONS: Array<{ label: string; value: PreferenceStatus }> = [
   { label: 'Unavailable', value: 'unavailable' },
 ];
 const STORE_FILTER_THRESHOLD = 6;
+const RECENT_DAYS = 7;
+const RECENT_MS = RECENT_DAYS * 24 * 60 * 60 * 1000;
 
 export default function ItemsScreen() {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<SortOption>('name_asc');
+  const [recentOnly, setRecentOnly] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<MasterItem | null>(null);
 
-  const { data: items, isLoading, error } = useAllItems(search);
+  const { data: items, isLoading, error } = useAllItems(search, sort);
   const { data: metadata } = useMetadata();
   const { mutateAsync: createItem } = useCreateMasterItem();
   const { mutateAsync: updateItem } = useUpdateMasterItem();
@@ -182,6 +186,16 @@ export default function ItemsScreen() {
   const commentRows = allPrefStores.filter(
     (store) => (storePreferences[store.id]?.comment?.trim().length ?? 0) > 0
   );
+  const isNewItem = (item: MasterItem) =>
+    Date.now() - new Date(item.created_at).getTime() < RECENT_MS;
+  const displayedItems = recentOnly ? (items ?? []).filter(isNewItem) : (items ?? []);
+
+  const handleRecentToggle = () => {
+    if (!recentOnly) {
+      setSort('created_desc');
+    }
+    setRecentOnly((prev) => !prev);
+  };
 
   return (
     <View style={styles.container}>
@@ -208,6 +222,38 @@ export default function ItemsScreen() {
         </View>
       </View>
 
+      <View style={styles.controlsRow}>
+        {(['name_asc', 'name_desc', 'created_desc', 'created_asc'] as SortOption[]).map((option) => {
+          const labels: Record<SortOption, string> = {
+            name_asc: 'A→Z',
+            name_desc: 'Z→A',
+            created_desc: 'Newest',
+            created_asc: 'Oldest',
+          };
+          const isActive = sort === option;
+
+          return (
+            <TouchableOpacity
+              key={option}
+              testID={`sort-pill-${option}`}
+              style={[styles.sortPill, isActive && styles.sortPillActive]}
+              onPress={() => setSort(option)}
+            >
+              <Text style={[styles.sortPillText, isActive && styles.sortPillTextActive]}>
+                {labels[option]}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+        <TouchableOpacity
+          testID="recent-toggle"
+          style={[styles.sortPill, recentOnly && styles.sortPillActive]}
+          onPress={handleRecentToggle}
+        >
+          <Text style={[styles.sortPillText, recentOnly && styles.sortPillTextActive]}>Recent</Text>
+        </TouchableOpacity>
+      </View>
+
       {error ? (
         <View style={styles.center}>
           <Text style={{ color: 'red', padding: 20, textAlign: 'center' }}>
@@ -220,7 +266,7 @@ export default function ItemsScreen() {
         </View>
       ) : (
         <FlatList
-          data={items}
+          data={displayedItems}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => {
@@ -243,6 +289,11 @@ export default function ItemsScreen() {
                       <Text style={styles.badgeText}>{preferredStore?.store?.name || 'Any Store'}</Text>
                     </View>
                   </View>
+                  {isNewItem(item) ? (
+                    <View style={styles.newBadge}>
+                      <Text style={styles.newBadgeText}>New</Text>
+                    </View>
+                  ) : null}
                 </View>
               </TouchableOpacity>
             );
@@ -487,6 +538,30 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   searchInput: { flex: 1, marginLeft: 8, fontSize: 16, color: '#111827' },
+  controlsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  sortPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+    backgroundColor: '#f3f4f6',
+  },
+  sortPillActive: {
+    backgroundColor: '#2563eb',
+  },
+  sortPillText: {
+    fontSize: 13,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  sortPillTextActive: {
+    color: '#ffffff',
+  },
   listContent: { padding: 16 },
   itemCard: {
     backgroundColor: '#f9fafb',
@@ -510,6 +585,19 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
   },
   badgeText: { fontSize: 12, color: '#4b5563', marginLeft: 4 },
+  newBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginTop: 4,
+  },
+  newBadgeText: {
+    fontSize: 10,
+    color: '#ffffff',
+    fontWeight: '600',
+  },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyContainer: { alignItems: 'center', marginTop: 40 },
   emptyText: { color: '#9ca3af', fontSize: 16 },

@@ -29,3 +29,8 @@ This file tracks development progress during active work sessions. It gets clear
 ### 2026-03-22 14:30 - Wrote F19 spec (Store Management UI)
 - **Completed**: specs/F19-store-management-ui.md, plans/F19-log.md; updated PLAN.md status to Specced
 - **Next**: Implement F19 or ship F18 first
+---
+### 2026-03-23 19:31 - Fixed flaky act() test failures (FlatList/DraggableFlatList mocks)
+- **Completed**: Added synchronous mocks for FlatList and DraggableFlatList to jest.setup.js. Eliminates VirtualizedList's internal setTimeout firing outside act() during tests.
+- **Tests**: 230 passed, 0 failed (was intermittently 228/230 due to flakiness)
+- **Next**: Commit when ready

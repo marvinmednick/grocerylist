@@ -22,9 +22,12 @@ export interface MasterItem {
   default_qty: string | null;
   alternate_qtys: string[] | null;
   default_category_id: string | null;
+  created_at: string;
   category?: { name: string };
   item_store_preferences?: ItemStorePreference[];
 }
+
+export type SortOption = 'name_asc' | 'name_desc' | 'created_desc' | 'created_asc';
 
 export type Warning =
   | {
@@ -173,9 +176,9 @@ export const useItemById = (itemId: string | null) => {
 };
 
 // Fetch ALL items for the management screen
-export const useAllItems = (searchTerm: string = '') => {
+export const useAllItems = (searchTerm: string = '', sort: SortOption = 'name_asc') => {
   return useQuery({
-    queryKey: ['all_items', searchTerm],
+    queryKey: ['all_items', searchTerm, sort],
     queryFn: async () => {
       let query = supabase
         .from('items')
@@ -186,8 +189,12 @@ export const useAllItems = (searchTerm: string = '') => {
             store_id, status, comment,
             store:stores(id, name, color_code)
           )
-        `)
-        .order('name');
+        `);
+
+      if (sort === 'name_asc') query = query.order('name', { ascending: true });
+      else if (sort === 'name_desc') query = query.order('name', { ascending: false });
+      else if (sort === 'created_desc') query = query.order('created_at', { ascending: false });
+      else if (sort === 'created_asc') query = query.order('created_at', { ascending: true });
 
       if (searchTerm.length > 0) {
         query = query.ilike('name', `%${searchTerm}%`);

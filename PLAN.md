@@ -23,7 +23,7 @@
 | F18 | Warning System Improvements | Done | [specs/F18-warning-system-improvements.md](specs/F18-warning-system-improvements.md) | [#70](https://github.com/marvinmednick/grocerylist/issues/70) |
 | F19 | Store Management UI | Done | [specs/F19-store-management-ui.md](specs/F19-store-management-ui.md) | [#53](https://github.com/marvinmednick/grocerylist/issues/53) [#54](https://github.com/marvinmednick/grocerylist/issues/54) [#62](https://github.com/marvinmednick/grocerylist/issues/62) |
 | F20 | Test Quality Sweep | Done | [specs/F20-test-quality-sweep.md](specs/F20-test-quality-sweep.md) | [#71](https://github.com/marvinmednick/grocerylist/issues/71) |
-| F21 | Items Screen Enhancements | Specced | [specs/F21-items-screen-enhancements.md](specs/F21-items-screen-enhancements.md) | [#73](https://github.com/marvinmednick/grocerylist/issues/73) [#64](https://github.com/marvinmednick/grocerylist/issues/64) |
+| F21 | Items Screen Enhancements | In Review | [specs/F21-items-screen-enhancements.md](specs/F21-items-screen-enhancements.md) | [#73](https://github.com/marvinmednick/grocerylist/issues/73) [#64](https://github.com/marvinmednick/grocerylist/issues/64) |
 | F22 | WarningBadge Modal Fix | Specced | [specs/F22-warning-badge-modal.md](specs/F22-warning-badge-modal.md) | [#50](https://github.com/marvinmednick/grocerylist/issues/50) |
 | F23 | Store Dropdown in Edit Modals | Specced | [specs/F23-store-dropdown-edit-modals.md](specs/F23-store-dropdown-edit-modals.md) | [#74](https://github.com/marvinmednick/grocerylist/issues/74) |
 

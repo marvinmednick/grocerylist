@@ -68,6 +68,52 @@ console.error = (...args) => {
   throw new Error(`Unexpected console.error: ${String(args[0])}`);
 };
 
+// Mock FlatList with a synchronous renderer to avoid VirtualizedList's internal
+// setTimeout-based cell-rendering updates firing outside act() in tests.
+jest.mock('react-native/Libraries/Lists/FlatList', () => {
+  const React = require('react');
+  const MockFlatList = ({ data, renderItem, ListEmptyComponent, contentContainerStyle }) => {
+    if (!data || data.length === 0) {
+      if (!ListEmptyComponent) return null;
+      return React.createElement(
+        React.Fragment,
+        null,
+        typeof ListEmptyComponent === 'function'
+          ? React.createElement(ListEmptyComponent)
+          : ListEmptyComponent
+      );
+    }
+    return React.createElement(
+      React.Fragment,
+      null,
+      data.map((item, index) => renderItem({ item, index, separators: {} }))
+    );
+  };
+  MockFlatList.displayName = 'FlatList';
+  return { __esModule: true, default: MockFlatList };
+});
+
+// Mock DraggableFlatList — tests don't exercise drag-and-drop, and the real
+// implementation depends on CellProvider context that breaks when FlatList is mocked.
+jest.mock('react-native-draggable-flatlist', () => {
+  const React = require('react');
+  const MockDraggableFlatList = ({ data, renderItem, ListHeaderComponent, ListFooterComponent }) => {
+    return React.createElement(
+      React.Fragment,
+      null,
+      ListHeaderComponent ? React.createElement(ListHeaderComponent) : null,
+      (data ?? []).map((item, index) =>
+        renderItem({ item, index, drag: jest.fn(), isActive: false, getIndex: () => index })
+      ),
+      ListFooterComponent ? React.createElement(ListFooterComponent) : null
+    );
+  };
+  MockDraggableFlatList.displayName = 'DraggableFlatList';
+  const ScaleDecorator = ({ children }) => children;
+  ScaleDecorator.displayName = 'ScaleDecorator';
+  return { __esModule: true, default: MockDraggableFlatList, ScaleDecorator };
+});
+
 // Silence the warning: Animated: `useNativeDriver` is not supported because the native animated module is missing.
 jest.mock('react-native-reanimated', () => {
   const Reanimated = require('react-native-reanimated/mock');

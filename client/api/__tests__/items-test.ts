@@ -1,9 +1,10 @@
-import { useCreateMasterItem, useUpdateMasterItem } from '../items';
+import { useAllItems, useCreateMasterItem, useUpdateMasterItem } from '../items';
 import { useHousehold } from '@/lib/household';
 import { supabase } from '@/lib/supabase';
 
 const mockInvalidateQueries = jest.fn();
 const mockUseMutation = jest.fn();
+const mockUseQuery = jest.fn();
 
 jest.mock('@/lib/household', () => ({
   useHousehold: jest.fn(),
@@ -17,6 +18,7 @@ jest.mock('@/lib/supabase', () => ({
 
 jest.mock('@tanstack/react-query', () => ({
   useMutation: (options: any) => mockUseMutation(options),
+  useQuery: (options: any) => mockUseQuery(options),
   useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
 }));
 
@@ -40,6 +42,7 @@ describe('items mutations', () => {
     jest.clearAllMocks();
     mockUseHousehold.mockReturnValue({ householdId: 'household-1' });
     setupMockMutation();
+    mockUseQuery.mockImplementation((options: any) => options);
   });
 
   it('useCreateMasterItem inserts neutral status rows when a comment-only preference is provided', async () => {
@@ -255,5 +258,57 @@ describe('items mutations', () => {
     ).rejects.toMatchObject({ message: 'insert failed' });
 
     expect(mockInvalidateQueries).not.toHaveBeenCalled();
+  });
+
+  it('useAllItems uses name ascending order by default', async () => {
+    const order = jest.fn().mockReturnThis();
+    const ilike = jest.fn().mockReturnThis();
+    const limit = jest.fn().mockResolvedValue({ data: [], error: null });
+    const select = jest.fn().mockReturnValue({ order, ilike, limit });
+
+    mockFrom.mockReturnValue({ select });
+
+    useAllItems();
+    const options = mockUseQuery.mock.calls[0][0];
+    await options.queryFn();
+
+    expect(order).toHaveBeenCalledWith('name', { ascending: true });
+  });
+
+  it('useAllItems uses name descending order for name_desc', async () => {
+    const order = jest.fn().mockReturnThis();
+    const ilike = jest.fn().mockReturnThis();
+    const limit = jest.fn().mockResolvedValue({ data: [], error: null });
+    const select = jest.fn().mockReturnValue({ order, ilike, limit });
+
+    mockFrom.mockReturnValue({ select });
+
+    useAllItems('', 'name_desc');
+    const options = mockUseQuery.mock.calls[0][0];
+    await options.queryFn();
+
+    expect(order).toHaveBeenCalledWith('name', { ascending: false });
+  });
+
+  it('useAllItems uses created_at descending for created_desc', async () => {
+    const order = jest.fn().mockReturnThis();
+    const ilike = jest.fn().mockReturnThis();
+    const limit = jest.fn().mockResolvedValue({ data: [], error: null });
+    const select = jest.fn().mockReturnValue({ order, ilike, limit });
+
+    mockFrom.mockReturnValue({ select });
+
+    useAllItems('', 'created_desc');
+    const options = mockUseQuery.mock.calls[0][0];
+    await options.queryFn();
+
+    expect(order).toHaveBeenCalledWith('created_at', { ascending: false });
+  });
+
+  it('useAllItems includes sort in query key', () => {
+    useAllItems('', 'name_desc');
+    const options = mockUseQuery.mock.calls[0][0];
+
+    expect(options.queryKey).toEqual(['all_items', '', 'name_desc']);
   });
 });
