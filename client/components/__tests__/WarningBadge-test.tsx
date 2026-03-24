@@ -38,7 +38,7 @@ describe('WarningBadge', () => {
     expect(screen.getAllByTestId('warning-icon-unavailable')).toHaveLength(1);
   });
 
-  it('shows popover with detail text on badge tap', () => {
+  it('shows modal with detail text on badge tap', () => {
     render(
       <WarningBadge
         warnings={[{ type: 'avoided', store_name: 'Main Market', comment: 'not fresh' }]}
@@ -46,10 +46,11 @@ describe('WarningBadge', () => {
     );
 
     fireEvent.press(screen.getByTestId('warning-badge-trigger'));
+    expect(screen.getByTestId('warning-modal-close')).toBeTruthy();
     expect(screen.getByText('Avoided at Main Market — not fresh')).toBeTruthy();
   });
 
-  it('dismisses popover on outside tap', () => {
+  it('dismisses modal on backdrop tap', () => {
     render(
       <WarningBadge
         warnings={[{ type: 'non_standard_qty', entered: '3', standard: ['1', '2'] }]}
@@ -59,7 +60,21 @@ describe('WarningBadge', () => {
     fireEvent.press(screen.getByTestId('warning-badge-trigger'));
     expect(screen.getByText('Qty 3 is non-standard (usual: 1, 2)')).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId('warning-popover-overlay'));
+    fireEvent.press(screen.getByTestId('warning-modal-backdrop'));
+    expect(screen.queryByText('Qty 3 is non-standard (usual: 1, 2)')).toBeNull();
+  });
+
+  it('closes warning modal when X button is pressed', () => {
+    render(
+      <WarningBadge
+        warnings={[{ type: 'non_standard_qty', entered: '3', standard: ['1', '2'] }]}
+      />
+    );
+
+    fireEvent.press(screen.getByTestId('warning-badge-trigger'));
+    expect(screen.getByText('Qty 3 is non-standard (usual: 1, 2)')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('warning-modal-close'));
     expect(screen.queryByText('Qty 3 is non-standard (usual: 1, 2)')).toBeNull();
   });
 
