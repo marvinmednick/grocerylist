@@ -12,4 +12,8 @@
 ## 2026-03-23 — Review 1 (Passed)
 - **Result:** Passed — no blocking issues
 - **Tests:** 20/20 passed (228/230 suite-wide; 2 pre-existing flaky act() failures in unrelated files)
-- **Non-blocking:** Pre-existing flaky failures (`sends short_name`, `modal header shows owner name`) show as unexpected in check-tests but are unrelated to F21 and pass when run in isolation
+- **Non-blocking:** Pre-existing flaky failures (`sends short_name`, `modal header shows owner name`) show as unexpected in check-tests but are unrelated to F21 and pass when run in isolation — fixed by FlatList/DraggableFlatList synchronous mocks added in the ship commit
+
+## 2026-03-23 — Shipped
+- **Commit:** `feat: items screen sort, recent filter, and New badge (refs #73, #64)`
+- **Closed:** #73, #64
