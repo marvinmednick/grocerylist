@@ -46,7 +46,7 @@ export const UserAvatar: React.FC = () => {
           style={styles.backdrop}
           onPress={() => setMenuVisible(false)}
         >
-          <View style={[styles.menu, { top: (insets.top || 20) + 40 }]}>
+          <Pressable style={[styles.menu, { top: (insets.top || 20) + 40 }]} onPress={(e) => e.stopPropagation()}>
             <Text style={styles.userName}>{displayName || 'User'}</Text>
             <TouchableOpacity
               style={styles.menuItem}
@@ -60,7 +60,7 @@ export const UserAvatar: React.FC = () => {
             <TouchableOpacity style={styles.menuItem} onPress={handleSignOut}>
               <Text style={styles.signOutText}>Sign Out</Text>
             </TouchableOpacity>
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
       {settingsVisible ? (

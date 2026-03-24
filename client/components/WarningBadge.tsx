@@ -1,6 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { AlertTriangle, HelpCircle, Info, XCircle } from 'lucide-react-native';
+import {
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { AlertTriangle, HelpCircle, Info, X, XCircle } from 'lucide-react-native';
 import { getWarningText, type Warning } from '@/api/items';
 
 interface WarningBadgeProps {
@@ -61,18 +68,46 @@ export const WarningBadge: React.FC<WarningBadgeProps> = ({ warnings }) => {
         })}
       </TouchableOpacity>
 
-      {isOpen ? (
-        <>
-          <Pressable style={styles.overlay} onPress={() => setIsOpen(false)} testID="warning-popover-overlay" />
-          <View style={styles.popover}>
+      <Modal
+        visible={isOpen}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setIsOpen(false)}
+      >
+        <Pressable
+          style={styles.modalBackdrop}
+          onPress={() => setIsOpen(false)}
+          testID="warning-modal-backdrop"
+        >
+          <Pressable style={styles.modalCard} onPress={(event) => event.stopPropagation()}>
+            <View style={styles.modalCardHeader}>
+              <Text style={styles.modalCardTitle}>Warnings</Text>
+              <TouchableOpacity onPress={() => setIsOpen(false)} testID="warning-modal-close">
+                <X size={18} color="#6b7280" />
+              </TouchableOpacity>
+            </View>
             {warningDetails.map((detail, index) => (
-              <Text key={`${detail.warning.type}-${index}`} style={styles.popoverText}>
-                {detail.text}
-              </Text>
+              <View key={`${detail.warning.type}-${index}`} style={styles.modalRow}>
+                {detail.warning.type === 'avoided' ? (
+                  <AlertTriangle size={14} color="#f59e0b" />
+                ) : null}
+                {detail.warning.type === 'unavailable' ? (
+                  <XCircle size={14} color="#ef4444" />
+                ) : null}
+                {detail.warning.type === 'non_preferred' ? (
+                  <Info size={14} color="#6b7280" />
+                ) : null}
+                {detail.warning.type !== 'avoided' &&
+                detail.warning.type !== 'unavailable' &&
+                detail.warning.type !== 'non_preferred' ? (
+                  <HelpCircle size={14} color="#6b7280" />
+                ) : null}
+                <Text style={styles.modalRowText}>{detail.text}</Text>
+              </View>
             ))}
-          </View>
-        </>
-      ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -87,34 +122,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  overlay: {
-    position: 'absolute',
-    top: -300,
-    right: -300,
-    bottom: -300,
-    left: -300,
-    zIndex: 999,
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
   },
-  popover: {
-    position: 'absolute',
-    right: 0,
-    top: '100%',
+  modalCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-    minWidth: 200,
-    maxWidth: 280,
-    zIndex: 1000,
+    borderRadius: 12,
+    padding: 16,
+    width: '100%',
+    maxWidth: 320,
   },
-  popoverText: {
+  modalCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalCardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#111827',
-    fontSize: 12,
+  },
+  modalRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 8,
+  },
+  modalRowText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#374151',
     lineHeight: 18,
-    marginBottom: 6,
   },
 });

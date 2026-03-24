@@ -235,6 +235,20 @@ Every modal and full-screen view **must** follow these rules:
 
 **Reference implementation:** `components/Settings.tsx` — uses `ScrollView` with `keyboardShouldPersistTaps="handled"`, applies `paddingTop: insets.top` via `contentContainerStyle`.
 
+4. **Center/overlay dialogs with a tappable backdrop:** Use nested `Pressable` elements — outer backdrop closes on press, inner card stops propagation. Use a plain `View` for the card and tap-through is possible; items from a parent `Pressable` bubble up unexpectedly.
+
+```tsx
+<Modal visible={isOpen} transparent animationType="fade" onRequestClose={onClose}>
+  <Pressable style={styles.backdrop} onPress={onClose}>
+    <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
+      {/* card content */}
+    </Pressable>
+  </Pressable>
+</Modal>
+```
+
+This applies to any `transparent` modal with a dimmed backdrop (e.g., alert dialogs, detail popovers). Slide-up form modals that fill the screen do not need it.
+
 **Common mistake:** Using a plain `View` for modal content with fixed `paddingBottom` instead of safe area insets. This works on some devices but clips content or overlaps the status bar on others.
 
 ## Supabase Query Patterns
