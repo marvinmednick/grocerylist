@@ -50,6 +50,7 @@ Use when 2–5 small bugs share the same subsystem and can be handed to the impl
 
 | Command | When |
 |---------|------|
+| `/design-review [context]` | After any workflow step that introduced a design decision or change — check consistency, propagate if needed, update docs |
 | `/fix-baseline` | Unexpected test failures exist before starting a feature |
 | `./check-tests` | Verify clean baseline before committing |
 | `/triage` (no args) | Triage all open bugs in one pass |
@@ -85,7 +86,9 @@ Four files and one external service work together:
 
 | Location | Purpose | Updated by |
 |----------|---------|------------|
+| `SESSION_NOTES.md` | Rolling session log — design decisions made, work completed, next steps. Never cleared; committed with content. Read first at session startup. | Claude (after each significant workflow step) |
 | `PLAN.md` | Feature registry — every feature has a row with ID, status, spec link, and GitHub issue link | Claude (during `/spec`, `/review`, and ship) |
+| `docs/design-history.md` | Architecture/design evolution log — what changed, when, why, and what principle it generalizes to. Complements the current-state docs (DESIGN.md, CODING.md, ui-guidelines.md). | Claude (via `/design-review` at any workflow step) |
 | `specs/F[N]-[slug].md` | Full implementation spec — everything Gemini needs to build a feature | Claude (via `/spec`) |
 | `plans/F[N]-log.md` | Feature journal — phase-by-phase history written by Claude (spec, reviews, ship); primary session continuity record for features | Claude (at each phase transition) |
 | `plans/F[N]-progress.md` | Implementor's self-tracking scratchpad — file checklist and resume state; created and maintained by the implementor only | Implementor |
@@ -837,6 +840,9 @@ All workflow commands are available in both **Claude Code** and **Codex CLI**:
 | Batch 2–5 small bugs | Create batch GH issue → `/resolve [batch-N]` → `./implement` → `/review` → `/complete` (see §9) |
 | Triage backlog | Happens automatically as part of `/complete` |
 | Promote backlog to feature | `/spec [description]` |
+| Check/propagate a design decision | `/design-review [context]` — embedded in workflow steps; also callable standalone |
+| Log session progress | Append to `SESSION_NOTES.md` (or use `/update-worklog` to auto-generate) |
+| Review design evolution history | Open `docs/design-history.md` |
 | Update coding conventions | Ask Claude/Codex to update `CODING.md` |
 | See all features and status | Open `PLAN.md` |
 | See small deferred items | Open `BACKLOG.md` |
@@ -850,6 +856,7 @@ All workflow commands are available in both **Claude Code** and **Codex CLI**:
 | File | Read when |
 |------|-----------|
 | `WORKFLOW.md` | Learning or explaining the process (this file) |
+| `SESSION_NOTES.md` | Starting a session — recent progress and design decisions; read before anything else |
 | `gh-aliases.sh` | Source for short `gi-*` GitHub issue filter aliases (`source gh-aliases.sh`) |
 | `CLAUDE.md` | Starting a Claude session — project guidance and architecture |
 | `AGENT.md` | Starting any implementation session — behavioral rules for all tools |
@@ -860,6 +867,8 @@ All workflow commands are available in both **Claude Code** and **Codex CLI**:
 | `docs/tools/aider.md` | aider setup, edit formats, model selection (human reference) |
 | `PLAN.md` | Checking feature status or finding the right spec |
 | `BACKLOG.md` | Looking for small tasks to clean up |
+| `docs/design-history.md` | Understanding why a design decision was made; tracking architectural evolution |
+| `docs/session-archive/YYYY-QN.md` | Archived SESSION_NOTES entries older than 90 days — full historical context; grep for prior findings |
 | `client/known-test-failures.txt` | Reviewing or updating acknowledged pre-existing test failures |
 | `specs/F[N]-*.md` | Implementing or reviewing a specific feature |
 | `DESIGN.md` | Understanding full system architecture before designing a feature |

@@ -1,6 +1,21 @@
-# Work Log
+# Session Notes
 
-This file tracks development progress during active work sessions. It gets cleared after each commit.
+Rolling session log — accumulates across sessions and is committed with content. Never cleared.
+
+Use `/update-worklog` to auto-generate an entry from git analysis if entries were missed.
+
+**Entry format:**
+```
+---
+### YYYY-MM-DD HH:MM — [Step/task description]
+- **Completed**: [What was done]
+- **Findings**: [Key context, discoveries, or reasoning worth preserving — things that help reconstruct the train of thought. Omit field if nothing notable.]
+- **Design decisions**: [Any decisions made; "none" if clean]
+- **Design review**: [Findings from /design-review; "none" if not triggered]
+- **Next**: [Next steps]
+```
+
+**Always append after every workflow step completion** — spec, review, design, complete, resolve, investigate, triage. Even if everything was clean and all fields are "none", the entry records that the step happened and what was worked on.
 
 ---
 ### 2026-03-12 08:30 - Completed F12 and F13, reviewed #39, triage backlog
@@ -39,3 +54,9 @@ This file tracks development progress during active work sessions. It gets clear
 - **Completed**: WarningBadge modal fix shipped. Implementation in c6f7c8b; tests and tracking in this session.
 - **Tests**: 230 passed, 0 failed
 - **Next**: F23 implementation
+---
+### 2026-03-24 — Workflow enhancement: SESSION_NOTES, /design-review, design-history
+- **Completed**: Renamed WORK_LOG.md → SESSION_NOTES.md with updated format/protocol; created commands/design-review.md (standardized consistency check); created docs/design-history.md (seeded with 3 F22/flaky-test decisions); added Session Startup + SESSION_NOTES sections to CLAUDE.md; added /design-review trigger steps to spec/review/complete/resolve/investigate/triage commands; updated WORKFLOW.md tracking table, quick reference, and file reference
+- **Design decisions**: SESSION_NOTES replaces WORK_LOG naming to avoid WORKFLOW.md confusion; design-review embedded in workflow steps (not time-triggered); two-level learning capture (specific vs general principle) in design-history.md
+- **Design review**: n/a — this work IS the design review process enhancement
+- **Next**: F23 implementation; parent CLAUDE.md Pattern A/B split deferred

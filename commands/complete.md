@@ -83,6 +83,18 @@ No PLAN.md update needed.
 
 ---
 
+## Step 3.5 — Design Review
+
+Run `/design-review complete` as a closing check across the whole feature:
+
+- Were any design decisions made during this feature's spec, review, or implementation?
+- Did any patterns change or get established?
+- Are docs (DESIGN.md, CODING.md, ui-guidelines.md) up to date with the current state?
+
+If no design decisions were made this feature, skip this step.
+
+---
+
 ## Step 4 — Triage BACKLOG.md
 
 Read BACKLOG.md and list all open (unchecked `[ ]`) items.
@@ -119,6 +131,35 @@ Present the full triage plan to the user before taking any action. Once confirme
    git add BACKLOG.md
    git commit -m "chore: triage backlog after [ID]"
    ```
+
+---
+
+## Step 4.5 — SESSION_NOTES Archive Check
+
+Check whether SESSION_NOTES.md has grown large enough to archive:
+
+```bash
+wc -l SESSION_NOTES.md
+```
+
+If under 150 lines: skip this step.
+
+If over 150 lines: move entries older than 90 days to a quarterly archive file. Determine the target quarter from the entry dates (Q1=Jan–Mar, Q2=Apr–Jun, Q3=Jul–Sep, Q4=Oct–Dec):
+
+```bash
+# Archive destination — use the quarter of the oldest entries being moved
+# e.g., docs/session-archive/2026-Q1.md
+```
+
+Create `docs/session-archive/` if it doesn't exist. Create the quarterly file if it doesn't exist (start it with a `# Session Archive — YYYY-QN` header). Move the older entries by cutting them from SESSION_NOTES.md and appending to the archive file. Keep the SESSION_NOTES.md header block (format/protocol description) intact.
+
+Archive files are permanent — never delete them. They are the full history of session context for that period.
+
+Commit SESSION_NOTES.md and the archive file together:
+```bash
+git add SESSION_NOTES.md docs/session-archive/
+git commit -m "chore: archive SESSION_NOTES entries older than 90 days"
+```
 
 ---
 

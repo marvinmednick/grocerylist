@@ -233,6 +233,18 @@ The code path responsible for this behavior could not be identified from static 
 
 ---
 
+## Design Review
+
+After identifying and applying a fix (Phase 3 direct fix path or Type 1 spec), check whether the root cause reveals a broader principle:
+
+- Does this bug reflect a pattern that could recur elsewhere?
+- Does the fix change how a component or pattern should be used going forward?
+- Did Phase 3 find callers that use the same flawed approach?
+
+If yes: run `/design-review resolve` before committing. If the fix was a contained, specific bug with no broader implications, skip.
+
+---
+
 ## Escalate — Do Not Write a Spec
 
 Stop and report to the user (do not write a spec) when:

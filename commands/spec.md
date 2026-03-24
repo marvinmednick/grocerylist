@@ -207,6 +207,17 @@ List anything intentionally left out of this spec with a brief reason. After wri
 ### What the Implementor Should NOT Change
 List any files or patterns that are out of scope for this implementation.
 
+## Design Review
+
+After writing the spec, check whether any design decisions were made while writing it:
+
+- Did the spec require a new pattern, a change to an existing approach, or a departure from established conventions?
+- If yes: run `/design-review spec` before finishing. If the spec applied existing patterns without modification, skip.
+
+Common triggers: novel UI element resolved inline, new Supabase query shape, new undo/redo pattern, new component structure not in ui-guidelines.md.
+
+---
+
 ## Implementation Commands
 
 **If Review Level is Full:**

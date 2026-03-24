@@ -58,6 +58,18 @@ Provide an overall assessment and a prioritized list of issues to fix, separated
 - Non-blocking (should fix but won't break things)
 - Suggestions (optional improvements)
 
+## Design Review
+
+If any of the following were found during this review:
+- A pattern violation that reveals the current approach should change
+- A new pattern being established or codified
+- Architecture boundaries being tested or redefined
+- A finding added to BACKLOG.md that represents a general inconsistency
+
+Run `/design-review review` before closing out. If the review was clean (patterns followed, no new patterns), skip.
+
+---
+
 ## After the review:
 
 **Update the GitHub Issue:**

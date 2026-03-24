@@ -126,6 +126,17 @@ After all issues are processed, print a summary table:
 
 ---
 
+## Pattern Check
+
+After triaging all issues, scan for systemic patterns:
+
+- Do 2 or more bugs share the same component, root cause type, or violated pattern?
+- Does a cluster of bugs suggest an approach that should change globally?
+
+If yes: run `/design-review triage` to assess whether a general principle needs updating or a broader fix should be tracked. If bugs are all independent and specific, skip.
+
+---
+
 ## What Triage Does NOT Do
 
 - Does not apply any code fixes

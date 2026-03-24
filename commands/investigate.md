@@ -96,6 +96,17 @@ Options:
 
 ---
 
+## Design Review
+
+After completing Phase 1 + Phase 2 and before updating the issue, check whether the root cause reveals a broader design principle:
+
+- Does this bug suggest a pattern that should be avoided elsewhere?
+- Does the located code reveal a design decision that was made incorrectly and may be repeated?
+
+If yes: run `/design-review investigate` and document the finding in SESSION_NOTES.md before updating the GitHub issue. If the root cause is contained and specific, skip.
+
+---
+
 ## What Investigation Does NOT Do
 
 - Does not run Phase 3 (blast radius) — that happens in `/resolve`

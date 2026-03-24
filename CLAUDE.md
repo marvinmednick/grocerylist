@@ -2,6 +2,40 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Session Startup
+
+**Mandatory read sequence at the start of every session:**
+
+1. `SESSION_NOTES.md` (project root) — recent session progress and design decisions
+2. `PLAN.md` — feature status and active work
+3. `docs/design-history.md` — last 3–5 entries for recent design decisions
+4. This file — project-specific guidance
+
+Use `/update-worklog` (parent-level command) to auto-generate a SESSION_NOTES entry from git analysis if entries were missed.
+
+---
+
+## SESSION_NOTES Protocol
+
+`SESSION_NOTES.md` is a **rolling log** — it accumulates across sessions and is committed with content. It is never cleared.
+
+**Archive:** When SESSION_NOTES.md exceeds ~150 lines, entries older than 90 days are moved to `docs/session-archive/YYYY-QN.md` (triggered during `/complete`). Archive files are permanent and grep-able for prior findings.
+
+**Always append an entry after every workflow step completion** — `/spec`, `/review`, `/design`, `/complete`, `/resolve`, `/investigate`, `/triage`. Even a clean session with no notable findings gets an entry: it records that the step happened and what was worked on.
+
+**Entry format:**
+```
+---
+### YYYY-MM-DD HH:MM — [Step/task description]
+- **Completed**: [What was done]
+- **Findings**: [Key context, discoveries, or reasoning worth preserving — things that help reconstruct the train of thought. Omit field if nothing notable.]
+- **Design decisions**: [Any decisions made; "none" if clean]
+- **Design review**: [Findings from /design-review; "none" if not triggered]
+- **Next**: [Next steps]
+```
+
+---
+
 ## Role in This Project
 
 > **Full process guide:** `WORKFLOW.md` — covers all use cases with examples, explains F-numbers vs GitHub issue numbers, and documents the complete feature lifecycle.
