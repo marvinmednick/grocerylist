@@ -20,3 +20,6 @@ _(empty — all items triaged to GitHub Issues)_
 
 _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assigned preference → discarded, pill state provides sufficient feedback.)_
 
+### From Doc Audit (2026-03-23)
+- [ ] `UserAvatar.tsx:38` uses absolute-positioned overlay (same pattern as the pre-F22 WarningBadge). Risk: clipping by parent containers with `overflow: hidden`, Z-index conflicts with other overlays, and keyboard-open behavior may push it off-screen. Low urgency — address in a future UI polish pass.
+

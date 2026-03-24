@@ -100,7 +100,7 @@ mutationFn: async (args) => {
 }
 ```
 
-Household-scoped tables: `items`, `item_stores`, `list_items`, `shopping_trips`.
+Household-scoped tables: `items`, `item_store_preferences`, `list_items`, `shopping_trips`, `stores`.
 
 ### 3. Undo Registration
 
@@ -276,10 +276,13 @@ const { data, error } = await supabase
 - Unique on `(name, household_id)`
 - `alternate_qtys`: `TEXT[]` — shown as quick-select chips in add flow
 
-**`item_stores`** — many-to-many between `items` and `stores`
-- When updating, delete all then re-insert (see `useUpdateMasterItem`)
+**`item_store_preferences`** — many-to-many between `items` and `stores` (household-scoped)
+- `status`: `preferred` | `avoided` | `unavailable` | `neutral`
+- `comment`: optional text note per store association
+- When updating preferences, delete affected rows then re-insert (see `useUpdateMasterItem`)
 
-**Global tables** (no household scoping needed): `stores`, `categories`, `units`
+**Global tables** (no household scoping needed): `categories`, `units`
+**Household-scoped** (requires `household_id`): `items`, `item_store_preferences`, `list_items`, `shopping_trips`, `stores`
 
 ## Testing
 

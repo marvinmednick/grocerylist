@@ -38,3 +38,6 @@
 ## 2026-03-21 — Shipped
 - **Commit:** `feat: redesign store preferences UI in item edit modal (closes #61)`
 - **Closes:** #61
+
+## 2026-03-23 — Note
+- Store pill → dropdown normalization for the *add-detail* modal (`SmartAddItem.tsx`) and the *edit-item* modal (`app/(tabs)/index.tsx`) was not in F16 scope. That follow-on work is addressed in F23.

@@ -443,6 +443,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 24,
+    maxHeight: '85%',
   },
   modalHeader: {
     flexDirection: 'row',

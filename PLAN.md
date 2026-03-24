@@ -16,7 +16,8 @@
 | F9 | Trip History View | Done | [specs/F9-trip-history.md](specs/F9-trip-history.md) · [design](docs/design/F9-trip-history.md) | [#11](https://github.com/marvinmednick/grocerylist/issues/11) |
 | F12 | Smart Entry Model | Done | [specs/F12-smart-entry-model.md](specs/F12-smart-entry-model.md) · [design](docs/design/F12-smart-entry-model.md) | [#42](https://github.com/marvinmednick/grocerylist/issues/42) |
 | F13 | List Display Density & Warnings | Done | [specs/F13-list-display-warnings.md](specs/F13-list-display-warnings.md) · [design](docs/design/F13-list-display-warnings.md) | [#43](https://github.com/marvinmednick/grocerylist/issues/43) |
-| F14 | Free-form Input Parsing | Backlog | — | [#44](https://github.com/marvinmednick/grocerylist/issues/44) || F15 | Freeform Qty "Other" Chip | Done | [specs/F15-freeform-qty-other-chip.md](specs/F15-freeform-qty-other-chip.md) · [design](docs/design/F15-freeform-qty-other-chip.md) | [#58](https://github.com/marvinmednick/grocerylist/issues/58) |
+| F14 | Free-form Input Parsing | Backlog | — | [#44](https://github.com/marvinmednick/grocerylist/issues/44) |
+| F15 | Freeform Qty "Other" Chip | Done | [specs/F15-freeform-qty-other-chip.md](specs/F15-freeform-qty-other-chip.md) · [design](docs/design/F15-freeform-qty-other-chip.md) | [#58](https://github.com/marvinmednick/grocerylist/issues/58) |
 | F16 | Store Preferences UI Redesign | Done | [specs/F16-store-preferences-ui.md](specs/F16-store-preferences-ui.md) · [design](docs/design/F16-store-preferences-ui.md) | [#61](https://github.com/marvinmednick/grocerylist/issues/61) |
 | F17 | Item Entry Flow Polish | Done | [specs/F17-item-entry-polish.md](specs/F17-item-entry-polish.md) | [#67](https://github.com/marvinmednick/grocerylist/issues/67) |
 | F18 | Warning System Improvements | Done | [specs/F18-warning-system-improvements.md](specs/F18-warning-system-improvements.md) | [#70](https://github.com/marvinmednick/grocerylist/issues/70) |
@@ -24,6 +25,7 @@
 | F20 | Test Quality Sweep | Done | [specs/F20-test-quality-sweep.md](specs/F20-test-quality-sweep.md) | [#71](https://github.com/marvinmednick/grocerylist/issues/71) |
 | F21 | Items Screen Enhancements | Specced | [specs/F21-items-screen-enhancements.md](specs/F21-items-screen-enhancements.md) | [#73](https://github.com/marvinmednick/grocerylist/issues/73) [#64](https://github.com/marvinmednick/grocerylist/issues/64) |
 | F22 | WarningBadge Modal Fix | Specced | [specs/F22-warning-badge-modal.md](specs/F22-warning-badge-modal.md) | [#50](https://github.com/marvinmednick/grocerylist/issues/50) |
+| F23 | Store Dropdown in Edit Modals | Specced | [specs/F23-store-dropdown-edit-modals.md](specs/F23-store-dropdown-edit-modals.md) | [#74](https://github.com/marvinmednick/grocerylist/issues/74) |
 
 **Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `Needs Fixes` → `In Review` → `Done`
 (`Designed` is optional — features with clear requirements can go `Backlog` → `Specced` directly)

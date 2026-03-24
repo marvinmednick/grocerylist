@@ -8,7 +8,7 @@ Evaluate each of the following and report pass / fail / not-applicable with a br
 - Do all list_items writes wrap the Supabase call with incrementLocalMutation() / decrementLocalMutation() in a try/finally?
 
 **Household Guard**
-- Do all inserts into household-scoped tables (items, item_stores, list_items, shopping_trips) check `if (!householdId) throw` before the Supabase call?
+- Do all inserts into household-scoped tables (items, item_store_preferences, list_items, shopping_trips, stores) check `if (!householdId) throw` before the Supabase call?
 - Is `household_id: householdId` included in the insert payload?
 
 **Undo Registration**

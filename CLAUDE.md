@@ -72,28 +72,40 @@ npm test -- --testPathPattern=SmartAddItem  # single test file
 - `PLAN.md` — Completed work and planned features/roadmap
 - `USER_SCENARIOS.md` — User stories and interaction scenarios
 - `OPERATIONS.md` — Deployment and operational notes
-- `docs/design/multi-user-trips.md` — Per-user `purchased_by` tracking, user color coding, and multi-user end-trip dialog design
+- `docs/design/F2-multi-user-trips.md` — Per-user `purchased_by` tracking, user color coding, and multi-user end-trip dialog design
 - `docs/design/list-interactions.md` — List header consolidation and interaction mode design
 
 ## Architecture
 
 ### Directory Layout (client/)
 - `app/` — Expo Router file-based routes
-  - `_layout.tsx` — Root layout: QueryClient, UndoProvider, GestureHandler, auth guard, HouseholdProvider
+  - `_layout.tsx` — Root layout: AppThemeProvider, QueryClient, UndoProvider, GestureHandler, auth guard, HouseholdProvider
   - `auth.tsx` — Sign in / sign up + profile creation
   - `(tabs)/index.tsx` — Main shopping list screen
   - `(tabs)/items.tsx` — Master items management screen
+  - `(tabs)/history.tsx` — Trip history screen
 - `api/` — All data fetching and mutations (React Query hooks + Supabase calls)
   - `list.ts` — Shopping list CRUD + realtime subscription + trip management
   - `items.ts` — Master item dictionary CRUD
   - `metadata.ts` — Stores and categories (cached 1 hour)
+  - `profile.ts` — Profile read/update, household members, warning preferences
+  - `trips.ts` — Trip history queries
   - `undoContext.tsx` — Global undo/redo stack (React Context, session-scoped)
 - `components/` — UI components
   - `SmartAddItem.tsx` — The primary add-item UI: search dropdown with inline qty/store pills, one-off vs. master item add, edit modal
+  - `StoreSelector.tsx` — Header active-store dropdown (color dot + name, persisted to AsyncStorage)
+  - `WarningBadge.tsx` — Per-item warning indicator (badge tap → absolutely-positioned popover; F22 will replace with a `<Modal>`)
+  - `WarningCallout.tsx` — Inline warning detail display
+  - `MultiTripModal.tsx` — Multi-user end-trip dialog (per-user trip selection)
+  - `Settings.tsx` — Full-screen settings modal (reference implementation for full-screen modal pattern)
+  - `UserAvatar.tsx` — Header user identity indicator
+  - `HeaderActions.tsx` — Shared header right-side actions (undo, redo, avatar)
   - `Toast.tsx` — Auto-dismissing remote-change notification
 - `lib/`
   - `supabase.ts` — Supabase client (platform-aware AsyncStorage/localStorage adapter)
   - `household.tsx` — `HouseholdProvider` + `useHousehold()` hook; fetches `household_id` once per session with `staleTime: Infinity`
+  - `theme.tsx` — `AppThemeProvider` + `useAppTheme()` hook; dark/light toggle persisted to AsyncStorage (infrastructure for F10)
+  - `activeStore.ts` — AsyncStorage helpers for persisting the selected store across sessions
 
 ### Key Patterns
 
@@ -114,10 +126,14 @@ npm test -- --testPathPattern=SmartAddItem  # single test file
 
 **Auth Flow:** `_layout.tsx` manages session state and redirects between `/auth` and `/(tabs)`. `auth.tsx` calls `ensureProfile()` after sign-in/sign-up to create the `profiles` row and assign the household (respecting `EXPO_PUBLIC_HOUSEHOLD_MODE`).
 
+**Active Store Pattern:** The currently-selected store is persisted to AsyncStorage via `lib/activeStore.ts` and surfaced in the shopping list header via `StoreSelector.tsx`. The selected store is passed to `SmartAddItem` as the default store for new items. Changing the active store does not filter the list — it only affects the default for new additions.
+
+**Warning System:** When a master item is added to the list, `item_store_preferences` rows for that item are checked against the active store. Warnings (`avoided`, `unavailable`, `non_preferred`) are computed and stored in `list_items.warnings` (JSONB). `WarningBadge` renders a per-type icon on the list row; tapping opens a modal with details. User visibility per warning type is controlled by `profiles.warning_preferences`.
+
 ### Data Model Summary
 
-Global (shared across households): `stores`, `categories`, `units`, `households`
-Household-scoped: `items`, `item_stores`, `list_items`, `shopping_trips`
+Global (shared across households): `categories`, `units`, `households`
+Household-scoped: `stores`, `items`, `item_store_preferences`, `list_items`, `shopping_trips`
 User-scoped: `profiles` (one per `auth.users` row, holds `household_id`)
 
 The `items` table has a unique constraint on `(name, household_id)`. Item search (`useSearchItems`) uses prefix matching (`.ilike('name', `${query}%`)`) with a minimum query length of 2.

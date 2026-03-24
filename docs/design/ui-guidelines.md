@@ -11,7 +11,7 @@
 - Implementation: Expo Router `<Tabs>` with Expo's `FontAwesome` icon library (not lucide-react-native)
 - Tab icons are `<FontAwesome size={28}>` components via the `TabBarIcon` helper in `(tabs)/_layout.tsx`
 - Active tint color: `Colors[colorScheme].tint` from `constants/Colors`
-- Currently: Shopping List (`shopping-cart`), Items (`book`), History (`history`) [when F9 ships]
+- Currently: Shopping List (`shopping-cart`), Items (`book`), History (`history`)
 - **Adding a new tab:** Add a `<Tabs.Screen>` entry in `client/app/(tabs)/_layout.tsx`
 
 ### Screen Layout
@@ -223,6 +223,28 @@ Used for: trip history detail, Settings, multi-user trip end dialog.
 
 ---
 
+### 7c. Modal Compliance Checklist
+
+**Applies to new and modified modals.** Existing non-compliant modals (`SmartAddItem.tsx` add-detail, `index.tsx` edit-item) are being brought into compliance in F23. Do not add these to the checklist retroactively for unrelated features.
+
+Before shipping any modal (dialog or full-screen), verify:
+
+| | Requirement | Reference |
+|---|---|---|
+| ☐ | `useSafeAreaInsets()` applied — at minimum `paddingTop: insets.top` on outermost container | CODING.md §7 |
+| ☐ | `ScrollView` wraps body content with `keyboardShouldPersistTaps="handled"` when TextInput is present | CODING.md §7 |
+| ☐ | `maxHeight: '85%'` on modal card when content may be tall | §7a |
+| ☐ | X close button top-right (always present) | §7a |
+| ☐ | Cancel button in action row for dialog modals | §7a |
+| ☐ | Destructive action (if any) top-left as icon pill, not in action row | §7a |
+
+**Reference implementations (use as copy-from baseline):**
+- Dialog modal: `app/(tabs)/items.tsx` — X close + action row + in-document dropdown
+- Full-screen modal: `components/Settings.tsx` — keyboard-safe scroll, safe-area insets
+- Multi-step modal: `components/MultiTripModal.tsx`
+
+---
+
 ## 8. Dialogs & Confirmations
 
 **Established pattern** (from CODING.md):
@@ -296,10 +318,11 @@ Options to consider: inline error text, toast notification, retry button.
 
 ## 13. Forms & Inputs
 
-**Established patterns (from SmartAddItem):**
-- Quantity: chip bar of quick-select options (`alternate_qtys`) + manual text fallback
-- Store: dropdown picker pre-filled with known stores for the item
-- Text search: `TextInput` with live dropdown results below
+**Established patterns:**
+- Quantity: chip bar of quick-select options (`alternate_qtys`) + manual text fallback — established in `SmartAddItem.tsx`
+- Store (header + items screen): color-dot dropdown picker — established in `StoreSelector.tsx` (F12) and `items.tsx` (F16)
+- Store (add-detail + edit-item modals): currently pill row in `SmartAddItem.tsx` and `index.tsx`; being replaced with color-dot dropdown in F23
+- Text search: `TextInput` with live dropdown results below — established in `SmartAddItem.tsx`
 
 [TBD — general input styling (border, focus state, placeholder color) not yet formally established]
 [TBD — validation error display pattern not yet established]
@@ -366,8 +389,9 @@ When a new visual or interaction pattern is established during a `/design` sessi
 | Store selector dropdown | Color dot + name per row, checkmark on active, "+ Add new store" at bottom | F12 | First dropdown picker pattern in the app |
 | Multi-line list item row | Line 1: name (15px/500), Line 2: qty · category · store (12px muted, dot-separated). Auto height ~52-56px | F13 | Replaces single-line 48px row for better density |
 | Warning badge system | Per-type icon + color: AlertTriangle/amber (avoided), XCircle/red (unavailable), Info/gray (non-preferred), HelpCircle/gray (non-standard qty). 14px lucide icons | F13 | First warning/caution visual in the app; shape + color for accessibility |
-| Warning badge tap → popover | Tap badge shows absolutely-positioned tooltip with detail text; dismiss on tap-outside | F13 | First tooltip/popover pattern in the app |
+| Warning badge tap → popover (current) | Tap badge shows absolutely-positioned tooltip with detail text; dismiss on tap-outside | F13 | **Will change when F22 ships** — current pattern is unreliable on clipped containers; F22 replaces it with a centered `<Modal>` (X close + backdrop dismiss). Update this entry when F22 is shipped. |
 | Warning toast styling | Amber-tinted background variant of Toast.tsx; 4s duration; combines all warnings from one add | F13 | Extension of existing Toast component |
 | Freeform input popover | Absolutely-positioned floating card with a single TextInput, confirmed via keyboard Return; no explicit OK button; anchored near the triggering element | F15 | First interactive input popover in the app; test on device for keyboard coverage |
 | Dialog modal pattern | Centered card (not bottom sheet); KAV + ScrollView inside; compact right-justified buttons; X close top-right; destructive icon top-left when present; title = item name only (no "Edit:" prefix) | UI cleanup | See §7a for full spec |
 | Store preference section | Single section in item edit modal: store dropdown + status pills (tap = set immediately, no +/− buttons) + inline comment field (visible when store selected, no Save Comment button — saves with modal Save) + read-only summary + read-only all-comments list. Status labels: —, Pref., Avoid, Unavailable (not N/A). ScrollView ref + scrollToEnd on comment onFocus for keyboard visibility. | F16 | Replaces all-stores segmented-button layout; no comment edit modal or separate comment save step needed |
+| Store display — three contexts | (1) **Header active-store selector** (`StoreSelector.tsx`): text-only trigger + dropdown. (2) **Store preference editor** (`items.tsx`): color-dot dropdown. (3) **Item add/edit store picker** (`SmartAddItem.tsx`, `index.tsx`): pill row → being replaced with color-dot dropdown in F23. Do not treat these as a single unified pattern until F23 ships. | F23 | Three separate patterns; §13 "established dropdown" only applies to contexts 1 and 2 until F23 lands |

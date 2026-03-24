@@ -6,7 +6,7 @@
 **Goal:** A cross-platform (iOS/Android/Web) collaborative shopping list application.
 **Core Philosophy:** Real-time synchronization, structured data (Stores/Categories) mixed with flexibility (Custom items), and "Trip" based workflows.
 **Stack:**
-- **Frontend:** React Native (Expo) + NativeWind (Tailwind).
+- **Frontend:** React Native (Expo). NativeWind is installed but **not used** — all styling uses `StyleSheet.create()` exclusively.
 - **Backend:** Supabase (PostgreSQL + Realtime).
 - **State:** React Query (TanStack Query) + Local State for UI.
 
@@ -16,25 +16,27 @@ To support both the MVP and the Future Features (Recipes, Trips), we use the fol
 
 ### Household & User Entities
 *   **`households`**: ID, Name. The top-level grouping for shared data. All user-scoped tables reference a `household_id`. In single-household mode (`EXPO_PUBLIC_HOUSEHOLD_MODE=single`), all users join one default household. In multi-household mode, each user gets their own on signup.
-*   **`profiles`**: ID (matches `auth.users.id`), `household_id` (FK), `display_name`, `display_name_short`, `color`. Created during signup/first sign-in via application code in `client/app/auth.tsx`. Short name and color are used for multi-user check-off indicators. See `docs/design/multi-user-trips.md`.
+*   **`profiles`**: ID (matches `auth.users.id`), `household_id` (FK), `display_name`, `display_name_short`, `color`, `warning_preferences` (JSONB — per-user control over which warning types are shown). Created during signup/first sign-in via application code in `client/app/auth.tsx`. Short name and color are used for multi-user check-off indicators. See `docs/design/F2-multi-user-trips.md`.
 
 ### Core Entities
-*   **`stores`**: ID, Name, Color. (Global — shared across all households.)
+*   **`stores`**: ID, Name, `color_code`. (Household-scoped — each household manages its own store list. Added/edited/deleted via the Store Management UI, F19.)
 *   **`categories`**: ID, Name, Sort Order. (Global.)
 *   **`units`**: ID, Name, Abbreviation. (Global.)
 *   **`items`** (Master Dictionary)
     *   `id` (UUID)
     *   `name` (Text - Unique per household: `UNIQUE(name, household_id)`)
+    *   `short_name` (Text, optional — abbreviated display name for dense list rows)
     *   `default_qty` (Text)
     *   `alternate_qtys` (Array of Strings)
     *   `default_category_id` (FK)
-    *   `default_store_id` (FK)
     *   `household_id` (FK -> households)
-*   **`item_stores`** (Many-to-Many): `item_id`, `store_id`, `is_preferred`, `household_id`.
+*   **`item_store_preferences`** (Many-to-Many, household-scoped): `item_id`, `store_id`, `status` (`preferred` | `avoided` | `unavailable` | `neutral`), `comment`, `household_id`. Replaces the former `item_stores` table. Drives warning badges on list items when the active store doesn't match preferences.
 
 ### The Shopping List (Active Data)
 *   **`list_items`**
     *   `id` (UUID)
+    *   `item_id` (FK -> items, nullable — `null` means one-off item not in master dictionary)
+    *   `store_id` (FK -> stores, nullable)
     *   `name`, `quantity` (Snapshots)
     *   `is_purchased` (Boolean)
     *   `purchased_at` (Timestamp - set when checked)
@@ -43,6 +45,7 @@ To support both the MVP and the Future Features (Recipes, Trips), we use the fol
     *   `household_id` (FK -> households)
     *   `added_by` (UUID -> auth.users.id)
     *   `purchased_by` (UUID -> auth.users.id, set when checked off — enables per-user trip management)
+    *   `warnings` (JSONB array — computed from `item_store_preferences` at add time; drives `WarningBadge` display)
 *   **`shopping_trips`**: `id`, `started_at`, `ended_at`, `primary_store_id`, `status`, `household_id`.
 
 ## 3. Core System Patterns
@@ -59,7 +62,7 @@ Items move through three states:
 2.  **Purchased:** `is_purchased = true`. Visible but crossed out. `purchased_at` is set.
 3.  **Archived:** `archived_at` IS NOT NULL. Hidden from active list. Linked to a `trip_id`.
 
-When an item is checked off, `purchased_by` is set to the current user. Check-off icons are color-coded per user (color from `profiles.color`), making it visible at a glance who is buying what. See `docs/design/multi-user-trips.md` for the full multi-user trip design.
+When an item is checked off, `purchased_by` is set to the current user. Check-off icons are color-coded per user (color from `profiles.color`), making it visible at a glance who is buying what. See `docs/design/F2-multi-user-trips.md` for the full multi-user trip design.
 
 **Multi-User End Trip Logic:**
 - Active trips are inferred from distinct `(store_id, purchased_by)` combinations on purchased, non-archived items.
@@ -83,10 +86,10 @@ To prevent accidental duplicates and manage list clutter, the "Add" workflow wil
 - **Cross-Store Detection:** If the item exists in a *different* store, the system will highlight this to the user during the merge/duplicate choice.
 
 ### E. Household-Scoped RLS
-All user-generated data (items, list_items, item_stores, shopping_trips) is scoped to the user's household via Row Level Security.
+All user-generated data (items, item_store_preferences, list_items, shopping_trips, stores) is scoped to the user's household via Row Level Security.
 - **Helper Function:** `get_my_household_id()` — a `SECURITY DEFINER` SQL function that looks up `profiles.household_id` for the current `auth.uid()`.
 - **Policy Pattern:** Every policy on household-scoped tables uses `household_id = get_my_household_id()` in both `USING` and `WITH CHECK` clauses.
-- **Global Tables:** `stores`, `categories`, `units`, and `households` remain globally readable by all authenticated users (household data itself isn't sensitive — the isolation happens on the child tables).
+- **Global Tables:** `categories`, `units`, and `households` remain globally readable by all authenticated users. Note: `stores` are **household-scoped** (each household manages its own store list).
 - **Client Guard Pattern:** `HouseholdProvider` (`lib/household.tsx`) fetches `householdId` once per session (`staleTime: Infinity`). Mutations that require `household_id` throw early if it's null. The UI disables add/end-trip controls while the household is loading to prevent race conditions.
 
 ### F. Realtime Toast Notifications
