@@ -319,4 +319,85 @@ describe('ShoppingListScreen Interactions', () => {
     });
     expect(screen.queryByTestId('warning-callout')).toBeNull();
   });
+
+  it('renders store dropdown trigger in the Edit Item modal', async () => {
+    mockUseMetadata.mockReturnValue({
+      data: {
+        stores: [
+          { id: 'store1', name: 'Grocery Store', color_code: '#2563eb' },
+          { id: 'store2', name: 'Farm Stand', color_code: '#16a34a' },
+        ],
+        categories: [],
+      },
+    });
+
+    render(<ShoppingListScreen />, { wrapper });
+    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+
+    expect(await screen.findByTestId('edit-store-dropdown-trigger')).toBeTruthy();
+  });
+
+  it('opens store dropdown and shows all store options', async () => {
+    mockUseMetadata.mockReturnValue({
+      data: {
+        stores: [
+          { id: 'store1', name: 'Grocery Store', color_code: '#2563eb' },
+          { id: 'store2', name: 'Farm Stand', color_code: '#16a34a' },
+        ],
+        categories: [],
+      },
+    });
+
+    render(<ShoppingListScreen />, { wrapper });
+    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+    fireEvent.press(await screen.findByTestId('edit-store-dropdown-trigger'));
+
+    expect(screen.getByTestId('edit-store-option-none')).toBeTruthy();
+    expect(screen.getByTestId('edit-store-store1')).toBeTruthy();
+    expect(screen.getByTestId('edit-store-store2')).toBeTruthy();
+  });
+
+  it('selects a store and closes the dropdown', async () => {
+    mockUseMetadata.mockReturnValue({
+      data: {
+        stores: [
+          { id: 'store1', name: 'Grocery Store', color_code: '#2563eb' },
+          { id: 'store2', name: 'Farm Stand', color_code: '#16a34a' },
+        ],
+        categories: [],
+      },
+    });
+
+    render(<ShoppingListScreen />, { wrapper });
+    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+    fireEvent.press(await screen.findByTestId('edit-store-dropdown-trigger'));
+    fireEvent.press(screen.getByTestId('edit-store-store2'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('edit-store-option-none')).toBeNull();
+    });
+    expect(screen.getByText('Farm Stand')).toBeTruthy();
+  });
+
+  it('clears store selection via No store option', async () => {
+    mockUseMetadata.mockReturnValue({
+      data: {
+        stores: [
+          { id: 'store1', name: 'Grocery Store', color_code: '#2563eb' },
+          { id: 'store2', name: 'Farm Stand', color_code: '#16a34a' },
+        ],
+        categories: [],
+      },
+    });
+
+    render(<ShoppingListScreen />, { wrapper });
+    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+    fireEvent.press(await screen.findByTestId('edit-store-dropdown-trigger'));
+    fireEvent.press(screen.getByTestId('edit-store-option-none'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('edit-store-option-none')).toBeNull();
+    });
+    expect(screen.getByText('No store')).toBeTruthy();
+  });
 });

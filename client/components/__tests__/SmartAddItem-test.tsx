@@ -1,6 +1,5 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
 import { SmartAddItem } from '../SmartAddItem';
 import { useSearchItems, useCreateMasterItem } from '@/api/items';
 import { useAddToList, useDeleteListItem } from '@/api/list';
@@ -20,6 +19,13 @@ jest.mock('@/api/list');
 jest.mock('@/api/metadata');
 jest.mock('@/api/undoContext');
 jest.mock('@/api/profile');
+jest.mock('react-native-safe-area-context', () => {
+  const actual = jest.requireActual('react-native-safe-area-context');
+  return {
+    ...actual,
+    useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+  };
+});
 
 describe('SmartAddItem', () => {
   const mockUseSearchItems = useSearchItems as jest.Mock;
@@ -125,9 +131,97 @@ describe('SmartAddItem', () => {
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
     fireEvent.press(await screen.findByTestId('edit-add-master-1'));
 
-    const activeStoreTag = await screen.findByTestId('edit-store-store-1');
-    const style = StyleSheet.flatten(activeStoreTag.props.style);
-    expect(style.backgroundColor).toBe('#2563eb');
+    expect(await screen.findByTestId('edit-store-dropdown-trigger')).toBeTruthy();
+    expect(screen.getByText('Market')).toBeTruthy();
+  });
+
+  it('renders store dropdown trigger instead of store pills in the Add Detail modal', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByTestId('edit-add-master-1'));
+
+    expect(await screen.findByTestId('edit-store-dropdown-trigger')).toBeTruthy();
+    expect(screen.queryByTestId('edit-store-option-none')).toBeNull();
+  });
+
+  it('opens the store dropdown when trigger is tapped', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByTestId('edit-add-master-1'));
+    fireEvent.press(await screen.findByTestId('edit-store-dropdown-trigger'));
+
+    expect(screen.getByTestId('edit-store-option-none')).toBeTruthy();
+    expect(screen.getByTestId('edit-store-store-1')).toBeTruthy();
+    expect(screen.getByTestId('edit-store-store-2')).toBeTruthy();
+  });
+
+  it('selects a store and closes dropdown on option tap', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByTestId('edit-add-master-1'));
+    fireEvent.press(await screen.findByTestId('edit-store-dropdown-trigger'));
+    fireEvent.press(screen.getByTestId('edit-store-store-2'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('edit-store-option-none')).toBeNull();
+    });
+    expect(screen.getByText('Alt Market')).toBeTruthy();
+  });
+
+  it('clears store and closes dropdown when "No store" is tapped', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByTestId('edit-add-master-1'));
+    fireEvent.press(await screen.findByTestId('edit-store-dropdown-trigger'));
+    fireEvent.press(screen.getByTestId('edit-store-option-none'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('edit-store-option-none')).toBeNull();
+    });
+    expect(screen.getByText('No store')).toBeTruthy();
+  });
+
+  it('toggles dropdown closed when trigger is tapped again', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByTestId('edit-add-master-1'));
+    fireEvent.press(await screen.findByTestId('edit-store-dropdown-trigger'));
+    expect(screen.getByTestId('edit-store-option-none')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('edit-store-dropdown-trigger'));
+    expect(screen.queryByTestId('edit-store-option-none')).toBeNull();
+  });
+
+  it('renders a Cancel button in the master-item Add Detail modal action row', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByTestId('edit-add-master-1'));
+
+    expect(await screen.findByText('Cancel')).toBeTruthy();
+  });
+
+  it('Cancel button dismisses the Add Detail modal and resets form state', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Mi');
+    fireEvent.press(await screen.findByTestId('edit-add-master-1'));
+    fireEvent.press(await screen.findByTestId('edit-store-dropdown-trigger'));
+    fireEvent.press(screen.getByTestId('edit-store-store-2'));
+    expect(screen.getByText('Alt Market')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Cancel'));
+    await waitFor(() => {
+      expect(screen.queryByTestId('edit-store-dropdown-trigger')).toBeNull();
+    });
+
+    fireEvent.press(await screen.findByTestId('edit-add-master-1'));
+    expect(await screen.findByText('Market')).toBeTruthy();
   });
 
   it('generates avoided warning when item has avoided status at active store', async () => {
@@ -524,7 +618,7 @@ describe('SmartAddItem', () => {
 
     expect(await screen.findByText('Add to List')).toBeTruthy();
     expect(screen.queryByText('Save & Add')).toBeNull();
-    expect(screen.queryByText('Cancel')).toBeNull();
+    expect(screen.getByText('Cancel')).toBeTruthy();
   });
 
   it('one-off edit Add to List uses null item_id and does not create master item', async () => {

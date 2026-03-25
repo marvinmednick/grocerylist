@@ -60,3 +60,11 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: SESSION_NOTES replaces WORK_LOG naming to avoid WORKFLOW.md confusion; design-review embedded in workflow steps (not time-triggered); two-level learning capture (specific vs general principle) in design-history.md
 - **Design review**: n/a — this work IS the design review process enhancement
 - **Next**: F23 implementation; parent CLAUDE.md Pattern A/B split deferred
+
+---
+### 2026-03-24 12:00 — /review F23
+- **Completed**: Code review of F23 (Store Dropdown in Edit Modals)
+- **Findings**: Clean pass. All 4 files match spec exactly. Dropdown trigger + menu implemented in both SmartAddItem and index.tsx. Safe-area insets applied to both modals. Cancel button added to SmartAddItem master-item action row. closeEditModal helper centralizes reset logic and is called by both X button and Cancel button. 241/241 tests pass.
+- **Design decisions**: none
+- **Design review**: not triggered — patterns followed, no new patterns established
+- **Next**: Ready to ship (#74)

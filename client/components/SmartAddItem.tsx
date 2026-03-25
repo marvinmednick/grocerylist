@@ -1,12 +1,13 @@
 import React, { useRef, useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Modal, Keyboard, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
-import { Search, X, ChevronRight } from 'lucide-react-native';
+import { Search, X, ChevronRight, ChevronDown } from 'lucide-react-native';
 import { computeWarnings, getWarningText, useSearchItems, useCreateMasterItem, type MasterItem, type Warning } from '@/api/items';
 import { useAddToList, useDeleteListItem } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
 import { useMyProfile } from '@/api/profile';
 import { WarningCallout } from '@/components/WarningCallout';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface SmartAddItemProps {
   disabled?: boolean;
@@ -25,6 +26,7 @@ const DEFAULT_WARNING_PREFS = {
 } as const;
 
 export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }: SmartAddItemProps) {
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<EditTarget | null>(null);
@@ -37,6 +39,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
 
   const [editQty, setEditQty] = useState('');
   const [editStoreId, setEditStoreId] = useState('');
+  const [editStoreDropdownOpen, setEditStoreDropdownOpen] = useState(false);
   const [editCategoryId, setEditCategoryId] = useState('');
   const editQtyInputRef = useRef<TextInput>(null);
 
@@ -186,8 +189,18 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     setSelectedItem(item);
     setEditQty(item.default_qty || '1');
     setEditStoreId(activeStoreId || metadata?.stores?.[0]?.id || '');
+    setEditStoreDropdownOpen(false);
     setEditCategoryId(item.default_category_id || '');
     setIsEditing(true);
+  };
+
+  const closeEditModal = () => {
+    setIsEditing(false);
+    setSelectedItem(null);
+    setEditQty('');
+    setEditStoreId('');
+    setEditStoreDropdownOpen(false);
+    setEditCategoryId('');
   };
 
   const onOneOffEditAdd = async () => {
@@ -439,10 +452,10 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
 
       <Modal visible={isEditing} animationType="slide" transparent={true}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingTop: insets.top }]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{selectedItem?.name || query}</Text>
-              <TouchableOpacity onPress={() => setIsEditing(false)} style={styles.modalCloseBtn}>
+              <TouchableOpacity onPress={closeEditModal} style={styles.modalCloseBtn}>
                 <X size={24} color="#6b7280" />
               </TouchableOpacity>
             </View>
@@ -481,27 +494,73 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
               )}
 
               <Text style={styles.label}>Store</Text>
-              <View style={styles.tagsContainer}>
-                {metadata?.stores?.map((store) => (
-                  <TouchableOpacity
-                    key={store.id}
-                    testID={`edit-store-${store.id}`}
-                    onPress={() => setEditStoreId(store.id)}
-                    style={[styles.tag, editStoreId === store.id ? styles.tagActive : styles.tagInactive]}
-                  >
-                    <Text style={editStoreId === store.id ? styles.tagTextActive : styles.tagTextInactive}>
-                      {store.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={{ marginBottom: 24 }}>
+                <TouchableOpacity
+                  testID="edit-store-dropdown-trigger"
+                  style={styles.dropdownTrigger}
+                  onPress={() => setEditStoreDropdownOpen((prev) => !prev)}
+                >
+                  <View style={styles.dropdownValue}>
+                    {editStoreId ? (
+                      <>
+                        <View
+                          style={[
+                            styles.storeColorDot,
+                            { backgroundColor: metadata?.stores?.find((s) => s.id === editStoreId)?.color_code ?? '#9ca3af' },
+                          ]}
+                        />
+                        <Text style={styles.storeNameText}>
+                          {metadata?.stores?.find((s) => s.id === editStoreId)?.name ?? ''}
+                        </Text>
+                      </>
+                    ) : (
+                      <Text style={styles.dropdownPlaceholder}>No store</Text>
+                    )}
+                  </View>
+                  <ChevronDown size={16} color="#6b7280" />
+                </TouchableOpacity>
+
+                {editStoreDropdownOpen ? (
+                  <View style={styles.dropdownMenu}>
+                    <TouchableOpacity
+                      testID="edit-store-option-none"
+                      style={styles.dropdownOption}
+                      onPress={() => {
+                        setEditStoreId('');
+                        setEditStoreDropdownOpen(false);
+                      }}
+                    >
+                      <Text style={[styles.storeNameText, { color: '#9ca3af' }]}>— No store —</Text>
+                    </TouchableOpacity>
+                    {metadata?.stores?.map((store) => (
+                      <TouchableOpacity
+                        key={store.id}
+                        testID={`edit-store-${store.id}`}
+                        style={styles.dropdownOption}
+                        onPress={() => {
+                          setEditStoreId(store.id);
+                          setEditStoreDropdownOpen(false);
+                        }}
+                      >
+                        <View style={[styles.storeColorDot, { backgroundColor: store.color_code }]} />
+                        <Text style={styles.storeNameText}>{store.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ) : null}
               </View>
             </ScrollView>
 
-            <View style={styles.modalActions}>
+            <View style={[styles.modalActions, { paddingBottom: insets.bottom }]}>
               {selectedItem?.id ? (
-                <TouchableOpacity style={[styles.actionBtn, styles.saveBtn, { flex: 1 }]} onPress={onSaveEdited}>
-                  <Text style={styles.saveText}>Add to List</Text>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity style={[styles.actionBtn, styles.cancelBtn, { flex: 1 }]} onPress={closeEditModal}>
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionBtn, styles.saveBtn, { flex: 1 }]} onPress={onSaveEdited}>
+                    <Text style={styles.saveText}>Add to List</Text>
+                  </TouchableOpacity>
+                </>
               ) : (
                 <>
                   <TouchableOpacity style={[styles.actionBtn, styles.saveBtn, { flex: 1 }]} onPress={onOneOffEditAdd}>
@@ -748,6 +807,51 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: 8,
     marginTop: 8,
+  },
+  dropdownTrigger: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dropdownValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dropdownPlaceholder: {
+    color: '#9ca3af',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  dropdownMenu: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#ffffff',
+    marginTop: 4,
+  },
+  dropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  storeColorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  storeNameText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
   },
   actionBtn: {
     paddingVertical: 10,

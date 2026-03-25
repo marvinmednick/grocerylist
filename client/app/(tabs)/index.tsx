@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert, Platform, Pressable, KeyboardAvoidingView, ScrollView } from 'react-native';
-import { CheckCircle2, Circle, Archive, RotateCcw, RotateCw, Trash2, GripVertical, ShoppingCart, Pencil, Check, X } from 'lucide-react-native';
+import { CheckCircle2, Circle, Archive, RotateCcw, RotateCw, Trash2, GripVertical, ShoppingCart, Pencil, Check, X, ChevronDown } from 'lucide-react-native';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { SmartAddItem } from '@/components/SmartAddItem';
 import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, useEndTrip, useDeleteListItem, useRevertArchival, ListItem } from '@/api/list';
@@ -72,6 +72,7 @@ export default function ShoppingListScreen() {
   const [editQty, setEditQty] = useState('');
   const [editQtyChips, setEditQtyChips] = useState<string[]>([]);
   const [editStoreId, setEditStoreId] = useState('');
+  const [editStoreDropdownOpen, setEditStoreDropdownOpen] = useState(false);
   const editMasterItemId = isEditModalVisible && editingItem?.item_id ? editingItem.item_id : null;
   const { data: editMasterItem } = useItemById(editMasterItemId);
   const editWarnings = editMasterItem
@@ -185,6 +186,7 @@ export default function ShoppingListScreen() {
     setEditQty(item.quantity || '');
     setEditQtyChips(chips);
     setEditStoreId(item.store_id || '');
+    setEditStoreDropdownOpen(false);
     setIsEditModalVisible(true);
   };
 
@@ -573,7 +575,7 @@ export default function ShoppingListScreen() {
       )}
       <Modal visible={isEditModalVisible} animationType="slide" transparent={true}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingTop: insets.top }]}>
             <View style={styles.modalHeader}>
               <TouchableOpacity onPress={handleDelete} style={styles.deleteBtn}><Trash2 size={20} color="#ef4444" /></TouchableOpacity>
               <Text style={styles.modalTitle}>Edit Item</Text>
@@ -606,15 +608,62 @@ export default function ShoppingListScreen() {
                 </View>
               ) : null}
               <Text style={styles.label}>Store</Text>
-              <View style={styles.tagsContainer}>
-                {metadata?.stores?.map(store => (
-                  <TouchableOpacity key={store.id} onPress={() => setEditStoreId(store.id)} style={[styles.tag, editStoreId === store.id ? styles.tagActive : styles.tagInactive]}>
-                    <Text style={editStoreId === store.id ? styles.tagTextActive : styles.tagTextInactive}>{store.name}</Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={{ marginBottom: 24 }}>
+                <TouchableOpacity
+                  testID="edit-store-dropdown-trigger"
+                  style={styles.dropdownTrigger}
+                  onPress={() => setEditStoreDropdownOpen((prev) => !prev)}
+                >
+                  <View style={styles.dropdownValue}>
+                    {editStoreId ? (
+                      <>
+                        <View
+                          style={[
+                            styles.storeColorDot,
+                            { backgroundColor: metadata?.stores?.find((s) => s.id === editStoreId)?.color_code ?? '#9ca3af' },
+                          ]}
+                        />
+                        <Text style={styles.storeNameText}>
+                          {metadata?.stores?.find((s) => s.id === editStoreId)?.name ?? ''}
+                        </Text>
+                      </>
+                    ) : (
+                      <Text style={styles.dropdownPlaceholder}>No store</Text>
+                    )}
+                  </View>
+                  <ChevronDown size={16} color="#6b7280" />
+                </TouchableOpacity>
+                {editStoreDropdownOpen ? (
+                  <View style={styles.dropdownMenu}>
+                    <TouchableOpacity
+                      testID="edit-store-option-none"
+                      style={styles.dropdownOption}
+                      onPress={() => {
+                        setEditStoreId('');
+                        setEditStoreDropdownOpen(false);
+                      }}
+                    >
+                      <Text style={[styles.storeNameText, { color: '#9ca3af' }]}>— No store —</Text>
+                    </TouchableOpacity>
+                    {metadata?.stores?.map((store) => (
+                      <TouchableOpacity
+                        key={store.id}
+                        testID={`edit-store-${store.id}`}
+                        style={styles.dropdownOption}
+                        onPress={() => {
+                          setEditStoreId(store.id);
+                          setEditStoreDropdownOpen(false);
+                        }}
+                      >
+                        <View style={[styles.storeColorDot, { backgroundColor: store.color_code }]} />
+                        <Text style={styles.storeNameText}>{store.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ) : null}
               </View>
             </ScrollView>
-            <View style={styles.modalActions}>
+            <View style={[styles.modalActions, { paddingBottom: insets.bottom }]}>
               <TouchableOpacity style={[styles.actionBtn, styles.cancelBtn]} onPress={() => setIsEditModalVisible(false)}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
               <TouchableOpacity style={[styles.actionBtn, styles.saveBtn]} onPress={handleSaveEdit}><Text style={styles.saveText}>Save</Text></TouchableOpacity>
             </View>
@@ -687,6 +736,51 @@ const styles = StyleSheet.create({
   tagTextActive: { color: 'white', fontWeight: '600' },
   tagTextInactive: { color: '#374151' },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8 },
+  dropdownTrigger: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dropdownValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dropdownPlaceholder: {
+    color: '#9ca3af',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  dropdownMenu: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#ffffff',
+    marginTop: 4,
+  },
+  dropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  storeColorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  storeNameText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
   actionBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, alignItems: 'center' },
   cancelBtn: { backgroundColor: '#e5e7eb' },
   saveBtn: { backgroundColor: '#2563eb' },
