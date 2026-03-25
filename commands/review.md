@@ -1,5 +1,18 @@
 Review the code changes described or shown (use recent git diff if no specific code is provided): $ARGUMENTS
 
+## Step 0 — Read the Progress File
+
+Before reviewing any code, read `plans/F[N]-progress.md`:
+
+- **Missing file:** Warn the user — AGENT.md requires the implementor to create this. Do not proceed until resolved.
+- **Status ≠ `Complete`:** This is a **blocking** finding — stop and report. Do not review incomplete work.
+- **Issues non-empty:** Flag each item prominently in the review report. These are problems the implementor already identified — they may explain findings in the diff or represent unresolved deviations from the spec.
+- **File checklist:** Cross-check the ✅/🔄/⏳ entries against the spec's "Files to Modify" list. Note any files that appear in the spec but are absent from the progress log (possible omission) or any files in the log that were not in the spec (possible scope creep).
+
+Continue to code review only when Status is `Complete` and Issues is empty (or all issues are understood and explained).
+
+---
+
 Check the implementation against the patterns in CODING.md and the architecture in DESIGN.md.
 
 Evaluate each of the following and report pass / fail / not-applicable with a brief explanation:

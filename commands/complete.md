@@ -29,6 +29,15 @@ If unexpected failures are found: stop and report them. Do not proceed until the
 
 ## Step 2 — Commit
 
+**For features (F[N]): check the progress file first.**
+
+Read `plans/F[N]-progress.md`:
+- If it does **not exist**: warn the user — it should always be created by the implementor (per AGENT.md). Do not proceed until this is resolved.
+- If Status ≠ `Complete`: this is a **blocking** issue — the implementor has not finished. Stop and report.
+- If Issues is non-empty: flag each item before proceeding — these may represent deviations or unresolved problems that affect the commit.
+
+The progress file must be included in the commit (it is a permanent record of what was built).
+
 Check what is staged and unstaged:
 ```bash
 git status
@@ -44,7 +53,7 @@ Otherwise, review all changes and draft a commit message:
 - Summarize *what* was implemented, not just "closes issue"
 - Subject line under 72 characters; use a body for meaningful detail
 
-Present the suggested commit message and the specific files to stage. Wait for user confirmation before running:
+Present the suggested commit message and the specific files to stage (always include `plans/F[N]-progress.md` for features). Wait for user confirmation before running:
 ```bash
 git add [specific files — never git add -A]
 git commit -m "..."
