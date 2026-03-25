@@ -25,7 +25,7 @@
 | F20 | Test Quality Sweep | Done | [specs/F20-test-quality-sweep.md](specs/F20-test-quality-sweep.md) | [#71](https://github.com/marvinmednick/grocerylist/issues/71) |
 | F21 | Items Screen Enhancements | Done | [specs/F21-items-screen-enhancements.md](specs/F21-items-screen-enhancements.md) | [#73](https://github.com/marvinmednick/grocerylist/issues/73) [#64](https://github.com/marvinmednick/grocerylist/issues/64) |
 | F22 | WarningBadge Modal Fix | Done | [specs/F22-warning-badge-modal.md](specs/F22-warning-badge-modal.md) | [#50](https://github.com/marvinmednick/grocerylist/issues/50) |
-| F23 | Store Dropdown in Edit Modals | In Review | [specs/F23-store-dropdown-edit-modals.md](specs/F23-store-dropdown-edit-modals.md) | [#74](https://github.com/marvinmednick/grocerylist/issues/74) |
+| F23 | Store Dropdown in Edit Modals | Done | [specs/F23-store-dropdown-edit-modals.md](specs/F23-store-dropdown-edit-modals.md) | [#74](https://github.com/marvinmednick/grocerylist/issues/74) |
 
 **Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `Needs Fixes` → `In Review` → `Done`
 (`Designed` is optional — features with clear requirements can go `Backlog` → `Specced` directly)

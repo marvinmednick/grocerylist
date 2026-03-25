@@ -13,3 +13,8 @@
 - **Result:** Passed — no blocking issues
 - **Tests:** 241/241 passed
 - **Non-blocking:** none
+
+## 2026-03-24 — Shipped
+
+- **Commit:** `feat: store dropdown in edit modals — replace pills with dropdown (refs #74)`
+- **Closed:** #74
