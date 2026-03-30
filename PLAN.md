@@ -1,22 +1,24 @@
 # Grocery App — Feature Registry
 
+> **Feature numbering convention (from 2026-03-30):** Feature IDs match their GitHub issue number (F44 = issue #44). Features F1–F23 predate this convention and retain their original numbers. Backlog features F3–F11 and F24 were renumbered in March 2026; old issues are closed with "superseded by" comments pointing to the new ones.
+
 ## Active Features
 
 | ID | Feature | Status | Spec | Issue |
 |----|---------|--------|------|-------|
 | F2 | Multi-User Trip Management | Done | [specs/F2-multi-user-trips.md](specs/F2-multi-user-trips.md) · [design](docs/design/F2-multi-user-trips.md) | [#4](https://github.com/marvinmednick/grocerylist/issues/4) |
-| F3 | Recipes & Bundles | Backlog | — | [#5](https://github.com/marvinmednick/grocerylist/issues/5) |
-| F4 | Fuzzy Matching | Backlog | — | [#6](https://github.com/marvinmednick/grocerylist/issues/6) |
-| F5 | Duplicate Entry Handling | Backlog | — | [#7](https://github.com/marvinmednick/grocerylist/issues/7) |
-| F6 | Quantity Units System | Backlog | — | [#8](https://github.com/marvinmednick/grocerylist/issues/8) |
+| F76 | Recipes & Bundles | Backlog | — | [#76](https://github.com/marvinmednick/grocerylist/issues/76) |
+| F77 | Fuzzy Matching in Smart Add | Backlog | — | [#77](https://github.com/marvinmednick/grocerylist/issues/77) |
+| F78 | Duplicate Entry Handling | Backlog | — | [#78](https://github.com/marvinmednick/grocerylist/issues/78) |
+| F79 | Quantity Units System | Backlog | — | [#79](https://github.com/marvinmednick/grocerylist/issues/79) |
 | F7 | Settings Screen | Done | [specs/F7-settings.md](specs/F7-settings.md) · [design](docs/design/F7-settings.md) | [#9](https://github.com/marvinmednick/grocerylist/issues/9) |
-| F8 | Enhanced Shopping Mode (Store Focus) | Backlog | — | [#10](https://github.com/marvinmednick/grocerylist/issues/10) |
-| F10 | Dark Mode Visual Implementation | Backlog | — | [#27](https://github.com/marvinmednick/grocerylist/issues/27) |
-| F11 | Trip Notes | Backlog | — | [#40](https://github.com/marvinmednick/grocerylist/issues/40) |
+| F80 | Enhanced Shopping Mode (Store Focus) | Backlog | — | [#80](https://github.com/marvinmednick/grocerylist/issues/80) |
+| F81 | Dark Mode Visual Implementation | Backlog | — | [#81](https://github.com/marvinmednick/grocerylist/issues/81) |
+| F82 | Trip Notes | Backlog | — | [#82](https://github.com/marvinmednick/grocerylist/issues/82) |
 | F9 | Trip History View | Done | [specs/F9-trip-history.md](specs/F9-trip-history.md) · [design](docs/design/F9-trip-history.md) | [#11](https://github.com/marvinmednick/grocerylist/issues/11) |
 | F12 | Smart Entry Model | Done | [specs/F12-smart-entry-model.md](specs/F12-smart-entry-model.md) · [design](docs/design/F12-smart-entry-model.md) | [#42](https://github.com/marvinmednick/grocerylist/issues/42) |
 | F13 | List Display Density & Warnings | Done | [specs/F13-list-display-warnings.md](specs/F13-list-display-warnings.md) · [design](docs/design/F13-list-display-warnings.md) | [#43](https://github.com/marvinmednick/grocerylist/issues/43) |
-| F14 | Free-form Input Parsing | Backlog | — | [#44](https://github.com/marvinmednick/grocerylist/issues/44) |
+| F44 | Free-form Input Parsing | Backlog | — | [#44](https://github.com/marvinmednick/grocerylist/issues/44) |
 | F15 | Freeform Qty "Other" Chip | Done | [specs/F15-freeform-qty-other-chip.md](specs/F15-freeform-qty-other-chip.md) · [design](docs/design/F15-freeform-qty-other-chip.md) | [#58](https://github.com/marvinmednick/grocerylist/issues/58) |
 | F16 | Store Preferences UI Redesign | Done | [specs/F16-store-preferences-ui.md](specs/F16-store-preferences-ui.md) · [design](docs/design/F16-store-preferences-ui.md) | [#61](https://github.com/marvinmednick/grocerylist/issues/61) |
 | F17 | Item Entry Flow Polish | Done | [specs/F17-item-entry-polish.md](specs/F17-item-entry-polish.md) | [#67](https://github.com/marvinmednick/grocerylist/issues/67) |
@@ -26,6 +28,7 @@
 | F21 | Items Screen Enhancements | Done | [specs/F21-items-screen-enhancements.md](specs/F21-items-screen-enhancements.md) | [#73](https://github.com/marvinmednick/grocerylist/issues/73) [#64](https://github.com/marvinmednick/grocerylist/issues/64) |
 | F22 | WarningBadge Modal Fix | Done | [specs/F22-warning-badge-modal.md](specs/F22-warning-badge-modal.md) | [#50](https://github.com/marvinmednick/grocerylist/issues/50) |
 | F23 | Store Dropdown in Edit Modals | Done | [specs/F23-store-dropdown-edit-modals.md](specs/F23-store-dropdown-edit-modals.md) | [#74](https://github.com/marvinmednick/grocerylist/issues/74) |
+| F75 | Backend Logging & Diagnostics | Backlog | — | [#75](https://github.com/marvinmednick/grocerylist/issues/75) |
 
 **Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `Needs Fixes` → `In Review` → `Done`
 (`Designed` is optional — features with clear requirements can go `Backlog` → `Specced` directly)

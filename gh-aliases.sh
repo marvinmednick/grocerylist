@@ -14,7 +14,7 @@ alias gi-open='gh search issues --repo '"$REPO"' --state open "NOT label:batched
 # All batched issues (across all features)
 alias gi-batched='gh issue list --label batched'
 
-# Issues in a specific feature batch — e.g. gi-batch feature:F18
+# Issues in a specific batch — e.g. gi-batch B76 (all issues batched into #76)
 alias gi-batch='gh issue list --label'
 
 # Open bugs only

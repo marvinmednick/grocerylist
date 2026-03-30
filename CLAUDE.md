@@ -38,7 +38,7 @@ Use `/update-worklog` (parent-level command) to auto-generate a SESSION_NOTES en
 
 ## Role in This Project
 
-> **Full process guide:** `WORKFLOW.md` — covers all use cases with examples, explains F-numbers vs GitHub issue numbers, and documents the complete feature lifecycle.
+> **Full process guide:** `WORKFLOW.md` — covers all use cases with examples, documents the complete feature lifecycle. **Feature numbering convention:** F-number = GitHub issue number (F76 = issue #76). Features F1–F23 predate this convention.
 
 
 Claude's responsibilities are **architecture, design, planning, and code review**. Implementation is handled by a separate tool (Gemini, aider, or similar).
@@ -138,7 +138,7 @@ npm test -- --testPathPattern=SmartAddItem  # single test file
 - `lib/`
   - `supabase.ts` — Supabase client (platform-aware AsyncStorage/localStorage adapter)
   - `household.tsx` — `HouseholdProvider` + `useHousehold()` hook; fetches `household_id` once per session with `staleTime: Infinity`
-  - `theme.tsx` — `AppThemeProvider` + `useAppTheme()` hook; dark/light toggle persisted to AsyncStorage (infrastructure for F10)
+  - `theme.tsx` — `AppThemeProvider` + `useAppTheme()` hook; dark/light toggle persisted to AsyncStorage (infrastructure for F81)
   - `activeStore.ts` — AsyncStorage helpers for persisting the selected store across sessions
 
 ### Key Patterns

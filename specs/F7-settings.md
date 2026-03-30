@@ -378,7 +378,7 @@ File: app/(tabs)/__tests__/items-test.tsx (new — minimal)
 
 ### Deferred Items
 
-- Visual dark theme (color token refactor across all screens/components) — tracked as F10 in [#27](https://github.com/marvinmednick/grocerylist/issues/27). (deferred from F7)
+- Visual dark theme (color token refactor across all screens/components) — tracked as F81 in [#81](https://github.com/marvinmednick/grocerylist/issues/81). (deferred from F7)
 - Household member list in Settings — deferred until F2 (multi-user) advances. (deferred from F7)
 
 ---

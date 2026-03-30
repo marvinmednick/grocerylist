@@ -12,11 +12,11 @@
 Idea → /feature → [/design] → /spec → ./implement → /review → /complete
 ```
 
-`/feature` captures and registers the idea (assigns F-number, creates GitHub issue). `/design` is optional — use it when UX, data model, or scope needs discussion before a spec can be written.
+`/feature` captures and registers the idea (creates GitHub issue, uses issue number as F-number). `/design` is optional — use it when UX, data model, or scope needs discussion before a spec can be written.
 
 | Step | Command | When |
 |------|---------|------|
-| Register | `/feature <description>` | Always — captures the idea, assigns F-number, adds to PLAN.md |
+| Register | `/feature <description>` | Always — creates GitHub issue, F-number = issue number, adds to PLAN.md |
 | Design | `/design F[N]` | When requirements need discussion or a design doc needs updating |
 | Spec | `/spec F[N]` | Always — reads design doc if one exists |
 | Implement (Light) | `./implement F[N]` | Review level Light |
@@ -100,26 +100,21 @@ Four files and one external service work together:
 
 ### Feature IDs vs GitHub Issue Numbers
 
-These are two independent numbering sequences that are linked but not the same.
+**From 2026-03-30, feature IDs match their GitHub issue number.** When `/feature` creates a new issue, the assigned issue number becomes the F-number. F76 = issue #76, F81 = issue #81.
 
-**Feature IDs** (F1, F2, …) are assigned by us:
-- Sequential, feature-only — every spec gets the next number regardless of what else is in GitHub
-- Stable — an F-number never changes once assigned
-- Used in: spec filenames, PLAN.md rows, spec headers, BACKLOG.md references
-
-**GitHub Issue Numbers** (#1, #2, …) are assigned by GitHub:
-- Sequential across *all* issue types — features, bugs, questions, anything filed in the repo
-- Used in: commit messages (`closes #1`), PR descriptions, GitHub's audit trail
-
-F1 happened to become issue #1 because it was the first issue in a fresh repo. But F2 might become issue #5 if three bugs were filed in between. The PLAN.md table and the spec header always record both, so you can find the relationship:
+- No lookup table needed — `gh issue view 76` is `F76`
+- The `F` prefix distinguishes features from bugs and other issues
+- Commit messages use the issue number directly: `closes #76`
 
 ```
-| F1 | List Interaction Modes | Specced | specs/F1-list-interactions.md | #1 |
+| F76 | Recipes & Bundles | Backlog | — | #76 |
 ```
+
+**Legacy features F1–F23** predate this convention and retain their original numbers (F2 = issue #4, etc.). The PLAN.md Issue column is the authoritative link for those. Backlog features that were renumbered in March 2026 have "superseded by" comments on their old GitHub issues.
 
 **Commit messages use the GitHub issue number** so that GitHub auto-closes the issue on merge:
 ```
-git commit -m "feat: implement interaction modes (closes #1)"
+git commit -m "feat: implement recipes and bundles (closes #76)"
 ```
 
 ---
@@ -648,14 +643,18 @@ gh issue create \
 Spec: \`specs/I[batch-N]-[slug].md\`"
 ```
 
-#### Step 3 — Mark the individual issues
-
-For each issue in the batch:
+#### Step 3 — Create the B[N] label and mark the individual issues
 
 ```bash
-gh issue edit N1 --add-label "batched"
+# Create the back-reference label (one-time per batch)
+gh label create "B[batch-N]" --description "Batched into issue #[batch-N]" --color "cfd3d7"
+
+# Apply to each individual issue
+gh issue edit N1 --add-label "batched,B[batch-N]"
 gh issue comment N1 --body "Being addressed in batch fix #[batch-N]."
 ```
+
+The `B[N]` label lets you find all issues in a specific batch at a glance: `gh issue list --label "B[batch-N]"`.
 
 #### Step 4 — Write the batch spec
 
@@ -704,7 +703,7 @@ gh issue close N2 --comment "Fixed in batch #[batch-N]."
 | Direction | How |
 |-----------|-----|
 | Batch → individual issues | Batch issue title: `refs #N1, #N2, …` |
-| Individual issue → batch | `batched` label + comment pointing to batch issue |
+| Individual issue → batch | `batched` + `B[N]` labels + comment pointing to batch issue |
 | Batch → commit | `closes #[batch-N]` in commit message |
 | Individual issue → commit | Close comment after ship: `"Fixed in batch #[batch-N]"` |
 
@@ -712,18 +711,20 @@ gh issue close N2 --comment "Fixed in batch #[batch-N]."
 
 #### Feature batch labels
 
-The same `batched` label is also applied when issues are grouped into a **feature batch** — multiple enhancements or bugs collected under a single F-number in `PLAN.md`. A second label `feature:F[N]` identifies which feature they belong to.
+The same `batched` label is also applied when issues are grouped into a **feature batch** — multiple enhancements or bugs collected under a single F-number in `PLAN.md`. A second label `B[N]` (where N is the container issue number) identifies which specific batch they belong to.
 
 ```bash
-# Create the feature batch label (one-time per feature)
-gh label create "feature:F18" --description "Batched into F18: Warning System Improvements" --color "5319e7"
+# Create the B[N] label (one-time per batch)
+gh label create "B76" --description "Batched into issue #76" --color "cfd3d7"
 
 # Apply to each constituent issue
-gh issue edit 47 --add-label "batched,feature:F18"
-gh issue edit 50 --add-label "batched,feature:F18"
+gh issue edit 47 --add-label "batched,B76"
+gh issue edit 50 --add-label "batched,B76"
 ```
 
 `PLAN.md` is the source of truth for batch composition. Labels are a reflection of it — update both together.
+
+> **Note:** The legacy label `feature:F18` on issues #47, #50, #68, #69 predates this convention and is retained as a historical artifact. Bug batch #38 uses `B38` on its child issues.
 
 ---
 
@@ -744,8 +745,8 @@ The GitHub web UI search bar also supports negation: type `-label:batched` in th
 # Unbatched open issues — what still needs planning
 gh search issues --repo marvinmednick/grocerylist --state open "NOT label:batched"
 
-# Issues in a specific feature batch
-gh issue list --label "feature:F18"
+# Issues in a specific batch (by container issue number)
+gh issue list --label "B76"
 
 # All issues that have been batched (any feature)
 gh issue list --label batched
@@ -770,7 +771,7 @@ source gh-aliases.sh
 | `gi` | All open issues |
 | `gi-open` | Unbatched open issues (what still needs planning) |
 | `gi-batched` | All issues batched into any feature |
-| `gi-batch feature:F18` | Issues in a specific feature batch |
+| `gi-batch B76` | Issues in a specific batch (container issue #76) |
 | `gi-bugs` | Open bugs |
 | `gi-triage` | Issues with no labels |
 
