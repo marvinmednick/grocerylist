@@ -270,31 +270,19 @@ Extract each semantic role from the groups:
 
 ---
 
-### Pass 5 — Name Resolution via Master Items Lookup `[OPEN]`
+### Pass 5 — Name Resolution via Master Items Lookup
 
-Generate candidate name strings from `name_words` combined with size/descriptor tokens,
-then check each against the master items table. First match wins.
-
-**Example — `"large avocado"`:**
-```
-Tokens after Pass 4: SIZE_DESCRIPTIVE(large), NAME(avocado)
-
-Candidates (in precedence order — ORDER NOT YET FINALIZED):
-  1. "large avocado"   ← size_descriptive + name_words
-  2. "avocado"         ← name_words only
-
-Lookup results:
-  "large avocado" exists in master items → name="large avocado", sizeDescriptive=null
-  "avocado" exists, "large avocado" does not → name="avocado", sizeDescriptive="large"
-  Neither exists → name="avocado" (new item candidate), sizeDescriptive="large"
-```
+Generate candidate name strings from `name_words` combined with dual-candidacy tokens
+(size descriptors that could be part of the product name OR metadata), then check each
+against the master items table. **All valid interpretations are returned**, ranked by
+quality — not just a single winner.
 
 **Matching strategy — Tier 1 bag-of-words (word-order independent, full token set):**
 Name tokens from Pass 4 are treated as an unordered set. A master item matches when its
-name token set equals the input name token set — same words, any order. "breast chicken"
+name token set equals the candidate name token set — same words, any order. "breast chicken"
 finds "Chicken Breast" because both have the same two tokens.
 
-This replaces exact-order string matching. It is still a full/exact match — every input
+This replaces exact-order string matching. It is still a full/exact match — every candidate
 token must be present in the item name and vice versa. Partial/subset matching (input tokens
 ⊂ item name tokens) is **out of scope for F44** and handled by F77.
 
@@ -303,9 +291,72 @@ those are all F77 capabilities. The lookup is against the master items table via
 pluggable lookup interface used by `useSearchItems()`, so F77 can extend it without
 restructuring the parser.
 
-> **[OPEN]** Precedence rules for candidate ordering not yet finalized.
-> Proposed direction: most-specific (longest token set) match wins.
-> When multiple candidates tie on specificity, first match wins.
+**Candidate generation:** Pass 5 generates all subsets of `name_words` combined with
+dual-candidacy tokens (currently just SIZE_DESCRIPTIVE). Each subset that matches a master
+item produces a valid interpretation. Tokens not consumed by the name match are assigned
+to their metadata role (e.g., SIZE_DESCRIPTIVE → `sizeDescriptive`) if applicable, or
+become **orphans** if they have no role.
+
+**Orphan tokens:** NAME tokens left over after a shorter match are not discarded — they
+are carried in an `orphans[]` field on the interpretation. Orphans do not disqualify an
+interpretation. This is important for free-form input where users may include words that
+don't match their master items (e.g., `large green avocado` where "Large Avocado" exists
+but "green" has no role).
+
+**Ranking rule:** Interpretations are ranked by:
+1. **Fewest orphans** — clean matches rank above matches with leftover tokens
+2. **Longest name match** — among equal-orphan interpretations, more-specific names rank first
+
+**Example — `"large avocado"` (both "Large Avocado" and "Avocado" exist):**
+```
+Tokens after Pass 4: SIZE_DESCRIPTIVE(large), NAME(avocado)
+
+Candidates checked:
+  "large avocado" (size_descriptive + name_words) → match "Large Avocado"
+  "avocado" (name_words only) → match "Avocado"
+
+Result — two interpretations, ranked:
+  1. { name: "Large Avocado", sizeDescriptive: null, orphans: [] }     ← 2-token, 0 orphans
+  2. { name: "Avocado",       sizeDescriptive: "large", orphans: [] }  ← 1-token, 0 orphans
+```
+
+**Example — `"large banana"` (only "Banana" exists):**
+```
+Candidates checked:
+  "large banana" → no match
+  "banana" → match "Banana"
+
+Result — one interpretation:
+  1. { name: "Banana", sizeDescriptive: "large", orphans: [] }
+```
+
+**Example — `"large green avocado"` ("Large Avocado" exists, no "Large Green Avocado"):**
+```
+Tokens after Pass 4: SIZE_DESCRIPTIVE(large), NAME(green), NAME(avocado)
+
+Candidates checked:
+  "large green avocado" → no match
+  "large avocado" → match "Large Avocado"  (orphan: "green")
+  "green avocado" → no match
+  "avocado" → match "Avocado"  (orphan: "green", sizeDescriptive: "large")
+
+Result — two interpretations, ranked:
+  1. { name: "Large Avocado", sizeDescriptive: null, orphans: ["green"] }   ← 1 orphan, 2-token
+  2. { name: "Avocado", sizeDescriptive: "large", orphans: ["green"] }      ← 1 orphan, 1-token
+```
+
+**Example — no master item matches at all:**
+```
+"purple yam" — neither "Purple Yam" nor "Yam" exist
+
+Result — zero interpretations. rawInput available for one-off add.
+```
+
+**Dropdown display:** Orphan tokens are shown **struck-through** next to the matched item
+name, giving the user immediate visual feedback about what wasn't matched. The user can:
+- **Tap a match** — adds the matched item; orphans are silently dropped
+- **Edit their input** — correct the text and re-parse
+- **Add as one-off** — the full raw input string goes on the list with no master item link
 
 ---
 
@@ -313,15 +364,25 @@ restructuring the parser.
 
 ```typescript
 interface ParsedInput {
-  name: string                   // drives useSearchItems()
+  name: string                   // matched master item name (or candidate name if no match)
   count: number | null           // how many packages/units to buy
   packageType: string | null     // canonical package name: "can", "bottle", "bunch"
   sizeDescriptive: string | null // qualitative size: "large", "jumbo"
   sizeQty: number | null         // quantitative size value: 8, 1.5, 32
   sizeUnit: string | null        // quantitative size unit: "oz", "lb"
   storeHint: string | null       // store prefix hint: "safeway", "co"
+  orphans: string[]              // unmatched NAME tokens — empty when clean
+}
+
+interface ParseResult {
+  interpretations: ParsedInput[] // ranked: fewest orphans, then longest name match
+  rawInput: string               // original input text, for one-off add path
 }
 ```
+
+`ParseResult` is the top-level return value. `interpretations` may be empty if no master
+item matches any candidate — the one-off add path uses `rawInput`. When only one
+interpretation exists, the dropdown can auto-highlight it without requiring a choice.
 
 ---
 
@@ -468,8 +529,7 @@ field matching with no normalization needed.
 
 > These must be resolved before handing off to `/spec`.
 
-1. **Precedence rules (Pass 5):** Candidate ordering for name resolution not finalized.
-   Proposed: most-specific (longest) match wins. Needs explicit rule list.
+1. ~~**Precedence rules (Pass 5)** — Resolved. See Design Decisions (ranked interpretations).~~
 
 2. ~~**Data model — qty field when both count AND size parse** — Resolved. See Design Decisions (quantity storage format).~~
 
@@ -477,7 +537,7 @@ field matching with no normalization needed.
 
 4. **UI decisions (entire Pass 2 of design conversation — not yet started):**
    - Does the user see real-time feedback showing what was parsed?
-   - How does parsed context appear in the dropdown / search results?
+   - ~~How does parsed context appear in the dropdown / search results? — Partially resolved: orphan tokens shown struck-through. Full dropdown layout not yet designed.~~
    - If parsing produces a store hint, is the store field locked or just pre-populated?
    - Where does parse error/fallback state surface (if at all)?
 
@@ -555,6 +615,23 @@ structure-ready. `alternate_qtys` (TEXT[]) also follows this pattern: strings fo
 structured under F79.
 **Full rationale:** See [Vocabulary and Quantity Architecture](vocabulary-and-quantity-architecture.md) § Quantity Storage.
 
+### Pass 5 output: ranked interpretations with orphan tolerance
+**Decision:** Pass 5 returns all valid interpretations as a ranked list (`ParseResult.interpretations`),
+not a single winner. Ranking: fewest orphans first, then longest name match. NAME tokens
+left over from a shorter match are carried in `orphans[]` — they do not disqualify an
+interpretation. Orphan tokens are shown struck-through in the dropdown row.
+**Rationale:** Free-form input is messy — users may include words that don't match their
+master items (e.g., "large green avocado" when "Large Avocado" exists). Discarding
+interpretations with orphans would hide valid matches. Showing ranked alternatives with
+visible orphans lets the user confirm which interpretation they intended, consistent with
+the "user always confirms" principle. The one-off add path (`rawInput`) provides an escape
+when no interpretation is right.
+**Alternatives considered:**
+- Single longest match (original proposal): simpler, but silently discards shorter valid
+  interpretations and gives the user no choice
+- Drop interpretations with orphans: penalizes users for extra words; hides valid matches
+  behind strict token accounting
+
 ### Pass 3 grouping strategy: iterative sub-passes
 **Decision:** Pass 3 runs as four ordered sub-passes (3a–3d) in a loop until the token
 stream stabilizes. Two thresholds govern loop behavior:
@@ -581,3 +658,4 @@ The failsafe tripping is a bug indicator — investigate, don't normalize it.
 - 2026-03-29: Resolved Open Q#6 — iterative sub-passes with max-10 failsafe; added Pass 3 strategy to Design Decisions
 - 2026-03-30: Pass 5 matching resolved to Tier 1 bag-of-words (full token set, word-order independent); subset matching/typos/plurals/aliases explicitly deferred to F77; alternate_qtys initially resolved to TEXT[] strings (superseded — see 2026-03-31)
 - 2026-03-31: Resolved Open Q#2 (quantity storage) — structured storage is the architectural target; F44 interim may use text strings until F79 implements schema change; created parent architecture doc (vocabulary-and-quantity-architecture.md) covering cross-cutting storage, vocabulary extensibility, and input interpretation model
+- 2026-03-31: Resolved Open Q#1 (precedence rules) — Pass 5 returns ranked interpretations (not single winner); ranking by fewest orphans then longest name match; orphan tokens carried in `orphans[]` field, shown struck-through in dropdown; `ParseResult` wraps `ParsedInput[]` + `rawInput`; partial Q#4 resolution (orphan display as struck-through)

@@ -76,3 +76,11 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: Structured quantity storage (architectural target); text is interim until F79. Vocabulary tables are household-scoped. Units editable via settings only; packages/size descriptors extensible on-the-fly via definition flow. User interaction model: two-category dropdown (known + fuzzy), one-off quick-add (frictionless), clarify/define modal (deliberate vocabulary definition). Implementation order: F44 → F79 → F77/F83 → F78/F76.
 - **Design review**: not triggered
 - **Next**: Continue F44 design — remaining open questions: Pass 5 precedence rules (Q#1), UI decisions (Q#4), store prefix ambiguity (Q#5)
+
+---
+### 2026-03-31 18:00 — F44 design: resolved Q#1 (Pass 5 precedence rules)
+- **Completed**: Resolved Open Q#1 — Pass 5 now returns ranked interpretations instead of single winner. Updated `ParsedInput` with `orphans[]` field and wrapped in `ParseResult` with `rawInput`. Partially resolved Q#4 (orphan display). Updated design doc Pass 5, Pass 6, Open Questions, Design Decisions, and revision history.
+- **Findings**: Single-output longest-match silently discards valid shorter interpretations — the user has no way to pick an alternative. Ranked output respects "user always confirms" principle. Orphan tokens (NAME tokens left over from shorter matches) should not disqualify interpretations — in free-form input, users often include words that don't match master items (e.g., "large green avocado" when only "Large Avocado" exists). Orphan tolerance avoids penalizing messy input.
+- **Design decisions**: Pass 5 returns `ParseResult { interpretations: ParsedInput[], rawInput: string }`. Ranking: fewest orphans first, then longest name match. Orphans carried in `orphans[]`, never disqualify. Dropdown shows orphans struck-through. One-off add uses `rawInput`.
+- **Design review**: not triggered
+- **Next**: Continue F44 design — remaining open questions: UI decisions (Q#4 — real-time parse feedback, store hint locking, error surfacing), store prefix ambiguity (Q#5)
