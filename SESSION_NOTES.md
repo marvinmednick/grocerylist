@@ -68,3 +68,11 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: none
 - **Design review**: not triggered — patterns followed, no new patterns established
 - **Next**: Ready to ship (#74)
+
+---
+### 2026-03-31 — F44 design: quantity storage, vocabulary architecture, feature chain
+- **Completed**: Continued F44 design conversation. Created cross-cutting architecture doc (`docs/design/vocabulary-and-quantity-architecture.md`). Resolved Open Q#2 and Q#3. Fixed stale F14/F4 references. Expanded F79 and F77 scope. Created F83 (#83 — vocabulary definition flow). Added implementation order to PLAN.md.
+- **Findings**: Initial decision was text storage for alternate_qtys and list_items.quantity. Broadening to architectural view reversed this — structured storage is the right long-term choice because the parser is a normalization layer, not a one-shot utility. Multiple downstream consumers need structure (F78 merge, F76 scaling, warnings, pill pre-selection). Serialize/deserialize cost is manageable either way, so the tiebreaker is architectural consistency. Units should be curated (settings UI, not on-the-fly); packages and size descriptors are household-extensible on-the-fly. The existing `units` table and `unit_id` columns are unused placeholders from initial scaffolding.
+- **Design decisions**: Structured quantity storage (architectural target); text is interim until F79. Vocabulary tables are household-scoped. Units editable via settings only; packages/size descriptors extensible on-the-fly via definition flow. User interaction model: two-category dropdown (known + fuzzy), one-off quick-add (frictionless), clarify/define modal (deliberate vocabulary definition). Implementation order: F44 → F79 → F77/F83 → F78/F76.
+- **Design review**: not triggered
+- **Next**: Continue F44 design — remaining open questions: Pass 5 precedence rules (Q#1), UI decisions (Q#4), store prefix ambiguity (Q#5)
