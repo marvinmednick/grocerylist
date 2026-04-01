@@ -6,6 +6,10 @@
 > This document is being written during an active design conversation.
 > Sections marked `[OPEN]` have unresolved decisions.
 > Do not hand off to `/spec` until all Open Questions are resolved and this notice is removed.
+>
+> **Parent architecture doc:** [Vocabulary, Quantity, and Input Interpretation](vocabulary-and-quantity-architecture.md)
+> — covers cross-cutting decisions (storage format, vocabulary extensibility, interaction
+> model) that span F44, F77, F78, and F79.
 
 ---
 
@@ -292,11 +296,11 @@ finds "Chicken Breast" because both have the same two tokens.
 
 This replaces exact-order string matching. It is still a full/exact match — every input
 token must be present in the item name and vice versa. Partial/subset matching (input tokens
-⊂ item name tokens) is **out of scope for F14** and handled by F4.
+⊂ item name tokens) is **out of scope for F44** and handled by F77.
 
 Matching is case-insensitive. No fuzzy matching, no typo tolerance, no plural normalization —
-those are all F4 capabilities. The lookup is against the master items table via the same
-pluggable lookup interface used by `useSearchItems()`, so F4 can extend it without
+those are all F77 capabilities. The lookup is against the master items table via the same
+pluggable lookup interface used by `useSearchItems()`, so F77 can extend it without
 restructuring the parser.
 
 > **[OPEN]** Precedence rules for candidate ordering not yet finalized.
@@ -407,16 +411,21 @@ Does it describe the nature, variant, or preparation of the product? → exclude
 Preferred quantities are **master-item-specific**, not global. Stored today as a list of
 free-form strings in `items.alternate_qtys` (e.g., `["1.5 lb", "2 lb", "large"]`).
 
-**Consistency requirement:** every `alternate_qtys` string must be parseable using the
-vocabulary tables above. If a string can't be parsed back to a QUANTITATIVE_SIZE or
-SIZE_DESCRIPTIVE token, the tables have a gap that must be filled.
+**Architectural target:** `alternate_qtys` will move to structured entries under F79,
+consistent with the structured quantity storage decision (see
+[Vocabulary and Quantity Architecture](vocabulary-and-quantity-architecture.md) § Quantity Storage).
+
+**Interim consistency requirement:** while `alternate_qtys` remains TEXT[], every string
+must be parseable using the vocabulary tables above. If a string can't be parsed back to
+a QUANTITATIVE_SIZE or SIZE_DESCRIPTIVE token, the tables have a gap that must be filled.
 
 **At spec time:** audit all existing `alternate_qtys` values; seed tables to cover any
 vocabulary gaps found.
 
 **Pill pre-selection:** when parsed size matches an `alternate_qtys` entry (after
 normalization — `"1.5lb"` and `"1.5 lb"` treated as equivalent), that pill is
-pre-selected in the add flow.
+pre-selected in the add flow. Under structured storage, this comparison becomes exact
+field matching with no normalization needed.
 
 ---
 
@@ -462,13 +471,9 @@ pre-selected in the add flow.
 1. **Precedence rules (Pass 5):** Candidate ordering for name resolution not finalized.
    Proposed: most-specific (longest) match wins. Needs explicit rule list.
 
-2. **Data model — qty field when both count AND size parse:**
-   e.g., `2 packages 1.2 lb chicken` → what goes in `list_items.qty`?
-   Options: just count (`2`), just size (`1.2 lb`), concatenated (`2 packages 1.2 lb`),
-   or surface both in edit modal and let user choose.
+2. ~~**Data model — qty field when both count AND size parse** — Resolved. See Design Decisions (quantity storage format).~~
 
-3. **alternate_qtys structure:** Keep as free-form strings with vocabulary validation,
-   or add typed entries (structured `{qty, unit}` records)? Leaning toward strings + validation.
+3. ~~**alternate_qtys structure** — Resolved. See Design Decisions.~~
 
 4. **UI decisions (entire Pass 2 of design conversation — not yet started):**
    - Does the user see real-time feedback showing what was parsed?
@@ -490,12 +495,12 @@ pre-selected in the add flow.
 - Multi-word store hints (`@harris teeter`) — single-word only
 - Qualitative product descriptors (`condensed`, `skim`, `organic`) — stay in item name, not parsed
 - AI/NLP-based interpretation — this is intentionally programmatic only
-- **Deferred to F4 (Search Improvements):**
+- **Deferred to F77 (Fuzzy Matching in Smart Add):**
   - Subset/partial matching — input tokens ⊂ item name tokens (e.g., "boneless skinless" matching "Chicken Breasts Boneless Skinless")
   - Typo tolerance / edit-distance matching
   - Plural normalization / stemming ("breasts" → "breast")
   - Item aliases — product-level, household-defined alternate search strings
-  - Pass 5 uses a pluggable lookup interface so F4 can extend matching without restructuring the parser
+  - Pass 5 uses a pluggable lookup interface so F77 can extend matching without restructuring the parser
 
 ---
 
@@ -539,6 +544,17 @@ The test: "does this word describe size?" vs. "does it describe what the product
 **Rationale:** A "large" is only meaningful for items where that size exists; `1.5 lb`
 is only relevant for items sold by weight. Global lists would be noise.
 
+### Quantity storage format: structured (architectural decision)
+**Decision:** The long-term architecture calls for structured quantity storage. The parser
+is the normalization layer — its structured output is what gets stored, not a serialized
+text string. Multiple downstream consumers (F78 merge, F76 recipe scaling, warnings, pill
+pre-selection, edit modal) need structure; only display needs a rendered string.
+**F44 interim:** Until F79 implements the schema change, F44 may store quantity as serialized
+text. This is transitional — F44's parser output and internal representations should be
+structure-ready. `alternate_qtys` (TEXT[]) also follows this pattern: strings for now,
+structured under F79.
+**Full rationale:** See [Vocabulary and Quantity Architecture](vocabulary-and-quantity-architecture.md) § Quantity Storage.
+
 ### Pass 3 grouping strategy: iterative sub-passes
 **Decision:** Pass 3 runs as four ordered sub-passes (3a–3d) in a loop until the token
 stream stabilizes. Two thresholds govern loop behavior:
@@ -563,4 +579,5 @@ The failsafe tripping is a bug indicator — investigate, don't normalize it.
 - 2026-03-27: Initial draft — design conversation in progress, not complete
 - 2026-03-28: Added Item Structure Model section — conceptual foundation for the parsing rules; added identification-by-subtraction principle + bag-of-words future note; added architecture overview table; added quoted-string token support; updated Known Limitations to reflect quoting escape hatch; expanded Pass 3 into four ordered sub-passes with worked trace to make multi-level merging explicit
 - 2026-03-29: Resolved Open Q#6 — iterative sub-passes with max-10 failsafe; added Pass 3 strategy to Design Decisions
-- 2026-03-30: Pass 5 matching resolved to Tier 1 bag-of-words (full token set, word-order independent); subset matching/typos/plurals/aliases explicitly deferred to F4; F4 scope expanded to cover all search improvements holistically
+- 2026-03-30: Pass 5 matching resolved to Tier 1 bag-of-words (full token set, word-order independent); subset matching/typos/plurals/aliases explicitly deferred to F77; alternate_qtys initially resolved to TEXT[] strings (superseded — see 2026-03-31)
+- 2026-03-31: Resolved Open Q#2 (quantity storage) — structured storage is the architectural target; F44 interim may use text strings until F79 implements schema change; created parent architecture doc (vocabulary-and-quantity-architecture.md) covering cross-cutting storage, vocabulary extensibility, and input interpretation model

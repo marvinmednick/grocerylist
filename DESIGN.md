@@ -1,6 +1,7 @@
 # Grocery App Design & Architecture
 
 > **Related docs:** `docs/design/ui-guidelines.md` — visual and interaction patterns (component selection, established conventions, TBD placeholders, decision log). Read alongside this file before designing any feature with a UI component.
+> `docs/design/vocabulary-and-quantity-architecture.md` — cross-cutting architecture for vocabulary tables, quantity storage, and input interpretation. Umbrella doc for F44, F77, F78, F79.
 
 ## 1. Project Overview
 **Goal:** A cross-platform (iOS/Android/Web) collaborative shopping list application.
