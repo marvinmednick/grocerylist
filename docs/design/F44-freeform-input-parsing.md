@@ -16,24 +16,26 @@
 ## Overview
 
 Parses free-form text typed into the SmartAddItem input field to extract structured fields:
-item name, count, package type, size, and store hint. Extracted values pre-fill the add flow
-(qty field, store dropdown, pill bar pre-selection) so users can type naturally rather than
-navigating multiple fields manually.
+item name, count, package type, size, and store hint. Extracted values pre-populate the
+dropdown result rows (qty pills pre-selected, store pills shown when `@hint` is present)
+so users can type naturally rather than navigating multiple fields manually.
 
 Split out from F12 (Smart Entry Model) to keep scope focused.
 
-**Integration point:** `SmartAddItem.tsx` input layer. The parsed `name` drives
-`useSearchItems()`; other parsed fields pre-populate form state.
+**Integration point:** `SmartAddItem.tsx` input layer. The parser produces a `ParseResult`
+containing ranked interpretations; the top-ranked interpretation's `name` drives
+`useSearchItems()`, and other parsed fields pre-populate pill state on each result row.
 
 ---
 
 ## User Scenarios
 
-- User types "2 milk" → qty=2 pre-filled, search finds "Milk"
-- User types "milk @safeway" → store pre-set to Safeway, search finds "Milk"
-- User types "1.5 lb chicken @costco" → qty=1.5 lb pre-filled, store=Costco, search finds "Chicken"
-- User types "2x 8oz cans chicken broth" → count=2, size=8oz, package=can, search finds "Chicken Broth"
-- User types "large avocado" → if "Large Avocado" is a master item, finds it directly; otherwise finds "Avocado" with size=large pre-filled
+- User types "2 milk" → qty=2 pill pre-selected, search finds "Milk"
+- User types "milk @safeway" → Safeway store pill shown and pre-selected, search finds "Milk"
+- User types "1.5 lb chicken @costco" → qty=1.5lb pill pre-selected, Costco store pill shown, search finds "Chicken"
+- User types "2x 8oz cans chicken broth" → count=2, size=8oz, package=can; search finds "Chicken Broth"
+- User types "large avocado" → if both "Large Avocado" and "Avocado" are master items, dropdown shows both as ranked interpretations (Large Avocado first, Avocado with size=large second)
+- User types "large green avocado" → "Large Avocado" shown with ~~green~~ struck-through; user can tap to add, edit input, or add as one-off
 
 ---
 
@@ -97,10 +99,10 @@ pattern or table entry becomes part of the product description. The product name
 by subtraction — not by lookup.
 
 This subtraction model also points toward future extensibility: once all non-product tokens are
-identified and removed, the remaining tokens form a "bag of product words." While V1 uses those
-words only as a literal name string (exact match against master items), future passes could
-support individual-word matching or any-order lookup — e.g., `chicken breast` and `breast chicken`
-finding the same item. This is out of scope for V1 but is a natural consequence of the architecture.
+identified and removed, the remaining tokens form a "bag of product words." Pass 5 uses
+bag-of-words matching (word-order independent) — `chicken breast` and `breast chicken` find
+the same master item. Future extensions (F77) could add subset matching, typo tolerance, and
+fuzzy search on top of this foundation.
 
 ---
 
@@ -108,8 +110,9 @@ finding the same item. This is out of scope for V1 but is a natural consequence 
 
 ### Overview
 
-Six sequential passes transform raw input text into a structured `ParsedInput` object.
-Each pass is independently testable. Later passes build on earlier ones — no backtracking.
+Six sequential passes transform raw input text into a `ParseResult` containing ranked
+interpretations. Each pass is independently testable. Later passes build on earlier ones
+— no backtracking.
 
 | Pass | Name | Goal |
 |------|------|------|
@@ -117,8 +120,8 @@ Each pass is independently testable. Later passes build on earlier ones — no b
 | 2 | **Per-Token Classification** | Classify each token by pattern match or table lookup; unrecognized tokens become NAME |
 | 3 | **Adjacent Token Grouping** | Merge adjacent tokens into semantic groups (e.g., NUMBER + UNIT → QUANTITATIVE_SIZE) |
 | 4 | **Candidate Assembly** | Extract each semantic role (count, package, size, store, name words) from the grouped token stream |
-| 5 | **Name Resolution** | Look up candidate name strings against master items; first match wins |
-| 6 | **Output** | Produce the structured `ParsedInput` object |
+| 5 | **Name Resolution** | Look up candidate name strings against master items; return all valid interpretations ranked by quality |
+| 6 | **Output** | Produce the `ParseResult` containing ranked `ParsedInput[]` + `rawInput` |
 
 Passes 1–4 are purely structural — they classify tokens by form and table membership,
 then assign roles by grammar rules. No app data is consulted until Pass 5.
@@ -303,9 +306,9 @@ interpretation. This is important for free-form input where users may include wo
 don't match their master items (e.g., `large green avocado` where "Large Avocado" exists
 but "green" has no role).
 
-**Ranking rule:** Interpretations are ranked by:
-1. **Fewest orphans** — clean matches rank above matches with leftover tokens
-2. **Longest name match** — among equal-orphan interpretations, more-specific names rank first
+**Ranking rule:** Interpretations are ranked by **longest name match** — more-specific
+names rank first. In practice, longer matches also produce fewer orphans (consuming more
+tokens into the name leaves fewer left over), so this single rule covers both concerns.
 
 **Example — `"large avocado"` (both "Large Avocado" and "Avocado" exist):**
 ```
@@ -375,7 +378,7 @@ interface ParsedInput {
 }
 
 interface ParseResult {
-  interpretations: ParsedInput[] // ranked: fewest orphans, then longest name match
+  interpretations: ParsedInput[] // ranked: longest name match first
   rawInput: string               // original input text, for one-off add path
 }
 ```
@@ -411,8 +414,9 @@ but predictable and reliable.
 | `2 step cleaner` → count=2, name="step cleaner" | `'2 step cleaner'` → name="2 step cleaner" |
 | `large format paper` → size=large, name="format paper" | `'large format paper'` → name="large format paper" |
 
-> **[OPEN]** Store prefix ambiguity: if `@co` prefix-matches multiple stores ("Costco", "Country
-> Market"), disambiguation rule not yet designed.
+Multiple prefix matches (e.g., `@co` matching "Costco" and "Country Market") are shown as
+store pills in the dropdown — the user taps the right one or refines the hint. See
+Dropdown UI § Store Pills.
 
 ---
 
@@ -486,29 +490,184 @@ vocabulary gaps found.
 **Pill pre-selection:** when parsed size matches an `alternate_qtys` entry (after
 normalization — `"1.5lb"` and `"1.5 lb"` treated as equivalent), that pill is
 pre-selected in the add flow. Under structured storage, this comparison becomes exact
-field matching with no normalization needed.
+field matching with no normalization needed. See Dropdown UI § Quantity Pills for the
+full pill display and interaction design (sorting, overflow, "Other" behavior).
+
+---
+
+## Dropdown UI: Parsed Context in Result Rows
+
+The dropdown result row is the primary surface for parsed context. Rather than a separate
+"parse feedback" area, the **pills themselves are the feedback** — the user sees what the
+parser extracted by looking at what's pre-selected and what options are available.
+
+### Quantity Pills
+
+**Principle:** Always show the parsed value and all defaults/alternates. Never hide
+defaults based on what was parsed — the user may have mistyped and needs to see their
+existing options. Sort by relevance to parsed input; cap to available space.
+
+**Pill row contents (left to right):**
+1. Parsed value pill (selected) — only if parser extracted a qty and it doesn't exactly
+   match a default/alternate
+2. Default qty
+3. Alternate qtys — sorted with partial matches to parsed value first, then remaining
+4. "Other" button
+5. `...` if items overflow available space (opens edit modal)
+
+**Display cap:** Pill rows have a configurable max-row limit (initially set to 2),
+device-width-dependent. This cap applies universally — whether or not the parser
+extracted a qty. When defaults/alternates alone exceed the cap, the same overflow/`...`
+mechanism applies. The cap value can be adjusted in code without changing the design;
+`...` always opens the edit modal where all options are visible.
+
+**Partial match definition:** The parsed value string is a prefix of the alternate string.
+`2` matches `2lb`, `2.5lb`, `2 pack`. `1.5lb` matches `1.5lb` exactly but NOT `1lb`
+(since `"1.5"` is not a prefix of `"1"`). Under F79 structured storage, this becomes
+structured field comparison rather than string prefix matching.
+
+**Dedup:** If the parsed value exactly matches a default or alternate, don't show it
+twice — just pre-select the matching pill.
+
+#### Scenario walkthroughs
+
+**No parsed qty** — today's behavior, with display cap applied:
+```
+Qty: [1] [32oz] [2 pack] [Other]
+```
+Same pills as today. If defaults/alternates exceed the row cap, overflow to `...`.
+
+**Exact match** (`32oz` parsed, `32oz` is an alternate):
+```
+Qty: [1] [32oz ✓] [2 pack] [Other]
+```
+Normal order, matched pill pre-selected. No extra pill injected.
+
+**Partial match** (`1` parsed, alternates include `1lb`, `1.5lb`, `2lb`, `32oz`, `2 pack`, `1 gal`):
+```
+Qty: [1 ✓] [1lb] [1.5lb] [1 gal] [2lb]
+     [32oz] [2 pack] [Other]
+```
+Parsed value first (selected). Partial matches (`1lb`, `1.5lb`, `1 gal`) sorted next.
+Non-matching alternates follow. Two rows.
+
+**No match** (`16oz` parsed, alternates are `1`, `32oz`, `2 pack`):
+```
+Qty: [16oz ✓] [1] [32oz] [2 pack] [Other]
+```
+Parsed value first (selected). All defaults/alternates shown — nothing filtered out.
+The user sees `32oz` right there and can tap it if they were close.
+
+**Overflow** (many alternates, doesn't fit in two rows):
+```
+Qty: [1 ✓] [1lb] [1.5lb] [1 gal] [2lb]
+     [32oz] [2 pack] [Other] [...]
+```
+`...` opens edit modal where all options are visible.
+
+#### "Other" behavior
+
+Tapping "Other" replaces the pill row with a text input pre-filled with the parsed
+value (or empty if no qty was parsed). An `✕` button returns to the pill view.
+
+```
+Before:  Qty: [16oz ✓] [1] [32oz] [2 pack] [Other]
+After:   Qty: [16oz________________] [✕]
+```
+
+The user has already seen all defaults/alternates before tapping Other, so they're
+making an informed choice to go free-text. The text input auto-focuses.
+
+**F79 note:** The "Other" text input slot should be wrapped in its own component.
+Under F79, this slot may become a structured mini-form (number input + unit picker)
+rather than free text. The interaction pattern (Other → input replaces pills) stays
+the same; only the input control changes.
+
+### Store Pills
+
+**Principle:** Store pills only appear when the parser extracts a `@hint`. No hint →
+no store pills; store inherits from the active store silently, same as today.
+
+**Behavior by match count:**
+
+| `@hint` matches | Pills shown |
+|-----------------|-------------|
+| 0 matches | No pills (hint shown as unresolved — user can refine input) |
+| 1 match | `[Costco ✓]` — single pill, pre-selected |
+| 2–N matches (fit one line) | `[Costco] [Country Market]` — first match pre-selected |
+| Too many for one line | Show as many as fit + `[...]` — `...` opens edit modal |
+
+Pills update live as the user refines the hint (`@c` → `@co` → `@cos` narrows the
+set keystroke by keystroke). No submit required.
+
+**Not locked, pre-populated:** The store hint pre-selects but does not lock. The user
+can tap a different store pill or change the hint in the input. This follows the
+"user always confirms" principle.
+
+### Edit Modal Enhancements
+
+The edit modal (opened via the chevron or `...` overflow) carries parsed context
+through and takes advantage of the additional screen space.
+
+**Store in edit modal:**
+- If a `@hint` was parsed, the store list is filtered to matching stores, shown first
+- A `▸ More` row expands to show remaining stores below the matches
+- Matching stores stay at the top after expansion for easy access
+- If no `@hint`, behaves exactly as today (full store list, no filtering)
+
+```
+Store:
+┌─────────────────────────────┐
+│ ● Costco                    │  ← @co matches, shown first
+│ ● Country Market            │
+│ ▸ More                      │
+└─────────────────────────────┘
+```
+
+**Quantity in edit modal:**
+- Text input pre-filled with the parsed quantity value
+- "Usual Quantities" tags shown below (same as today), with partial matches to
+  parsed value sorted first
+- Full list always visible — more room than the dropdown row
+
+### Parse Feedback Model
+
+**Decision:** No separate real-time parse feedback UI (no token coloring, no separate
+parse-result display area). The pills themselves are the parse feedback — what's
+pre-selected shows what the parser extracted. Orphan tokens (from Pass 5) shown
+struck-through next to the item name in the result row.
+
+This keeps the UI simple: the user's feedback loop is "type → see pills update →
+tap or refine." The same UI elements that existed before F44 (qty pills, store
+selection) now respond to parsed input — no new UI concepts introduced.
 
 ---
 
 ## Worked Examples
 
-| Input | count | package | size | store | name |
-|-------|-------|---------|------|-------|------|
-| `2 milk` | 2 | — | — | — | milk |
-| `milk @safeway` | — | — | — | safeway | milk |
-| `milk 2` | 2 | — | — | — | milk |
-| `1.5 lb chicken @costco` | — | — | 1.5 lb | costco | chicken |
-| `2x milk` | 2 (explicit) | — | — | — | milk |
-| `2 8oz cans chicken broth` | 2 | can | 8 oz | — | chicken broth |
-| `2 8 oz cans chicken broth` | 2 | can | 8 oz | — | chicken broth (same result) |
-| `2x 8oz cans chicken broth @safeway` | 2 (explicit) | can | 8 oz | safeway | chicken broth |
-| `2 packages 1.2 lb chicken breast` | 2 | package | 1.2 lb | — | chicken breast |
-| `large avocado` | — | — | large* | — | avocado* |
-| `2 loaves bread` | 2 | loaf | — | — | bread |
-| `1 bunch cilantro` | 1 | bunch | — | — | cilantro |
-| `3 12-pack Coke` | 3 | 12-pack | — | — | Coke |
+These show the **top-ranked interpretation** from `ParseResult.interpretations[0]`.
+Additional interpretations may exist — see Pass 5 for ranking rules and examples.
 
-*Result of `"large avocado"` depends on master items lookup (Pass 5) — see that section.
+| Input | count | package | size | store | name | orphans |
+|-------|-------|---------|------|-------|------|---------|
+| `2 milk` | 2 | — | — | — | milk | — |
+| `milk @safeway` | — | — | — | safeway | milk | — |
+| `milk 2` | 2 | — | — | — | milk | — |
+| `1.5 lb chicken @costco` | — | — | 1.5 lb | costco | chicken | — |
+| `2x milk` | 2 (explicit) | — | — | — | milk | — |
+| `2 8oz cans chicken broth` | 2 | can | 8 oz | — | chicken broth | — |
+| `2 8 oz cans chicken broth` | 2 | can | 8 oz | — | chicken broth (same) | — |
+| `2x 8oz cans chicken broth @safeway` | 2 (explicit) | can | 8 oz | safeway | chicken broth | — |
+| `2 packages 1.2 lb chicken breast` | 2 | package | 1.2 lb | — | chicken breast | — |
+| `large avocado`* | — | — | — | — | Large Avocado | — |
+| `large green avocado`* | — | — | — | — | Large Avocado | green |
+| `2 loaves bread` | 2 | loaf | — | — | bread | — |
+| `1 bunch cilantro` | 1 | bunch | — | — | cilantro | — |
+| `3 12-pack Coke` | 3 | 12-pack | — | — | Coke | — |
+
+*Assumes "Large Avocado" exists as a master item. If only "Avocado" exists,
+top interpretation would be: name="Avocado", sizeDescriptive="large". See Pass 5
+for the full ranked output with multiple interpretations.
 
 ---
 
@@ -535,14 +694,9 @@ field matching with no normalization needed.
 
 3. ~~**alternate_qtys structure** — Resolved. See Design Decisions.~~
 
-4. **UI decisions (entire Pass 2 of design conversation — not yet started):**
-   - Does the user see real-time feedback showing what was parsed?
-   - ~~How does parsed context appear in the dropdown / search results? — Partially resolved: orphan tokens shown struck-through. Full dropdown layout not yet designed.~~
-   - If parsing produces a store hint, is the store field locked or just pre-populated?
-   - Where does parse error/fallback state surface (if at all)?
+4. ~~**UI decisions** — Resolved. See Dropdown UI section and Design Decisions (parse feedback model, store pills, qty pills).~~
 
-5. **Store prefix ambiguity:** If `@co` matches multiple stores, what happens?
-   Disambiguation rule not yet designed.
+5. ~~**Store prefix ambiguity** — Resolved. See Dropdown UI § Store Pills: multiple matches shown as pills, user refines hint to narrow, `...` overflow to edit modal.~~
 
 6. ~~**Pass 3 implementation strategy** — Resolved. See Design Decisions.~~
 
@@ -617,7 +771,7 @@ structured under F79.
 
 ### Pass 5 output: ranked interpretations with orphan tolerance
 **Decision:** Pass 5 returns all valid interpretations as a ranked list (`ParseResult.interpretations`),
-not a single winner. Ranking: fewest orphans first, then longest name match. NAME tokens
+not a single winner. Ranking: longest name match first. NAME tokens
 left over from a shorter match are carried in `orphans[]` — they do not disqualify an
 interpretation. Orphan tokens are shown struck-through in the dropdown row.
 **Rationale:** Free-form input is messy — users may include words that don't match their
@@ -631,6 +785,41 @@ when no interpretation is right.
   interpretations and gives the user no choice
 - Drop interpretations with orphans: penalizes users for extra words; hides valid matches
   behind strict token accounting
+
+### Parse feedback: pills are the feedback
+**Decision:** No separate parse-feedback UI (no token coloring in the input, no parse
+result display area). Parsed context surfaces through pre-selected pills (qty, store)
+and struck-through orphans on the result row. The existing UI elements respond to parsed
+input — no new UI concepts introduced.
+**Rationale:** Adding a dedicated parse display (option B — tags below input, or option C —
+token coloring) adds UI complexity for information that's already visible in the pills.
+The user's feedback loop is "type → see pills update → tap or refine." Keeping feedback
+implicit in existing controls means less to learn and less screen space used.
+
+### Qty pills: always show all options, sort by relevance
+**Decision:** The pill row always shows the parsed value (if any, selected) plus all
+defaults/alternates sorted with partial matches first. Configurable max-row cap
+(initially 2) with `...` overflow to edit modal — applies universally, not just when
+a qty is parsed. "Other" replaces pills with a text input pre-filled with parsed
+value. No filtering of defaults based on parsed input.
+**Rationale:** Hiding defaults when the parsed value doesn't match them prevents the user
+from discovering close matches (e.g., typed `16oz`, `32oz` is an alternate). Always
+showing all options means the user sees what's available regardless of what they typed.
+Sorting by partial match keeps the most relevant options visible within the row cap.
+
+### Store pills: only on @hint, live-updating prefix match
+**Decision:** Store pills only appear when `@hint` is present in the input. Multiple
+prefix matches shown as pills (up to one line, `...` overflow). Pills update live as
+the user refines the hint. Pre-selected, not locked — user can change. Edit modal shows
+filtered stores first with `▸ More` to expand.
+**Rationale:** Without a hint, the active store (header dropdown) applies silently — same
+as today. Showing store pills only when the user explicitly signals intent (`@`) avoids
+clutter on every result row. Live updating on keystroke gives immediate feedback without
+a submit step. The edit modal's filtered-first approach keeps hint context without hiding
+other stores.
+**Q#5 resolution:** Multiple matches for an ambiguous prefix (e.g., `@co` → Costco +
+Country Market) are shown as pills. The user either taps the right one or refines their
+hint. No algorithmic disambiguation needed — the UI handles it.
 
 ### Pass 3 grouping strategy: iterative sub-passes
 **Decision:** Pass 3 runs as four ordered sub-passes (3a–3d) in a loop until the token
@@ -658,4 +847,5 @@ The failsafe tripping is a bug indicator — investigate, don't normalize it.
 - 2026-03-29: Resolved Open Q#6 — iterative sub-passes with max-10 failsafe; added Pass 3 strategy to Design Decisions
 - 2026-03-30: Pass 5 matching resolved to Tier 1 bag-of-words (full token set, word-order independent); subset matching/typos/plurals/aliases explicitly deferred to F77; alternate_qtys initially resolved to TEXT[] strings (superseded — see 2026-03-31)
 - 2026-03-31: Resolved Open Q#2 (quantity storage) — structured storage is the architectural target; F44 interim may use text strings until F79 implements schema change; created parent architecture doc (vocabulary-and-quantity-architecture.md) covering cross-cutting storage, vocabulary extensibility, and input interpretation model
-- 2026-03-31: Resolved Open Q#1 (precedence rules) — Pass 5 returns ranked interpretations (not single winner); ranking by fewest orphans then longest name match; orphan tokens carried in `orphans[]` field, shown struck-through in dropdown; `ParseResult` wraps `ParsedInput[]` + `rawInput`; partial Q#4 resolution (orphan display as struck-through)
+- 2026-03-31: Resolved Open Q#1 (precedence rules) — Pass 5 returns ranked interpretations (not single winner); ranking by longest name match; orphan tokens carried in `orphans[]` field, shown struck-through in dropdown; `ParseResult` wraps `ParsedInput[]` + `rawInput`; partial Q#4 resolution (orphan display as struck-through)
+- 2026-04-01: Resolved Open Q#4 (UI decisions) and Q#5 (store prefix ambiguity). Added Dropdown UI section covering qty pills (always show all defaults/alternates sorted by partial match, two-row cap, Other→text input), store pills (only on @hint, live-updating prefix match, ...overflow), edit modal enhancements (filtered store list with More, parsed qty pre-fill), and parse feedback model (pills are the feedback, no separate parse display). All open questions now resolved.

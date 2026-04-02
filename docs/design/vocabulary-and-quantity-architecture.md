@@ -31,6 +31,19 @@ the same pattern used for products today (match existing or add new).
 4. **Parse once, use everywhere.** The parser normalizes input at write time. Downstream
    consumers (display, merge, recipe scaling) work from the stored result, not by
    re-parsing strings.
+5. **Rank, don't decide.** When multiple valid interpretations exist, present them all
+   ranked by quality — don't silently pick a winner. The system's job is to order
+   options by likelihood; the user's job is to confirm which one they meant. This makes
+   principle #1 concrete: "user always confirms" means showing the alternatives, not
+   just the best guess.
+6. **Context sorts, never filters.** User input (typed text, parsed values) affects the
+   *order* of presented options, not which options are *visible*. Valid choices are never
+   hidden because they don't match the current input — the user may have mistyped or
+   may want to change their mind. Show everything, put the most relevant options first.
+7. **Extend existing surfaces before adding new ones.** When a new capability needs UI,
+   first ask whether existing elements (pills, dropdown rows, modals) can carry the new
+   information. Prefer enriching what's already there over introducing new UI concepts.
+   New surfaces mean more to learn; extending existing ones keeps the interface familiar.
 
 ---
 
@@ -113,8 +126,11 @@ master items.
 The dropdown shows results in two groups:
 
 1. **Known matches** — items where all tokens resolved cleanly against vocabulary tables
-   and master items. These appear the same as today's search results, enriched with
-   parsed context (qty, package, store displayed alongside the item name).
+   and master items. Each match appears as a dropdown row with parsed context surfaced
+   through pills: qty pills pre-selected from parsed value, store pills shown when
+   `@hint` is present, orphan tokens (unmatched words) shown struck-through. Multiple
+   interpretations of the same input may produce multiple rows (ranked by longest name
+   match). See F44 design doc § Dropdown UI for full details.
 
 2. **Fuzzy / suggested matches** — items where one or more tokens required fuzzy matching,
    or where the interpretation is uncertain. Visually distinguished from known matches
@@ -164,7 +180,7 @@ mistakes. The system does not block the addition.
 
 | Feature | Owns |
 |---------|------|
-| **F44** | Parser architecture (passes 1-6), vocabulary table structure, token classification rules, single-interpretation output |
+| **F44** | Parser architecture (passes 1-6), vocabulary table structure, token classification rules, ranked multi-interpretation output (`ParseResult`), dropdown UI design (qty/store pills, orphan display, "Other" text input, edit modal enhancements) |
 | **F77** | Fuzzy matching, confidence scoring, multi-candidate presentation in dropdown, typo tolerance |
 | **F78** | Duplicate detection, merge strategies (additive math vs. string manipulation), operates on structured quantity fields |
 | **F79** | Structured quantity storage migration, all vocabulary table management (units + packages + size descriptors), vocabulary management settings screen, household-scoped vocabulary CRUD |
@@ -202,8 +218,10 @@ reflects dependencies, not a requirement to batch them.
 3. **Dropdown visual design for two-category results** — section dividers, styling for
    suggested vs. known matches. Owned by **F77**.
 
-4. **One-off add affordance** — must be prominent and zero-friction. Exact placement
-   (always-visible button vs. dropdown row vs. both) not yet decided. Owned by **F83**.
+4. **One-off add affordance** — must be prominent and zero-friction. The current
+   SmartAddItem already has an `Add "[query]" (One-time)` row in the dropdown, and
+   F44's `ParseResult.rawInput` provides the full original text for this path.
+   F83 may enhance this affordance but the basic mechanism exists. Owned by **F83**.
 
 ---
 
@@ -213,3 +231,10 @@ reflects dependencies, not a requirement to batch them.
   decision to structured (not text). Assigned all open items to features: F79 (expanded
   to cover all vocabulary management + structured migration), F77 (two-category dropdown),
   F83 (new — vocabulary definition flow + conflict prevention)
+- 2026-04-01: Updated to reflect F44 design completion — F44 scope expanded from single-
+  interpretation to ranked multi-interpretation output; dropdown description updated with
+  specific pill/orphan UI design; one-off add affordance noted as partially existing.
+  Added three core principles derived from F44 design decisions: #5 "rank, don't decide"
+  (present alternatives, don't pick winners), #6 "context sorts, never filters" (input
+  affects ordering not visibility), #7 "extend existing surfaces" (enrich existing UI
+  before adding new elements)
