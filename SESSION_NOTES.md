@@ -102,9 +102,9 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Next**: F44 design complete. Ready for DRAFT notice removal and `/spec`.
 
 ---
-### 2026-04-01 — F44 design: display format and comparison scope
-- **Completed**: Broadened interim comparison rule to all quantity consumers. Added natural-language display rendering format as separate concern from internal serialization. Added design decision documenting the split.
-- **Findings**: Serialization (`2x loaf`) and display (`2 loaves`) serve different purposes — storage needs unambiguous round-tripping, display needs natural language. Pluralization uses the packages table aliases (can→cans, loaf→loaves) — no inflection library needed. Legacy values that don't parse display as-is (raw string fallback). Pill labels for existing alternate_qtys show raw DB strings; only the parsed-value pill uses the display renderer.
-- **Design decisions**: Separate serialization (internal, `Nx` sigil) from display (user-facing, natural language with pluralization). Comparison rule broadened from pill-pre-selection-only to all interim quantity operations. Fallback: unparseable legacy values display as-is.
+### 2026-04-01 — F44 design: unified quantity format, comparison rules
+- **Completed**: Collapsed separate serialization and display formats into single natural-language format. Defined equality comparison via structured field comparison. Defined partial matching via raw input prefix. Clarified `Nx` is input-only.
+- **Findings**: The initial design had a separate `Nx` serialization format for internal storage, which caused inconsistencies — `2x` leaked into display and broke partial matching (serialized `2x` doesn't prefix-match `2lb`). The root issue: trying to make the stored TEXT string self-describing was unnecessary because the parser can re-interpret any stored string. Collapsing to one natural-language format (same for storage and display) eliminated the inconsistencies. Equality comparison parses both sides to structured fields — more robust than string comparison since `"2 loaves"` and `"2 loaf"` compare as equal. Partial matching stays on raw text (user input vs. DB string) since it's a UI heuristic, not a semantic operation.
+- **Design decisions**: Single natural-language quantity format for storage and display (`2 loaves`, `2 8oz cans`). `Nx` is input-only, never stored. Equality: parse both sides, compare structured fields. Partial match: raw input prefix against raw DB strings. Pill labels: parseable values rendered, legacy values as-is.
 - **Design review**: not triggered
 - **Next**: F44 design complete. Ready for DRAFT notice removal and `/spec`.
