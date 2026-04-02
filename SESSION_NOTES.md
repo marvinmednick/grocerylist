@@ -100,3 +100,11 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: Interim serialization format defined. \d+-pack stored as literal string. Multi-word units removed from V1 seeds. Principle #1 revised to "every inference is visible and overridable." All vocabulary tables reformatted with categories and marked for spec-time review.
 - **Design review**: not triggered
 - **Next**: F44 design complete. Ready for DRAFT notice removal and `/spec`.
+
+---
+### 2026-04-01 — F44 design: display format and comparison scope
+- **Completed**: Broadened interim comparison rule to all quantity consumers. Added natural-language display rendering format as separate concern from internal serialization. Added design decision documenting the split.
+- **Findings**: Serialization (`2x loaf`) and display (`2 loaves`) serve different purposes — storage needs unambiguous round-tripping, display needs natural language. Pluralization uses the packages table aliases (can→cans, loaf→loaves) — no inflection library needed. Legacy values that don't parse display as-is (raw string fallback). Pill labels for existing alternate_qtys show raw DB strings; only the parsed-value pill uses the display renderer.
+- **Design decisions**: Separate serialization (internal, `Nx` sigil) from display (user-facing, natural language with pluralization). Comparison rule broadened from pill-pre-selection-only to all interim quantity operations. Fallback: unparseable legacy values display as-is.
+- **Design review**: not triggered
+- **Next**: F44 design complete. Ready for DRAFT notice removal and `/spec`.

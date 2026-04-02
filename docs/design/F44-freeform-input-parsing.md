@@ -591,13 +591,53 @@ Rules:
 - Package type is the canonical form, omitted when null
 - Size descriptive stands alone when present
 
-**Comparison rule for pill pre-selection:** Serialize both the parsed value and each
-`alternate_qtys` entry using the same rules above, then compare strings. This
-normalizes spacing variants: `"1.5 lb"` in the database and `"1.5lb"` from the parser
-both serialize to `"1.5lb"`. Comparison is case-insensitive.
+**Comparison rule — applies to all interim quantity operations:** Serialize both sides
+using the rules above, then compare strings. This normalizes spacing variants:
+`"1.5 lb"` in the database and `"1.5lb"` from the parser both serialize to `"1.5lb"`.
+Comparison is case-insensitive. This single normalization rule governs all interim
+quantity comparison — pill pre-selection, partial match sorting, warning system
+(non-standard qty checks), and any other consumer that needs to compare quantities.
+Consistent with the architecture principle "parse once, use everywhere."
 
 **Partial match for pill sorting** also operates on the serialized form — the serialized
 parsed value is checked as a string prefix of each serialized alternate.
+
+### Display Rendering Format (pre-F79)
+
+The serialization format above is **internal** — used for storage and comparison. A
+separate **display format** is used for user-facing surfaces (pill labels, list item
+quantities, edit modal pre-fill). The display format uses natural language rather than
+parser sigil notation.
+
+**Display rendering rule:** natural language, with pluralization when count > 1.
+
+| ParsedInput fields | Serialized (internal) | Display (user-facing) |
+|--------------------|----------------------|----------------------|
+| `{count: 2, sizeQty: 8, sizeUnit: "oz", packageType: "can"}` | `2x 8oz can` | `2 8oz cans` |
+| `{sizeQty: 1.5, sizeUnit: "lb"}` | `1.5lb` | `1.5lb` |
+| `{count: 2, packageType: "loaf"}` | `2x loaf` | `2 loaves` |
+| `{sizeDescriptive: "large"}` | `large` | `large` |
+| `{count: 3, packageType: "12-pack"}` | `3x 12-pack` | `3 12-packs` |
+| `{sizeQty: 32, sizeUnit: "oz", packageType: "box"}` | `32oz box` | `32oz box` |
+| `{count: 1, packageType: "can"}` | `1x can` | `1 can` |
+
+Rules:
+- Count is followed by a space (not `x`), omitted when null or 1 (implied)
+- Exception: count of 1 is shown when a package type is present (`1 can`) to
+  distinguish "1 can of X" from just "X"
+- Package type is **pluralized** when count > 1, using the aliases from the packages
+  table (e.g., `can→cans`, `loaf→loaves`). The alias list is the pluralization source
+  — no general-purpose inflection library needed
+- Size qty and unit are fused with no space, same as serialization
+- Size descriptive stands alone
+
+**Fallback for unparseable values:** Existing `alternate_qtys` strings and
+`list_items.quantity` values that predate F44 and do not parse cleanly through the
+serialization rules are **displayed as-is** — the raw string is the fallback. No
+transformation is applied to values that can't be round-tripped through parse →
+serialize. This ensures no data is silently mangled during the interim period. F79's
+migration will parse these values and flag any that don't convert cleanly for manual
+review.
 
 ---
 
@@ -627,7 +667,14 @@ extracted a qty. When defaults/alternates alone exceed the cap, the same overflo
 mechanism applies. The cap value can be adjusted in code without changing the design;
 `...` always opens the edit modal where all options are visible.
 
+**Pill label rendering:** Default/alternate qty pills display their raw database strings
+as-is (these are existing data, not parser output). The parsed-value pill uses the
+**display rendering format** (natural language with pluralization — see § Display
+Rendering Format). Comparison and partial matching operate on the **serialized form**
+(internal), not the display form.
+
 **Partial match definition:** The parsed value string is a prefix of the alternate string.
+Both sides are serialized before comparison (see § Interim Serialization Format).
 `2` matches `2lb`, `2.5lb`, `2 pack`. `1.5lb` matches `1.5lb` exactly but NOT `1lb`
 (since `"1.5"` is not a prefix of `"1"`). Under F79 structured storage, this becomes
 structured field comparison rather than string prefix matching.
@@ -875,6 +922,21 @@ structure-ready. `alternate_qtys` (TEXT[]) also follows this pattern: strings fo
 structured under F79.
 **Full rationale:** See [Vocabulary and Quantity Architecture](vocabulary-and-quantity-architecture.md) § Quantity Storage.
 
+### Separate serialization and display formats
+**Decision:** Two distinct rendering functions for quantity fields. The **serialization
+format** (`2x 8oz can`) is internal — used for storage in TEXT columns and for all
+normalization/comparison operations. The **display format** (`2 8oz cans`) is user-facing
+— used for pill labels, list rows, and edit modal pre-fill. Display uses natural language
+with pluralized package names; serialization uses the `Nx` sigil for unambiguous
+round-tripping.
+**Rationale:** The `x` sigil is a parser input convention, not natural language. Users
+expect to see "2 loaves" in a pill, not "2x loaf." But the storage format needs to be
+unambiguous and round-trippable (parse → serialize → parse must be lossless). Separating
+the two lets each optimize for its purpose. Pluralization uses the packages table aliases
+(e.g., `loaf→loaves`) — no external inflection library needed.
+**Fallback:** Unparseable legacy values display as-is. No silent transformation of
+strings that can't round-trip through the parser.
+
 ### Pass 5 output: ranked interpretations with orphan tolerance
 **Decision:** Pass 5 returns all valid interpretations as a ranked list (`ParseResult.interpretations`),
 not a single winner. Ranking: longest name match first. NAME tokens
@@ -956,3 +1018,4 @@ The failsafe tripping is a bug indicator — investigate, don't normalize it.
 - 2026-03-31: Resolved Open Q#1 (precedence rules) — Pass 5 returns ranked interpretations (not single winner); ranking by longest name match; orphan tokens carried in `orphans[]` field, shown struck-through in dropdown; `ParseResult` wraps `ParsedInput[]` + `rawInput`; partial Q#4 resolution (orphan display as struck-through)
 - 2026-04-01: Resolved Open Q#4 (UI decisions) and Q#5 (store prefix ambiguity). Added Dropdown UI section covering qty pills (always show all defaults/alternates sorted by partial match, two-row cap, Other→text input), store pills (only on @hint, live-updating prefix match, ...overflow), edit modal enhancements (filtered store list with More, parsed qty pre-fill), and parse feedback model (pills are the feedback, no separate parse display). All open questions now resolved.
 - 2026-04-01: Consistency review fixes — added interim serialization format for pre-F79 text storage; simplified \d+-pack to literal package string (no embedded multiplier decomposition); removed multi-word unit aliases from V1 seed data (single-token only); reformatted all vocabulary tables for review at spec time; updated principle references from "user always confirms" to "every inference is visible and overridable"
+- 2026-04-01: Broadened interim comparison rule to all quantity consumers (not just pill pre-selection). Added display rendering format (natural language with pluralization) as separate concern from serialization format. Added design decision documenting the split and fallback rules for legacy values.
