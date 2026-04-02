@@ -21,8 +21,11 @@ the same pattern used for products today (match existing or add new).
 
 **Key principles:**
 
-1. **The user always confirms.** The system suggests interpretations; the user selects.
-   No silent assumptions about ambiguous input.
+1. **Every inference is visible and overridable.** The system never acts on a silent
+   assumption. Parsed values are surfaced through pre-selected pills and ranked
+   interpretations so the user can see what was inferred and change any of it before
+   committing. But explicit confirmation of each field is not required — tapping the
+   item name commits all pre-selected values.
 2. **One-off is always frictionless.** Adding a raw string to the shopping list (without
    defining vocabulary or master items) must be as fast as it is today — one tap.
 3. **Defining new vocabulary is deliberate.** Adding to master tables (products, packages,
@@ -33,9 +36,8 @@ the same pattern used for products today (match existing or add new).
    re-parsing strings.
 5. **Rank, don't decide.** When multiple valid interpretations exist, present them all
    ranked by quality — don't silently pick a winner. The system's job is to order
-   options by likelihood; the user's job is to confirm which one they meant. This makes
-   principle #1 concrete: "user always confirms" means showing the alternatives, not
-   just the best guess.
+   options by likelihood; the user's job is to choose. This extends principle #1: the
+   user can see all alternatives, not just the top-ranked guess.
 6. **Context sorts, never filters.** User input (typed text, parsed values) affects the
    *order* of presented options, not which options are *visible*. Valid choices are never
    hidden because they don't match the current input — the user may have mistyped or
@@ -237,4 +239,6 @@ reflects dependencies, not a requirement to batch them.
   Added three core principles derived from F44 design decisions: #5 "rank, don't decide"
   (present alternatives, don't pick winners), #6 "context sorts, never filters" (input
   affects ordering not visibility), #7 "extend existing surfaces" (enrich existing UI
-  before adding new elements)
+  before adding new elements). Revised principle #1 from "user always confirms" to
+  "every inference is visible and overridable" — pre-selected pills don't require
+  explicit per-field confirmation, just visibility and the ability to change

@@ -92,3 +92,11 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: Qty pills: show parsed value (selected) + all defaults/alternates sorted partial-match-first, two-row cap, `...` overflow to edit modal. Other: replaces pills with text input pre-filled with parsed value, `✕` to return. Store pills: only on @hint, live-updating prefix match, single line with `...` overflow. Edit modal: filtered store list with `▸ More` expansion, qty text input pre-filled with parsed value. Parse feedback: pills are the feedback, no separate display. Partial match = string prefix (becomes structured comparison under F79).
 - **Design review**: not triggered
 - **Next**: All F44 open questions resolved. Ready for final read-through and DRAFT notice removal, then `/spec`.
+
+---
+### 2026-04-01 — F44/architecture: consistency review fixes
+- **Completed**: Addressed four consistency issues from external review. Added interim serialization format for pre-F79 text storage. Simplified \d+-pack to literal package string. Removed multi-word unit aliases. Revised principle #1 wording. Reformatted vocabulary seed tables for spec-time review. Updated architecture doc principle references.
+- **Findings**: Interim text serialization was a real gap — F44 produces structured output but needs a canonical format for the TEXT columns until F79. Format: `[countx] [sizeQty+sizeUnit] [packageType]`. The \d+-pack decomposition into multiplier + "pack" was premature — F44 doesn't need the multiplier, and downstream features (F78/F76) can extract it later. Multi-word unit aliases (fl oz) were impossible to recognize given whitespace tokenization — removed rather than adding multi-token handling complexity. "User always confirms" was misleading — pre-selected pills don't require explicit per-field confirmation, they require visibility and overridability.
+- **Design decisions**: Interim serialization format defined. \d+-pack stored as literal string. Multi-word units removed from V1 seeds. Principle #1 revised to "every inference is visible and overridable." All vocabulary tables reformatted with categories and marked for spec-time review.
+- **Design review**: not triggered
+- **Next**: F44 design complete. Ready for DRAFT notice removal and `/spec`.

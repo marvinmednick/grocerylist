@@ -213,7 +213,12 @@ Operates on QUANTITATIVE_SIZE tokens produced by 3a — not on raw NUMBER/UNIT t
 
 | Pattern | Result | Example |
 |---------|--------|---------|
-| `\d+-pack` token | `PACKAGE` with embedded multiplier | `6-pack` → pkg=pack, embedded_count=6 |
+| `\d+-pack` token | `PACKAGE` (literal string) | `6-pack` → pkg="6-pack", `12-pack` → pkg="12-pack" |
+
+The N-pack pattern is recognized as a PACKAGE token but kept as a literal string —
+not decomposed into a multiplier and "pack". `packageType` stores the full string
+(e.g., `"12-pack"`). If downstream features (F78 merge math, F76 recipe scaling) need
+to extract the numeric multiplier, they can parse it from the string at that point.
 
 ---
 
@@ -429,26 +434,78 @@ Quantitative size units. Any NUMBER + recognized UNIT is a valid quantitative si
 the number is free-range; no need to enumerate `32oz` as a specific entry.
 
 Must include aliases so `oz`, `ounce`, `ounces` all resolve to the same canonical unit.
+**All aliases must be single tokens** — the parser tokenizes on whitespace, so
+multi-word aliases (e.g., `fl oz`, `fluid ounce`) cannot be recognized. Users can type
+`floz` (fused) or just `oz`; in casual grocery use the distinction rarely matters.
+Multi-token unit handling is out of scope for V1 and could be added as a Pass 2/3
+extension later if needed.
 
-**Seed values:**
-- Weight: oz/ounce/ounces, lb/lbs/pound/pounds, g/gram/grams, kg/kilogram/kilograms
-- Volume: gal/gallon/gallons, qt/quart/quarts, pt/pint/pints, ml/milliliter, L/liter/liters, cup/cups
-- Other: ct/count, fl oz/fluid ounce, ft/foot/feet
+**Seed values** (review at spec/implementation time):
+
+| Canonical | Aliases | Category |
+|-----------|---------|----------|
+| oz | ounce, ounces | Weight |
+| lb | lbs, pound, pounds | Weight |
+| g | gram, grams | Weight |
+| kg | kilogram, kilograms | Weight |
+| gal | gallon, gallons | Volume |
+| qt | quart, quarts | Volume |
+| pt | pint, pints | Volume |
+| ml | milliliter, milliliters | Volume |
+| L | liter, liters | Volume |
+| cup | cups | Volume |
+| ct | count | Count |
+| floz | — | Volume |
 
 ### Packages Table (new)
 Container and sales-unit words. These describe *what holds or groups the product*,
 distinct from measurement units.
 
-**Seed values (canonical → aliases):**
-can/cans, bottle/bottles, jar/jars, box/boxes, bag/bags, carton/cartons, tub/tubs,
-container/containers, tube/tubes, roll/rolls, stick/sticks, bar/bars, block/blocks,
-wheel/wheels, loaf/loaves, sheet/sheets, pouch/pouches, sleeve/sleeves, pack/packs,
-package/packages/pkg, case/cases, flat/flats, tray/trays, rack/racks, bunch/bunches,
-head/heads, ear/ears, stalk/stalks, sprig/sprigs, clove/cloves, fillet/fillets,
-slice/slices, patty/patties, link/links, dozen, pair/pairs, tablet/tablets, capsule/capsules
+**Seed values** (review at spec/implementation time):
+
+| Canonical | Aliases | Category |
+|-----------|---------|----------|
+| can | cans | Container |
+| bottle | bottles | Container |
+| jar | jars | Container |
+| box | boxes | Container |
+| bag | bags | Container |
+| carton | cartons | Container |
+| tub | tubs | Container |
+| container | containers | Container |
+| tube | tubes | Container |
+| pouch | pouches | Container |
+| sleeve | sleeves | Container |
+| roll | rolls | Unit |
+| stick | sticks | Unit |
+| bar | bars | Unit |
+| block | blocks | Unit |
+| loaf | loaves | Unit |
+| sheet | sheets | Unit |
+| pack | packs | Grouping |
+| package | packages, pkg | Grouping |
+| case | cases | Grouping |
+| flat | flats | Grouping |
+| tray | trays | Grouping |
+| rack | racks | Grouping |
+| dozen | — | Grouping |
+| pair | pairs | Grouping |
+| bunch | bunches | Produce |
+| head | heads | Produce |
+| ear | ears | Produce |
+| stalk | stalks | Produce |
+| sprig | sprigs | Produce |
+| clove | cloves | Produce |
+| fillet | fillets | Protein |
+| slice | slices | Protein |
+| patty | patties | Protein |
+| link | links | Protein |
+| tablet | tablets | Supplement |
+| capsule | capsules | Supplement |
 
 **Pattern entry:** `\d+-pack` — matches `4-pack`, `6-pack`, `12-pack`, `24-pack`, etc.
-without enumerating every variant. Encodes an embedded multiplier.
+without enumerating every variant. Stored as a literal package string (e.g., `"12-pack"`),
+not decomposed into a number and "pack".
 
 **Intentionally excluded** (handled by master items lookup instead):
 Portion/body-part words (breast, chop, cutlet, thigh, wing) — these are commonly part of
@@ -458,8 +515,21 @@ parsing as `packageType=breast, name=chicken`.
 ### Size Descriptors Table (new)
 Qualitative physical size words — describe *how big*, not *what kind*.
 
-**Seed values:** large, medium, small, xl/extra-large, jumbo, mini/miniature, petite,
-king-size, family-size, travel-size, regular
+**Seed values** (review at spec/implementation time):
+
+| Canonical | Aliases |
+|-----------|---------|
+| large | lg |
+| medium | med |
+| small | sm |
+| xl | extra-large |
+| jumbo | — |
+| mini | miniature |
+| petite | — |
+| king-size | — |
+| family-size | — |
+| travel-size | — |
+| regular | — |
 
 **Intentionally excluded** (these stay in item name):
 - Product variants: condensed, skim, whole, 2%, non-fat, diet, zero, low-fat
@@ -488,10 +558,46 @@ a QUANTITATIVE_SIZE or SIZE_DESCRIPTIVE token, the tables have a gap that must b
 vocabulary gaps found.
 
 **Pill pre-selection:** when parsed size matches an `alternate_qtys` entry (after
-normalization — `"1.5lb"` and `"1.5 lb"` treated as equivalent), that pill is
-pre-selected in the add flow. Under structured storage, this comparison becomes exact
-field matching with no normalization needed. See Dropdown UI § Quantity Pills for the
-full pill display and interaction design (sorting, overflow, "Other" behavior).
+normalization), that pill is pre-selected in the add flow. Under structured storage,
+this comparison becomes exact field matching with no normalization needed. See Dropdown
+UI § Quantity Pills for the full pill display and interaction design (sorting, overflow,
+"Other" behavior).
+
+### Interim Serialization Format (pre-F79)
+
+Until F79 implements structured quantity storage, F44 must serialize its structured
+`ParsedInput` fields into the existing TEXT columns (`list_items.quantity`,
+`items.alternate_qtys`). This format is transitional — F79 replaces it entirely with
+structured field comparison.
+
+**Serialization rule:** concatenate present fields in this order, space-separated:
+
+```
+[count"x"] [sizeQty + sizeUnit] [packageType]
+```
+
+| ParsedInput fields | Serialized string |
+|--------------------|-------------------|
+| `{count: 2, sizeQty: 8, sizeUnit: "oz", packageType: "can"}` | `2x 8oz can` |
+| `{sizeQty: 1.5, sizeUnit: "lb"}` | `1.5lb` |
+| `{count: 2, packageType: "loaf"}` | `2x loaf` |
+| `{sizeDescriptive: "large"}` | `large` |
+| `{count: 3, packageType: "12-pack"}` | `3x 12-pack` |
+| `{sizeQty: 32, sizeUnit: "oz", packageType: "box"}` | `32oz box` |
+
+Rules:
+- Count is always followed by `x` with no space (e.g., `2x`), omitted when null
+- Size qty and unit are fused with no space (e.g., `8oz`, `1.5lb`), omitted when null
+- Package type is the canonical form, omitted when null
+- Size descriptive stands alone when present
+
+**Comparison rule for pill pre-selection:** Serialize both the parsed value and each
+`alternate_qtys` entry using the same rules above, then compare strings. This
+normalizes spacing variants: `"1.5 lb"` in the database and `"1.5lb"` from the parser
+both serialize to `"1.5lb"`. Comparison is case-insensitive.
+
+**Partial match for pill sorting** also operates on the serialized form — the serialized
+parsed value is checked as a string prefix of each serialized alternate.
 
 ---
 
@@ -602,7 +708,7 @@ set keystroke by keystroke). No submit required.
 
 **Not locked, pre-populated:** The store hint pre-selects but does not lock. The user
 can tap a different store pill or change the hint in the input. This follows the
-"user always confirms" principle.
+"every inference is visible and overridable" principle.
 
 ### Edit Modal Enhancements
 
@@ -777,8 +883,8 @@ interpretation. Orphan tokens are shown struck-through in the dropdown row.
 **Rationale:** Free-form input is messy — users may include words that don't match their
 master items (e.g., "large green avocado" when "Large Avocado" exists). Discarding
 interpretations with orphans would hide valid matches. Showing ranked alternatives with
-visible orphans lets the user confirm which interpretation they intended, consistent with
-the "user always confirms" principle. The one-off add path (`rawInput`) provides an escape
+visible orphans lets the user see and choose which interpretation they intended, consistent
+with the "every inference is visible and overridable" principle. The one-off add path (`rawInput`) provides an escape
 when no interpretation is right.
 **Alternatives considered:**
 - Single longest match (original proposal): simpler, but silently discards shorter valid
@@ -849,3 +955,4 @@ The failsafe tripping is a bug indicator — investigate, don't normalize it.
 - 2026-03-31: Resolved Open Q#2 (quantity storage) — structured storage is the architectural target; F44 interim may use text strings until F79 implements schema change; created parent architecture doc (vocabulary-and-quantity-architecture.md) covering cross-cutting storage, vocabulary extensibility, and input interpretation model
 - 2026-03-31: Resolved Open Q#1 (precedence rules) — Pass 5 returns ranked interpretations (not single winner); ranking by longest name match; orphan tokens carried in `orphans[]` field, shown struck-through in dropdown; `ParseResult` wraps `ParsedInput[]` + `rawInput`; partial Q#4 resolution (orphan display as struck-through)
 - 2026-04-01: Resolved Open Q#4 (UI decisions) and Q#5 (store prefix ambiguity). Added Dropdown UI section covering qty pills (always show all defaults/alternates sorted by partial match, two-row cap, Other→text input), store pills (only on @hint, live-updating prefix match, ...overflow), edit modal enhancements (filtered store list with More, parsed qty pre-fill), and parse feedback model (pills are the feedback, no separate parse display). All open questions now resolved.
+- 2026-04-01: Consistency review fixes — added interim serialization format for pre-F79 text storage; simplified \d+-pack to literal package string (no embedded multiplier decomposition); removed multi-word unit aliases from V1 seed data (single-token only); reformatted all vocabulary tables for review at spec time; updated principle references from "user always confirms" to "every inference is visible and overridable"
