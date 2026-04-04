@@ -20,6 +20,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UndoProvider } from '@/api/undoContext';
 import { HouseholdProvider } from '@/lib/household';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useVocabulary } from '@/api/vocabulary';
 
 jest.mock('@/api/list');
 jest.mock('@/api/profile');
@@ -31,6 +32,7 @@ jest.mock('@/api/undoContext', () => {
   };
 });
 jest.mock('@/api/metadata');
+jest.mock('@/api/vocabulary');
 jest.mock('@/lib/household', () => ({
   HouseholdProvider: ({ children }: { children: React.ReactNode }) => children,
   useHousehold: jest.fn(),
@@ -47,6 +49,7 @@ const mockUseUndo = useUndo as jest.Mock;
 const mockUseMetadata = useMetadata as jest.Mock;
 const mockUseHousehold = useHousehold as jest.Mock;
 const mockUseHouseholdMembers = useHouseholdMembers as jest.Mock;
+const mockUseVocabulary = useVocabulary as jest.Mock;
 
 const safeAreaMetrics = {
   insets: { top: 44, bottom: 34, left: 0, right: 0 },
@@ -110,6 +113,7 @@ describe('ShoppingListScreen F2 behaviors', () => {
       redoStack: [],
     });
     mockUseMetadata.mockReturnValue({ data: { stores: [], categories: [] } });
+    mockUseVocabulary.mockReturnValue({ data: undefined });
     mockUseHousehold.mockReturnValue({
       householdId: 'house-1',
       userId: 'user-1',

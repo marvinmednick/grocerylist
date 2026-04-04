@@ -6,6 +6,7 @@ import { useAddToList, useDeleteListItem } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
 import { useMyProfile } from '@/api/profile';
+import { useVocabulary } from '@/api/vocabulary';
 
 jest.mock('@/api/items', () => {
   const actual = jest.requireActual('@/api/items');
@@ -20,6 +21,7 @@ jest.mock('@/api/list');
 jest.mock('@/api/metadata');
 jest.mock('@/api/undoContext');
 jest.mock('@/api/profile');
+jest.mock('@/api/vocabulary');
 jest.mock('react-native-safe-area-context', () => {
   const actual = jest.requireActual('react-native-safe-area-context');
   return {
@@ -37,6 +39,7 @@ describe('SmartAddItem parser integration', () => {
   const mockUseMetadata = useMetadata as jest.Mock;
   const mockUseUndo = useUndo as jest.Mock;
   const mockUseMyProfile = useMyProfile as jest.Mock;
+  const mockUseVocabulary = useVocabulary as jest.Mock;
 
   const addItem = jest.fn();
   const createMasterItem = jest.fn();
@@ -100,6 +103,7 @@ describe('SmartAddItem parser integration', () => {
     });
     mockUseUndo.mockReturnValue({ pushAction });
     mockUseMyProfile.mockReturnValue({ data: { warning_preferences: {} } });
+    mockUseVocabulary.mockReturnValue({ data: undefined });
   });
 
   it('shows parsed qty pre-selected on pill', async () => {
@@ -173,6 +177,61 @@ describe('SmartAddItem parser integration', () => {
       expect(screen.queryByPlaceholderText('e.g. 3 lbs')).toBeNull();
     });
   });
+
+  it('uses vocabulary from useVocabulary hook when available', async () => {
+    mockUseMasterItemNames.mockReturnValue({
+      data: [{ id: 'strawberries', name: 'Strawberries', default_qty: '1', alternate_qtys: [] }],
+    });
+    mockUseAllItems.mockReturnValue({
+      data: [
+        {
+          id: 'strawberries',
+          name: 'Strawberries',
+          default_qty: '1',
+          alternate_qtys: [],
+          default_category_id: 'cat-1',
+          item_store_preferences: [],
+        },
+      ],
+    });
+    mockUseVocabulary.mockReturnValue({
+      data: {
+        units: [],
+        packages: [{ id: 'pkg-1', canonical: 'punnet', aliases: ['punnets'] }],
+        sizeDescriptors: [],
+      },
+    });
+
+    render(<SmartAddItem activeStoreId="store-2" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), '2 punnets strawberries');
+    fireEvent.press(await screen.findByText('Strawberries'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          quantity: expect.stringContaining('punnet'),
+        })
+      );
+    });
+  });
+
+  it('falls back to DEFAULT_VOCABULARY when useVocabulary returns undefined', async () => {
+    mockUseVocabulary.mockReturnValue({ data: undefined });
+
+    render(<SmartAddItem activeStoreId="store-2" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), '2 cans milk');
+    fireEvent.press(await screen.findByText('Milk'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          quantity: expect.stringContaining('can'),
+        })
+      );
+    });
+  });
 });
 
 // Mock data typed against the exported interfaces — TypeScript enforces alignment with the real
@@ -201,6 +260,7 @@ describe('SmartAddItem prefix fallback discovery', () => {
   const mockUseMetadata = useMetadata as jest.Mock;
   const mockUseUndo = useUndo as jest.Mock;
   const mockUseMyProfile = useMyProfile as jest.Mock;
+  const mockUseVocabulary = useVocabulary as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -221,6 +281,7 @@ describe('SmartAddItem prefix fallback discovery', () => {
     });
     mockUseUndo.mockReturnValue({ pushAction: jest.fn() });
     mockUseMyProfile.mockReturnValue({ data: { warning_preferences: {} } });
+    mockUseVocabulary.mockReturnValue({ data: undefined });
   });
 
   it('shows multi-word items when a partial prefix of any word is typed', async () => {

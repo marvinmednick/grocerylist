@@ -124,6 +124,31 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Next**: Re-test "Chick" → should show "Chicken" row; verify structured queries like "2 8oz cans chicken broth" still show parser-driven rows.
 
 ---
+### 2026-04-03 — F79 design: Quantity Units System
+- **Completed**: Full design session for F79. Design doc written at `docs/design/F79-quantity-units-system.md`. PLAN.md updated to `Designed`. UI guidelines updated with two new patterns.
+- **Findings**: Four distinct "quantity" contexts clarified: (1) vocabulary lookup tables, (2) in-memory parser output, (3) list_items quantity storage, (4) items qty presets. Contexts 3 and 4 share the same `ParsedInput` JSONB shape. Vocabulary token / name prefix collision surfaced — "can" classified as PACKAGE suppresses "Canola Oil" from name search. Filed as #84, noted as known limitation.
+- **Design decisions**: Vocabulary tables are household-scoped (all three types); existing `units` table dropped and replaced. JSONB for both `list_items.quantity_parsed` and `items` qty fields; existing TEXT columns kept as display cache/fallback. Qty not used for item search or ranking. Avatar menu gains "Sizes & Packages" second item (vocabulary management); "Settings" renamed "General". Vocabulary drill-down screen → 3 sub-screens (Units, Packages, Sizes) with full CRUD + Reset to Defaults (full replace). Editable alias chips in edit form. Display uses canonical/abbreviated form always.
+- **Design review**: not triggered
+- **Next**: `/spec F79` when ready to implement
+
+---
+---
+### 2026-04-04 — F79 spec written
+- **Completed**: `specs/F79-quantity-units-system.md`; PLAN.md updated (Designed → Specced); `plans/F79-log.md` created; BACKLOG.md updated with 4 deferred items; GitHub #79 updated with spec link and acceptance criteria.
+- **Findings**: `parseCandidate` in SmartAddItem (used for prefix fallback) also uses `DEFAULT_VOCABULARY` directly — both the `parseResult` and `parseCandidate` memos need to be updated to use the DB-backed vocabulary. `VocabularyData` is compatible with the existing `Vocabulary` type from vocabulary.ts since `VocabRow` adds `id` to `VocabEntry` — no mapping needed when passing to `parseInput`. Write-time JSONB population deferred: JSONB columns are created but remain NULL until a future spec populates them at add-item time (required by F78). `formatQuantity`'s plural lookup still uses `DEFAULT_VOCABULARY` — noted as deferred (low impact until custom packages with non-obvious plurals are added).
+- **Design decisions**: none (all decisions from design session; spec faithfully translates to implementation instructions)
+- **Design review**: not triggered — all patterns follow established conventions (F19 store management precedent for inline delete confirm; Settings.tsx for full-screen modal; established chip pattern for editable aliases)
+- **Next**: Implementor runs `./implement F79 --plan`, then `/review-plan F79`
+
+---
+### 2026-04-04 — F79 /review-impl
+- **Completed**: Full review of F79 implementation (vocabulary tables, API hooks, UI components, tests). 366/366 tests pass. Migration applied via `npm run db:push`.
+- **Findings**: One non-blocking gap — `SmartAddItem.tsx:161,473` calls `quantityEquals(parsedQty, option, DEFAULT_VOCABULARY)` rather than `vocab` (the `vocabulary ?? DEFAULT_VOCABULARY` local already in scope). Parser and `parseCandidate` memos correctly use `vocab`; these two comparison calls were missed. Added to BACKLOG alongside the `formatQuantity` deferred gap.
+- **Design decisions**: none
+- **Design review**: not triggered — no pattern violations or new patterns
+- **Next**: Merge when ready; next in chain is F77 (fuzzy matching) or F78 (duplicate detection)
+
+---
 ### 2026-04-01 — F44 design: unified quantity format, comparison rules
 - **Completed**: Collapsed separate serialization and display formats into single natural-language format. Defined equality comparison via structured field comparison. Defined partial matching via raw input prefix. Clarified `Nx` is input-only.
 - **Findings**: The initial design had a separate `Nx` serialization format for internal storage, which caused inconsistencies — `2x` leaked into display and broke partial matching (serialized `2x` doesn't prefix-match `2lb`). The root issue: trying to make the stored TEXT string self-describing was unnecessary because the parser can re-interpret any stored string. Collapsing to one natural-language format (same for storage and display) eliminated the inconsistencies. Equality comparison parses both sides to structured fields — more robust than string comparison since `"2 loaves"` and `"2 loaf"` compare as equal. Partial matching stays on raw text (user input vs. DB string) since it's a UI heuristic, not a semantic operation.

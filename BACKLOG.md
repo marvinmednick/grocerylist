@@ -35,6 +35,7 @@ _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assig
 - [ ] Write-time population of `items.default_qty_parsed` and `items.alternate_qtys_parsed` when editing master items — same rationale as above. (deferred from F79)
 - [ ] Backfill `quantity_parsed` for existing `list_items` rows — requires app-side parsing; impractical in migration SQL. (deferred from F79)
 - [ ] `formatQuantity` in `quantityFormat.ts` uses `DEFAULT_VOCABULARY` for plural lookup — custom household package plurals will not be recognized. Low impact until households add custom packages with non-obvious plurals. (deferred from F79)
+- [x] `SmartAddItem.tsx:161,473` — `quantityEquals` calls pass `DEFAULT_VOCABULARY` instead of `vocab`. Fixed. (found in F79 review)
 
 ### From Doc Audit (2026-03-23)
 - [ ] `UserAvatar.tsx:38` uses absolute-positioned overlay (same pattern as the pre-F22 WarningBadge). Risk: clipping by parent containers with `overflow: hidden`, Z-index conflicts with other overlays, and keyboard-open behavior may push it off-screen. Low urgency — address in a future UI polish pass.

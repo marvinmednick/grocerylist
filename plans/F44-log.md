@@ -1,5 +1,9 @@
 # F44 Feature Log
 
+## 2026-04-03 — Shipped
+- **Commit:** `feat: F44 — free-form input parsing for SmartAddItem refs #44`
+- **Closed:** #44
+
 ## 2026-04-03 — Review 2 (Passed)
 - **Result:** Passed — no blocking issues
 - **Tests:** 326/326 passed

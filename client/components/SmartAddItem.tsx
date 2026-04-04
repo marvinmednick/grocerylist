@@ -25,6 +25,7 @@ import { useAddToList, useDeleteListItem } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
 import { useMyProfile } from '@/api/profile';
+import { useVocabulary } from '@/api/vocabulary';
 import { WarningCallout } from '@/components/WarningCallout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { parseInput, tokenize, classifyTokens, groupTokens, assembleCandidate, type ParsedInput } from '@/lib/parser';
@@ -88,6 +89,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
   const { mutateAsync: createMasterItem } = useCreateMasterItem();
   const { mutateAsync: deleteItem } = useDeleteListItem();
   const { data: metadata } = useMetadata();
+  const { data: vocabulary } = useVocabulary();
   const myProfileQuery = useMyProfile();
   const myProfile = myProfileQuery?.data;
   const { pushAction } = useUndo();
@@ -100,13 +102,15 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     return new Map(masterItemNames.map((item) => [item.id, item]));
   }, [masterItemNames]);
 
+  const vocab = vocabulary ?? DEFAULT_VOCABULARY;
+
   const parseResult = useMemo(() => {
-    return parseInput(query, DEFAULT_VOCABULARY, masterItemNames);
-  }, [query, masterItemNames]);
+    return parseInput(query, vocab, masterItemNames);
+  }, [query, vocab, masterItemNames]);
 
   const parseCandidate = useMemo(() => {
-    return assembleCandidate(groupTokens(classifyTokens(tokenize(query), DEFAULT_VOCABULARY)));
-  }, [query]);
+    return assembleCandidate(groupTokens(classifyTokens(tokenize(query), vocab)));
+  }, [query, vocab]);
 
   const prefixFallbackInterpretations: ParsedInput[] = useMemo(() => {
     if (query.length < 2 || parseResult.interpretations.length > 0) {
@@ -154,7 +158,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
 
     let qty = baseQtyOptions[0] || '1';
     if (parsedQty.length > 0) {
-      const exact = baseQtyOptions.find((option) => quantityEquals(parsedQty, option, DEFAULT_VOCABULARY));
+      const exact = baseQtyOptions.find((option) => quantityEquals(parsedQty, option, vocab));
       qty = exact || parsedQty;
     }
 
@@ -466,7 +470,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
             const baseQtyOptions = dedupe([masterRef.default_qty || '1', ...(masterRef.alternate_qtys || [])]);
             const selected = getSelection(rowKey, interpretation);
             const exactMatch = parsedQty
-              ? baseQtyOptions.find((option) => quantityEquals(parsedQty, option, DEFAULT_VOCABULARY))
+              ? baseQtyOptions.find((option) => quantityEquals(parsedQty, option, vocab))
               : null;
 
             let qtyOptions = [...baseQtyOptions];

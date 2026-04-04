@@ -6,12 +6,14 @@ import { supabase } from '@/lib/supabase';
 import { useHousehold } from '@/lib/household';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings } from '@/components/Settings';
+import { SizesAndPackages } from '@/components/SizesAndPackages';
 
 export const UserAvatar: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { displayName, displayNameShort, avatarColor } = useHousehold();
   const [menuVisible, setMenuVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [sizesAndPackagesVisible, setSizesAndPackagesVisible] = useState(false);
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -55,7 +57,16 @@ export const UserAvatar: React.FC = () => {
                 setSettingsVisible(true);
               }}
             >
-              <Text style={styles.menuText}>Settings</Text>
+              <Text style={styles.menuText}>General</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                setSizesAndPackagesVisible(true);
+              }}
+            >
+              <Text style={styles.menuText}>Sizes & Packages</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.menuItem} onPress={handleSignOut}>
               <Text style={styles.signOutText}>Sign Out</Text>
@@ -65,6 +76,12 @@ export const UserAvatar: React.FC = () => {
       </Modal>
       {settingsVisible ? (
         <Settings visible={settingsVisible} onClose={() => setSettingsVisible(false)} />
+      ) : null}
+      {sizesAndPackagesVisible ? (
+        <SizesAndPackages
+          visible={sizesAndPackagesVisible}
+          onClose={() => setSizesAndPackagesVisible(false)}
+        />
       ) : null}
     </View>
   );

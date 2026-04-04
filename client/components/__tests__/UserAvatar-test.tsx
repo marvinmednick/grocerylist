@@ -35,6 +35,12 @@ jest.mock('@/components/Settings', () => ({
     return visible ? <Text>Settings Modal Open</Text> : null;
   },
 }));
+jest.mock('@/components/SizesAndPackages', () => ({
+  SizesAndPackages: ({ visible }: { visible: boolean }) => {
+    const { Text } = require('react-native');
+    return visible ? <Text>Sizes & Packages Modal Open</Text> : null;
+  },
+}));
 
 const mockUseHousehold = useHousehold as jest.Mock;
 const mockUseQueryClient = useQueryClient as jest.Mock;
@@ -129,7 +135,7 @@ describe('UserAvatar', () => {
     expect(screen.getByText('Sign Out')).toBeTruthy();
   });
 
-  it('shows Settings option in the dropdown menu, above Sign Out', () => {
+  it('shows General menu item (not Settings), above Sign Out', () => {
     mockUseHousehold.mockReturnValue({
       displayNameShort: 'JS',
       displayName: 'Jane Smith',
@@ -139,12 +145,13 @@ describe('UserAvatar', () => {
     render(<UserAvatar />);
     fireEvent.press(screen.getByTestId('avatar-button'));
 
-    expect(screen.getByText('Settings')).toBeTruthy();
+    expect(screen.getByText('General')).toBeTruthy();
+    expect(screen.queryByText('Settings')).toBeNull();
     const rendered = JSON.stringify(screen.toJSON());
-    expect(rendered.indexOf('"Settings"')).toBeLessThan(rendered.indexOf('"Sign Out"'));
+    expect(rendered.indexOf('"General"')).toBeLessThan(rendered.indexOf('"Sign Out"'));
   });
 
-  it('opens settings modal when Settings is pressed', () => {
+  it('shows Sizes & Packages menu item', () => {
     mockUseHousehold.mockReturnValue({
       displayNameShort: 'JS',
       displayName: 'Jane Smith',
@@ -153,9 +160,36 @@ describe('UserAvatar', () => {
 
     render(<UserAvatar />);
     fireEvent.press(screen.getByTestId('avatar-button'));
-    fireEvent.press(screen.getByText('Settings'));
+
+    expect(screen.getByText('Sizes & Packages')).toBeTruthy();
+  });
+
+  it('opens settings modal when General is pressed', () => {
+    mockUseHousehold.mockReturnValue({
+      displayNameShort: 'JS',
+      displayName: 'Jane Smith',
+      avatarColor: '#123456',
+    });
+
+    render(<UserAvatar />);
+    fireEvent.press(screen.getByTestId('avatar-button'));
+    fireEvent.press(screen.getByText('General'));
 
     expect(screen.getByText('Settings Modal Open')).toBeTruthy();
+  });
+
+  it('opens SizesAndPackages when Sizes & Packages is pressed', () => {
+    mockUseHousehold.mockReturnValue({
+      displayNameShort: 'JS',
+      displayName: 'Jane Smith',
+      avatarColor: '#123456',
+    });
+
+    render(<UserAvatar />);
+    fireEvent.press(screen.getByTestId('avatar-button'));
+    fireEvent.press(screen.getByText('Sizes & Packages'));
+
+    expect(screen.getByText('Sizes & Packages Modal Open')).toBeTruthy();
   });
 
   it('calls signOut and clears query cache on Sign Out press', async () => {

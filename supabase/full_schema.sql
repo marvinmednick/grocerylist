@@ -47,23 +47,47 @@ CREATE TABLE categories (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 6. UNITS
+-- 6. VOCABULARY TABLES
 CREATE TABLE units (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL UNIQUE,
-    abbreviation TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  canonical TEXT NOT NULL,
+  aliases TEXT[] NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (household_id, canonical)
 );
+CREATE INDEX units_household_idx ON units(household_id);
+
+CREATE TABLE packages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  canonical TEXT NOT NULL,
+  aliases TEXT[] NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (household_id, canonical)
+);
+CREATE INDEX packages_household_idx ON packages(household_id);
+
+CREATE TABLE size_descriptors (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+  canonical TEXT NOT NULL,
+  aliases TEXT[] NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE (household_id, canonical)
+);
+CREATE INDEX size_descriptors_household_idx ON size_descriptors(household_id);
 
 -- 7. ITEMS (Master Database)
 CREATE TABLE items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     default_category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    default_unit_id UUID REFERENCES units(id) ON DELETE SET NULL,
     default_qty TEXT,
+    default_qty_parsed JSONB NULL,
     short_name TEXT,
     alternate_qtys TEXT[] DEFAULT '{}',
+    alternate_qtys_parsed JSONB[] NULL,
     search_tokens TSVECTOR,
     household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -90,7 +114,7 @@ CREATE TABLE list_items (
     item_id UUID REFERENCES items(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
     quantity TEXT,
-    unit_id UUID REFERENCES units(id) ON DELETE SET NULL,
+    quantity_parsed JSONB NULL,
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     store_id UUID REFERENCES stores(id) ON DELETE SET NULL,
     trip_id UUID REFERENCES shopping_trips(id) ON DELETE SET NULL,
@@ -133,6 +157,8 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE units ENABLE ROW LEVEL SECURITY;
+ALTER TABLE packages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE size_descriptors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE list_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shopping_trips ENABLE ROW LEVEL SECURITY;
@@ -152,9 +178,8 @@ CREATE POLICY "Authenticated users can read households" ON households
 CREATE POLICY "Authenticated users can create households" ON households
     FOR INSERT TO authenticated WITH CHECK (true);
 
--- Public Read (Categories, Stores, Units)
+-- Public Read (Categories)
 CREATE POLICY "Public read categories" ON categories FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Public read units" ON units FOR SELECT TO authenticated USING (true);
 
 -- Stores: household-scoped
 CREATE POLICY "Household members can read stores" ON stores
@@ -169,6 +194,20 @@ CREATE POLICY "Household members can update stores" ON stores
 CREATE POLICY "Household members can delete stores" ON stores
     FOR DELETE TO authenticated
     USING (household_id = get_my_household_id());
+
+-- Vocabulary: household-scoped
+CREATE POLICY "Household members can manage units" ON units
+    FOR ALL TO authenticated
+    USING (household_id = get_my_household_id())
+    WITH CHECK (household_id = get_my_household_id());
+CREATE POLICY "Household members can manage packages" ON packages
+    FOR ALL TO authenticated
+    USING (household_id = get_my_household_id())
+    WITH CHECK (household_id = get_my_household_id());
+CREATE POLICY "Household members can manage size_descriptors" ON size_descriptors
+    FOR ALL TO authenticated
+    USING (household_id = get_my_household_id())
+    WITH CHECK (household_id = get_my_household_id());
 
 -- Items: household-scoped
 CREATE POLICY "Household members can manage items" ON items
@@ -231,16 +270,79 @@ CROSS JOIN (
 ) AS store_data(name, color_code)
 ON CONFLICT (name, household_id) DO NOTHING;
 
--- Units
-INSERT INTO units (name, abbreviation) VALUES
-('Pounds', 'lbs'),
-('Ounces', 'oz'),
-('Grams', 'g'),
-('Kilograms', 'kg'),
-('Count', 'x'),
-('Packages', 'pkgs'),
-('Cans', 'cans'),
-('Bags', 'bags'),
-('Gallons', 'gal'),
-('Quarts', 'qt')
-ON CONFLICT (name) DO NOTHING;
+-- Vocabulary defaults
+DO $$
+DECLARE
+  hh_id UUID;
+BEGIN
+  FOR hh_id IN SELECT id FROM households LOOP
+    INSERT INTO units (household_id, canonical, aliases) VALUES
+      (hh_id, 'oz', ARRAY['ounce', 'ounces']),
+      (hh_id, 'lb', ARRAY['lbs', 'pound', 'pounds']),
+      (hh_id, 'g', ARRAY['gram', 'grams']),
+      (hh_id, 'kg', ARRAY['kilogram', 'kilograms']),
+      (hh_id, 'gal', ARRAY['gallon', 'gallons']),
+      (hh_id, 'qt', ARRAY['quart', 'quarts']),
+      (hh_id, 'pt', ARRAY['pint', 'pints']),
+      (hh_id, 'ml', ARRAY['milliliter', 'milliliters']),
+      (hh_id, 'L', ARRAY['liter', 'liters']),
+      (hh_id, 'cup', ARRAY['cups']),
+      (hh_id, 'ct', ARRAY['count']),
+      (hh_id, 'floz', ARRAY[]::TEXT[])
+    ON CONFLICT (household_id, canonical) DO NOTHING;
+
+    INSERT INTO packages (household_id, canonical, aliases) VALUES
+      (hh_id, 'can', ARRAY['cans']),
+      (hh_id, 'bottle', ARRAY['bottles']),
+      (hh_id, 'jar', ARRAY['jars']),
+      (hh_id, 'box', ARRAY['boxes']),
+      (hh_id, 'bag', ARRAY['bags']),
+      (hh_id, 'carton', ARRAY['cartons']),
+      (hh_id, 'tub', ARRAY['tubs']),
+      (hh_id, 'container', ARRAY['containers']),
+      (hh_id, 'tube', ARRAY['tubes']),
+      (hh_id, 'pouch', ARRAY['pouches']),
+      (hh_id, 'sleeve', ARRAY['sleeves']),
+      (hh_id, 'roll', ARRAY['rolls']),
+      (hh_id, 'stick', ARRAY['sticks']),
+      (hh_id, 'bar', ARRAY['bars']),
+      (hh_id, 'block', ARRAY['blocks']),
+      (hh_id, 'loaf', ARRAY['loaves']),
+      (hh_id, 'sheet', ARRAY['sheets']),
+      (hh_id, 'pack', ARRAY['packs']),
+      (hh_id, 'package', ARRAY['packages', 'pkg']),
+      (hh_id, 'case', ARRAY['cases']),
+      (hh_id, 'flat', ARRAY['flats']),
+      (hh_id, 'tray', ARRAY['trays']),
+      (hh_id, 'rack', ARRAY['racks']),
+      (hh_id, 'dozen', ARRAY[]::TEXT[]),
+      (hh_id, 'pair', ARRAY['pairs']),
+      (hh_id, 'bunch', ARRAY['bunches']),
+      (hh_id, 'head', ARRAY['heads']),
+      (hh_id, 'ear', ARRAY['ears']),
+      (hh_id, 'stalk', ARRAY['stalks']),
+      (hh_id, 'sprig', ARRAY['sprigs']),
+      (hh_id, 'clove', ARRAY['cloves']),
+      (hh_id, 'fillet', ARRAY['fillets']),
+      (hh_id, 'slice', ARRAY['slices']),
+      (hh_id, 'patty', ARRAY['patties']),
+      (hh_id, 'link', ARRAY['links']),
+      (hh_id, 'tablet', ARRAY['tablets']),
+      (hh_id, 'capsule', ARRAY['capsules'])
+    ON CONFLICT (household_id, canonical) DO NOTHING;
+
+    INSERT INTO size_descriptors (household_id, canonical, aliases) VALUES
+      (hh_id, 'large', ARRAY['lg']),
+      (hh_id, 'medium', ARRAY['med']),
+      (hh_id, 'small', ARRAY['sm']),
+      (hh_id, 'xl', ARRAY['extra-large']),
+      (hh_id, 'jumbo', ARRAY[]::TEXT[]),
+      (hh_id, 'mini', ARRAY['miniature']),
+      (hh_id, 'petite', ARRAY[]::TEXT[]),
+      (hh_id, 'king-size', ARRAY[]::TEXT[]),
+      (hh_id, 'family-size', ARRAY[]::TEXT[]),
+      (hh_id, 'travel-size', ARRAY[]::TEXT[]),
+      (hh_id, 'regular', ARRAY[]::TEXT[])
+    ON CONFLICT (household_id, canonical) DO NOTHING;
+  END LOOP;
+END $$;

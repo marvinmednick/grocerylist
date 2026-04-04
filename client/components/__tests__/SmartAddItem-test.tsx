@@ -6,6 +6,7 @@ import { useAddToList, useDeleteListItem } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
 import { useMyProfile } from '@/api/profile';
+import { useVocabulary } from '@/api/vocabulary';
 
 jest.mock('@/api/items', () => {
   const actual = jest.requireActual('@/api/items');
@@ -20,6 +21,7 @@ jest.mock('@/api/list');
 jest.mock('@/api/metadata');
 jest.mock('@/api/undoContext');
 jest.mock('@/api/profile');
+jest.mock('@/api/vocabulary');
 jest.mock('react-native-safe-area-context', () => {
   const actual = jest.requireActual('react-native-safe-area-context');
   return {
@@ -37,6 +39,7 @@ describe('SmartAddItem', () => {
   const mockUseMetadata = useMetadata as jest.Mock;
   const mockUseUndo = useUndo as jest.Mock;
   const mockUseMyProfile = useMyProfile as jest.Mock;
+  const mockUseVocabulary = useVocabulary as jest.Mock;
 
   const pushAction = jest.fn();
   const addItem = jest.fn();
@@ -92,6 +95,7 @@ describe('SmartAddItem', () => {
         },
       },
     });
+    mockUseVocabulary.mockReturnValue({ data: undefined });
   });
 
   it('does not render store pills in dropdown rows', async () => {

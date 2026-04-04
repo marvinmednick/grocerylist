@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { DEFAULT_VOCABULARY } from '../lib/vocabulary';
 import { Stack, useRouter } from 'expo-router';
 
 const PROFILE_COLOR_PALETTE = [
@@ -26,6 +27,36 @@ export async function pickProfileColor(householdId: string): Promise<string> {
   const usedColors = new Set((data ?? []).map((profile) => profile.color).filter(Boolean));
   const availableColor = PROFILE_COLOR_PALETTE.find((color) => !usedColors.has(color));
   return availableColor ?? '#2563eb';
+}
+
+async function seedVocabularyForHousehold(householdId: string): Promise<void> {
+  const [unitsResult, packagesResult, sizeDescriptorsResult] = await Promise.all([
+    supabase.from('units').insert(
+      DEFAULT_VOCABULARY.units.map((entry) => ({
+        household_id: householdId,
+        canonical: entry.canonical,
+        aliases: entry.aliases,
+      }))
+    ),
+    supabase.from('packages').insert(
+      DEFAULT_VOCABULARY.packages.map((entry) => ({
+        household_id: householdId,
+        canonical: entry.canonical,
+        aliases: entry.aliases,
+      }))
+    ),
+    supabase.from('size_descriptors').insert(
+      DEFAULT_VOCABULARY.sizeDescriptors.map((entry) => ({
+        household_id: householdId,
+        canonical: entry.canonical,
+        aliases: entry.aliases,
+      }))
+    ),
+  ]);
+
+  if (unitsResult.error) throw unitsResult.error;
+  if (packagesResult.error) throw packagesResult.error;
+  if (sizeDescriptorsResult.error) throw sizeDescriptorsResult.error;
 }
 
 export default function AuthScreen() {
@@ -78,6 +109,7 @@ export default function AuthScreen() {
           display_name: email,
           color,
         });
+        await seedVocabularyForHousehold(hh.id);
       }
     }
   }

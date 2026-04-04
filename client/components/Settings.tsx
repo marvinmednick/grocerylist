@@ -114,7 +114,7 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose }) => {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.header}>
-        <Text style={styles.title}>Settings</Text>
+        <Text style={styles.title}>General</Text>
         <TouchableOpacity testID="settings-close-button" onPress={onClose} style={styles.closeButton}>
           <X size={22} color="#111827" />
         </TouchableOpacity>

@@ -99,30 +99,34 @@ When another household member modifies the shopping list, the app shows a toast 
 - **Remote Change Detection:** The Supabase realtime channel callback checks `localMutationCount === 0` before invoking the `onRemoteChange` callback.
 - **Toast Component:** `components/Toast.tsx` — an absolutely positioned, animated (fade in/out) notification at the bottom of the screen that auto-dismisses after 3 seconds.
 
-### G. Quantity Units System
-To standardize quantity entry while preserving flexibility, the system will support a formal Units dictionary.
-- **`units` Table:** Stores standardized unit names (e.g., "Pounds", "Ounces", "Count", "Cans").
-- **Master Item Defaults:** Items can specify a `default_unit_id`.
-- **UI Integration:**
-    - The "Add" and "Edit" modals will feature a unit picker (dropdown or chip bar).
-    - The quantity value remains a text field to allow ranges or notes (e.g., "2-2.5").
-    - Resulting string: `{Value} {Unit}` (e.g., "2-2.5 lbs").
+### G. Quantity and Input Parsing System
+
+> **Full architecture:** `docs/design/vocabulary-and-quantity-architecture.md`
+
+Free-form text in SmartAddItem is parsed by a multi-pass pipeline (`lib/parser.ts`) that extracts structured fields:
+
+- **Vocabulary** (`lib/vocabulary.ts`): In-memory constants for units (oz, lb, gal…), package types (can, bottle, loaf…), and size descriptors (large, small…). F79 will move these to household-scoped DB tables.
+- **Parser passes:** tokenize → classify → group (iterative: QUANTITATIVE_SIZE, SIZED_PACKAGE, COUNT, N-pack) → assemble candidate → name resolution (Pass 5)
+- **Name resolution:** Bag-of-words exact matching against `useMasterItemNames()` (lightweight hook, no limit, staleTime 5 min). When no exact match, word-level prefix fallback activates: each name token must be a prefix of at least one word in the item name, enabling "chick" → Chicken Breast and "bone" → Organic Bone Broth.
+- **Output:** `ParseResult { interpretations: ParsedInput[], rawInput }` — ranked by matched item name length (longer = more specific, sorts first)
+- **Quantity format:** Single natural-language string used for both display and storage (e.g., `"2 8oz cans"`). `quantityEquals(a, b, vocabulary)` parses both sides for semantic comparison. `isPartialMatch` is a raw prefix check for pill sort ordering.
+
+The parser is a pure function (no React hooks) — `parseInput(input, vocabulary, masterItems)` — so vocabulary source is swappable without touching the parser.
 
 ## 4. Feature Definitions
 
 ### A. Smart Item Entry (The "Add" Workflow)
 **User Story:** "I want to add 'Milk', but I shouldn't have to type it all if the app knows it, and I want to see exactly what is being added."
 
-1.  **Input:** User types "Mil".
-2.  **Dropdown Results:** A list of matching items appears below the input.
-    *   **Format:** `[Item Name] - [Default Qty] at [Preferred Store]` (e.g., "Milk - 1 gal at Safeway").
-3.  **Split Interaction:**
-    *   **Quick Add (Tap Left/Main):** Immediately adds the item to the list using the shown defaults. A success toast appears at the bottom.
-    *   **Edit Before Add (Tap Right Icon):** Opens an **Inline-Edit Form** above the keyboard.
-4.  **Inline-Edit Form:**
-    *   **Quantity:** A dropdown pre-filled with "Usual Quantities" (e.g., "1 gal", "1/2 gal"). Includes a manual text entry option.
-    *   **Store:** A dropdown pre-filled with "Known Stores" for this item. Includes an "Other..." option to type in a one-off store.
-5.  **Completion:** Hitting "Add" from the form or finishing a Quick Add clears the input and keeps the keyboard open for the next item.
+1.  **Input:** User types freely (e.g., "2 milk", "chick", "1.5 lb chicken @costco"). The parser runs on every keystroke.
+2.  **Dropdown Results:** Parser-driven result rows appear, one per interpretation:
+    *   **Qty pills:** default_qty + alternate_qtys shown as pills; parsed quantity pre-selected (or added as extra pill if not in defaults). Pills sorted partial-match-first. "Other" replaces pills with inline text input.
+    *   **Store pills:** appear only when `@hint` is present; live-updated prefix matches.
+    *   **Orphan tokens:** unrecognized words shown struck-through next to the item name.
+    *   **One-off row:** always available at the bottom using the full raw input text.
+3.  **Quick Add (Tap item name row):** Adds using the currently selected qty/store pills.
+4.  **Edit Before Add (Tap `›` icon):** Opens edit modal with qty pre-filled from parsed value, store list filtered by @hint with `▸ More` to expand.
+5.  **Completion:** Tapping a result row clears the input and keeps keyboard open.
 
 ### B. Recipe Import (The "Drafting" Workflow)
 **User Story:** "I want to cook Chili, so I add the Chili recipe, but I already have onions."
