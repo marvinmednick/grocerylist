@@ -67,7 +67,7 @@ After completing each file, and whenever you stop, append to (or update) the `##
 [Complete | In progress — N/M files done | Paused — N/M files done]
 ```
 
-Keep the Issues section current — flag anything that needs Claude's attention before the next session or before `/review`.
+Keep the Issues section current — flag anything that needs Claude's attention before the next session or before `/review-impl`.
 
 ## Plan Mode
 
@@ -152,4 +152,4 @@ When done, return:
 - **Deviations**: any spec section you couldn't implement as written, with explanation
 - **Blockers found**: any architectural issues or missing context that blocked full implementation
 
-Bring this output back to Claude and run `/review` to verify before committing.
+Bring this output back to Claude and run `/review-impl` to verify before committing.

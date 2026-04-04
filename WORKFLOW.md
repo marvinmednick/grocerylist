@@ -9,7 +9,7 @@
 ### Feature Flow
 
 ```
-Idea → /feature → [/design] → /spec → ./implement → /review → /complete
+Idea → /feature → [/design] → /spec → ./implement → /review-impl → /complete
 ```
 
 `/feature` captures and registers the idea (creates GitHub issue, uses issue number as F-number). `/design` is optional — use it when UX, data model, or scope needs discussion before a spec can be written.
@@ -21,7 +21,7 @@ Idea → /feature → [/design] → /spec → ./implement → /review → /compl
 | Spec | `/spec F[N]` | Always — reads design doc if one exists |
 | Implement (Light) | `./implement F[N]` | Review level Light |
 | Implement (Full) | `./implement F[N] --plan` → `/review-plan F[N]` → `./implement F[N]` | Review level Full |
-| Review code | `/review F[N]` after implementor reports tests passing | Always |
+| Review code | `/review-impl F[N]` after implementor reports tests passing | Always |
 | Ship | `/complete F[N]` | After review passes |
 
 ### Bug Flow
@@ -41,7 +41,7 @@ File → Triage → Investigate → /resolve → /complete
 ### Batch Bug Flow
 
 ```
-Create batch issue → /resolve [batch-N] → ./implement I[batch-N] → /review → /complete [batch-N]
+Create batch issue → /resolve [batch-N] → ./implement I[batch-N] → /review-impl → /complete [batch-N]
 ```
 
 Use when 2–5 small bugs share the same subsystem and can be handed to the implementor in a single pass. See [§9 Batch Bug Fixes](#9-batch-bug-fixes) for the full process. For grouping enhancements into a planned feature, see [§10 Issue Filtering and Search](#10-issue-filtering-and-search) for the `feature:F[N]` label scheme.
@@ -87,12 +87,12 @@ Four files and one external service work together:
 | Location | Purpose | Updated by |
 |----------|---------|------------|
 | `SESSION_NOTES.md` | Rolling session log — design decisions made, work completed, next steps. Never cleared; committed with content. Read first at session startup. | Claude (after each significant workflow step) |
-| `PLAN.md` | Feature registry — every feature has a row with ID, status, spec link, and GitHub issue link | Claude (during `/spec`, `/review`, and ship) |
+| `PLAN.md` | Feature registry — every feature has a row with ID, status, spec link, and GitHub issue link | Claude (during `/spec`, `/review-impl`, and ship) |
 | `docs/design-history.md` | Architecture/design evolution log — what changed, when, why, and what principle it generalizes to. Complements the current-state docs (DESIGN.md, CODING.md, ui-guidelines.md). | Claude (via `/design-review` at any workflow step) |
 | `specs/F[N]-[slug].md` | Full implementation spec — everything Gemini needs to build a feature | Claude (via `/spec`) |
 | `plans/F[N]-log.md` | Feature journal — phase-by-phase history written by Claude (spec, reviews, ship); primary session continuity record for features | Claude (at each phase transition) |
 | `plans/F[N]-progress.md` | Implementor's self-tracking scratchpad — file checklist and resume state; created and maintained by the implementor only | Implementor |
-| `BACKLOG.md` | Short-lived inbox — items land here during `/spec` and `/review`, then are triaged to GitHub Issues (or discarded) right after each commit | Claude (during `/spec`, `/review`, and post-commit triage) |
+| `BACKLOG.md` | Short-lived inbox — items land here during `/spec` and `/review-impl`, then are triaged to GitHub Issues (or discarded) right after each commit | Claude (during `/spec`, `/review-impl`, and post-commit triage) |
 | `CODING.md` | Coding conventions and patterns — the implementor's reference for every implementation | Claude (when new patterns are established) |
 | `docs/tools/gemini.md` | Gemini invocation reference (human docs) | Claude (when Gemini workflow changes) |
 | `AGENT.md` | Behavioral rules for all implementation agents | Claude (when scope discipline changes) |
@@ -209,13 +209,13 @@ Each spec has a `**Review Level:**` header — **Light** or **Full**. The spec a
 | | Light | Full |
 |---|---|---|
 | **When** | 1–2 files, no new files, no schema changes, existing patterns only | 3+ files, new files, schema changes, or new patterns |
-| **Flow** | Implement → `/review` → tests → commit | Plan → Claude plan review → implement → `/review` → tests → commit |
+| **Flow** | Implement → `/review-impl` → tests → commit | Plan → Claude plan review → implement → `/review-impl` → tests → commit |
 
 **Light workflow:**
 ```
 ./implement F1                    # implementor writes code, runs tests, fixes failures
   ↓
-Claude /review                      # review code and test quality
+Claude /review-impl                      # review code and test quality
   ↓
 ./check-tests                       # pre-commit baseline verify
   ↓
@@ -231,7 +231,7 @@ Commit
   ↓
 ./implement F1                    # implementor runs full session: code + tests + fixes
   ↓
-Claude /review                      # review code and test quality
+Claude /review-impl                      # review code and test quality
   ↓
 ./check-tests                       # pre-commit baseline verify
   ↓
@@ -239,7 +239,7 @@ Commit
 ```
 
 Running and fixing tests is part of the implementation session — the implementor does not
-hand off until all tests pass. `/review` checks code quality and test coverage; `./check-tests`
+hand off until all tests pass. `/review-impl` checks code quality and test coverage; `./check-tests`
 is a final sanity check that the baseline is clean before committing.
 
 #### Reviewing the Plan (Full Level)
@@ -259,7 +259,7 @@ Claude will:
 
 The original draft and the approved file can be diffed at any time to see exactly what the review process changed.
 
-**This is scope/approach only — not a code review.** Claude checks the plan matches the spec and fixes it; the full pattern and test check happens later with `/review`.
+**This is scope/approach only — not a code review.** Claude checks the plan matches the spec and fixes it; the full pattern and test check happens later with `/review-impl`.
 
 **`./implement F1` auto-detects the approved plan.** Once `/review-plan F1` writes
 `plans/F1-plan-approved.md`, the next `./implement F1` picks it up automatically.
@@ -346,7 +346,7 @@ If implementation stops mid-spec (context limit, model switch, or session break)
 
 1. The implementor updates `plans/F[N]-progress.md` with current state and displays it
 2. To resume, run the same `./implement` command — the new session reads `plans/F[N]-progress.md` and self-orients; no user guidance needed
-3. The `/review` step happens only after the full spec is complete
+3. The `/review-impl` step happens only after the full spec is complete
 
 You can optionally make a WIP commit to save partial work, but this doesn't affect how the implementor resumes.
 
@@ -397,12 +397,12 @@ This workflow can be used independently of any feature implementation — run it
 Once the implementor reports back (all tests passing, files listed), run in Claude Code:
 
 ```
-/review F1
+/review-impl F1
 ```
 
 Or with the diff/output pasted directly:
 ```
-/review [paste implementor's output here]
+/review-impl [paste implementor's output here]
 ```
 
 Claude will:
@@ -556,7 +556,7 @@ For non-bug labels (`cleanup`, `test-quality`, `docs`, `enhancement`): reads the
 
 ```bash
 ./implement I42                   # implement the issue spec
-./check-tests                     # verify after /review
+./check-tests                     # verify after /review-impl
 ```
 
 #### Commit and close
@@ -571,7 +571,7 @@ Same steps as feature shipping: verify tests, commit with `closes #42`, close is
 
 ### 8. Backlog Triage
 
-`BACKLOG.md` is a short-lived inbox, not a permanent list. Items land there during `/spec` and `/review` because it's not the right moment to stop and handle them. The triage step (run after every feature ship or bug fix commit) clears the inbox.
+`BACKLOG.md` is a short-lived inbox, not a permanent list. Items land there during `/spec` and `/review-impl` because it's not the right moment to stop and handle them. The triage step (run after every feature ship or bug fix commit) clears the inbox.
 
 For each open item, choose one action:
 
@@ -592,7 +592,7 @@ The goal is an empty (or near-empty) BACKLOG.md after every triage. If items acc
 
 #### Adding items to BACKLOG.md mid-session
 
-When you notice something during `/spec` or `/review` that shouldn't interrupt the current task, add it to `BACKLOG.md` and come back to it at the next triage:
+When you notice something during `/spec` or `/review-impl` that shouldn't interrupt the current task, add it to `BACKLOG.md` and come back to it at the next triage:
 
 ```markdown
 - [ ] Migrate items screen to use same consolidated header pattern as F1 (noticed during F2 spec)
@@ -682,7 +682,7 @@ Same as any Type 1 spec:
 
 ```bash
 ./implement I[batch-N]       # implementor applies all fixes
-/review                      # Claude reviews code + tests
+/review-impl                      # Claude reviews code + tests
 ./check-tests                # verify baseline
 /complete [batch-N]          # commit, close batch issue
 ```
@@ -800,7 +800,7 @@ All workflow commands are available in both **Claude Code** and **Codex CLI**:
 
 | Claude Code | Codex CLI | What it does |
 |---|---|---|
-| `/review F13` | `$review F13` | Review implementation code |
+| `/review-impl F13` | `$review F13` | Review implementation code |
 | `/spec F12` | `$spec F12` | Write an implementation spec |
 | `/design F2` | `$design F2` | Design or update a feature |
 | `/complete F1` | `$complete F1` | Ship a feature or issue |
@@ -829,7 +829,7 @@ All workflow commands are available in both **Claude Code** and **Codex CLI**:
 | Hand off to implementor (Light) | `./implement F1` (or `--tool aider`, `--model <model>`) |
 | Hand off to implementor (Full) | `./implement F1 --plan`, then `/review-plan F1`, then `./implement F1` |
 | Review the plan (Full level) | `/review-plan F1` or `$review-plan F1` |
-| Review the implementation | `/review F1` or `$review F1` (after implementor reports tests passing) |
+| Review the implementation | `/review-impl F1` or `$review F1` (after implementor reports tests passing) |
 | Verify tests before commit | `./check-tests` |
 | Fix a dirty baseline | `/fix-baseline` or `$fix-baseline` |
 | Ship a feature | `/complete F1` or `$complete F1` |
@@ -838,7 +838,7 @@ All workflow commands are available in both **Claude Code** and **Codex CLI**:
 | Investigate a bug (understand before fixing) | `/investigate N` or `$investigate N` |
 | Fix a bug or non-feature issue | `/resolve N` or `$resolve N` (stage-aware) |
 | Ship a non-feature issue | `/complete 42` or `$complete 42` |
-| Batch 2–5 small bugs | Create batch GH issue → `/resolve [batch-N]` → `./implement` → `/review` → `/complete` (see §9) |
+| Batch 2–5 small bugs | Create batch GH issue → `/resolve [batch-N]` → `./implement` → `/review-impl` → `/complete` (see §9) |
 | Triage backlog | Happens automatically as part of `/complete` |
 | Promote backlog to feature | `/spec [description]` |
 | Check/propagate a design decision | `/design-review [context]` — embedded in workflow steps; also callable standalone |

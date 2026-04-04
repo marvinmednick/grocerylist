@@ -21,7 +21,7 @@ Use `/update-worklog` (parent-level command) to auto-generate a SESSION_NOTES en
 
 **Archive:** When SESSION_NOTES.md exceeds ~150 lines, entries older than 90 days are moved to `docs/session-archive/YYYY-QN.md` (triggered during `/complete`). Archive files are permanent and grep-able for prior findings.
 
-**Always append an entry after every workflow step completion** — `/spec`, `/review`, `/design`, `/complete`, `/resolve`, `/investigate`, `/triage`. Even a clean session with no notable findings gets an entry: it records that the step happened and what was worked on.
+**Always append an entry after every workflow step completion** — `/spec`, `/review-impl`, `/design`, `/complete`, `/resolve`, `/investigate`, `/triage`. Even a clean session with no notable findings gets an entry: it records that the step happened and what was worked on.
 
 **Entry format:**
 ```
@@ -44,13 +44,13 @@ Use `/update-worklog` (parent-level command) to auto-generate a SESSION_NOTES en
 Claude's responsibilities are **architecture, design, planning, and code review**. Implementation is handled by a separate tool (Gemini, aider, or similar).
 
 - Use `/spec` to produce a structured implementation spec before handing off to an implementor
-- Use `/review` to review implementation output against architectural principles
+- Use `/review-impl` to review implementation output against architectural principles
 - `CODING.md` (project root) is the coding reference all implementors use — keep it up to date when patterns change
 - `AGENT.md` (project root) contains behavioral rules for all implementation agents
 
 When producing specs, reference `DESIGN.md` and relevant `docs/design/` files. Specs should include: files to modify, patterns to follow, Supabase query shapes, undo actions to register, household scoping requirements, a **Tests to Write** section with specific test cases and assertions, and an **Implementation Commands** section with pre-built invocation for each tool.
 
-**Test ownership:** Claude specifies what to test (in the Tests to Write section of each spec). The implementor writes the tests and is responsible for all tests passing. Claude can verify test quality and coverage during `/review`.
+**Test ownership:** Claude specifies what to test (in the Tests to Write section of each spec). The implementor writes the tests and is responsible for all tests passing. Claude can verify test quality and coverage during `/review-impl`.
 
 ## Tracking System
 
