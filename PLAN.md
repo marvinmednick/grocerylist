@@ -12,9 +12,10 @@
 | F76 | Recipes & Bundles | Backlog | — | [#76](https://github.com/marvinmednick/grocerylist/issues/76) |
 | F77 | Fuzzy Matching in Smart Add | Backlog | — | [#77](https://github.com/marvinmednick/grocerylist/issues/77) |
 | F78 | Duplicate Entry Handling | Backlog | — | [#78](https://github.com/marvinmednick/grocerylist/issues/78) |
-| F79 | Quantity Units System | In Review | [specs/F79-quantity-units-system.md](specs/F79-quantity-units-system.md) · [design](docs/design/F79-quantity-units-system.md) | [#79](https://github.com/marvinmednick/grocerylist/issues/79) |
+| F79 | Quantity Units System | Done | [specs/F79-quantity-units-system.md](specs/F79-quantity-units-system.md) · [design](docs/design/F79-quantity-units-system.md) | [#79](https://github.com/marvinmednick/grocerylist/issues/79) |
 | F7 | Settings Screen | Done | [specs/F7-settings.md](specs/F7-settings.md) · [design](docs/design/F7-settings.md) | [#9](https://github.com/marvinmednick/grocerylist/issues/9) |
 | F83 | Vocabulary Definition Flow | Backlog | — | [#83](https://github.com/marvinmednick/grocerylist/issues/83) |
+| F85 | Structured Quantity Data Conversion | Backlog | — | [#85](https://github.com/marvinmednick/grocerylist/issues/85) |
 | F80 | Enhanced Shopping Mode (Store Focus) | Backlog | — | [#80](https://github.com/marvinmednick/grocerylist/issues/80) |
 | F81 | Dark Mode Visual Implementation | Backlog | — | [#81](https://github.com/marvinmednick/grocerylist/issues/81) |
 | F82 | Trip Notes | Backlog | — | [#82](https://github.com/marvinmednick/grocerylist/issues/82) |

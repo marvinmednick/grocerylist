@@ -31,10 +31,10 @@ See WORKFLOW.md §8 (Backlog Triage) for the full process.
 _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assigned preference → discarded, pill state provides sufficient feedback.)_
 
 ### From F79
-- [ ] Write-time population of `list_items.quantity_parsed` JSONB when adding items via SmartAddItem — JSONB column exists but is always NULL until this is implemented. Required by F78 (duplicate detection). (deferred from F79)
-- [ ] Write-time population of `items.default_qty_parsed` and `items.alternate_qtys_parsed` when editing master items — same rationale as above. (deferred from F79)
-- [ ] Backfill `quantity_parsed` for existing `list_items` rows — requires app-side parsing; impractical in migration SQL. (deferred from F79)
-- [ ] `formatQuantity` in `quantityFormat.ts` uses `DEFAULT_VOCABULARY` for plural lookup — custom household package plurals will not be recognized. Low impact until households add custom packages with non-obvious plurals. (deferred from F79)
+_(all items tracked in [#85](https://github.com/marvinmednick/grocerylist/issues/85) — Quantity Parse Write-Path & Structured Data)_
+- Tracked in #85: write-time population of `list_items.quantity_parsed`, `items.default_qty_parsed`, `items.alternate_qtys_parsed`
+- Tracked in #85: explicit `plural` field on packages table + `formatQuantity` cleanup (scope expanded via comment on #85)
+- Out of scope / resolved: backfill of existing rows (data wipe acceptable per #85); `quantityEquals` DEFAULT_VOCABULARY fixed pre-commit
 - [x] `SmartAddItem.tsx:161,473` — `quantityEquals` calls pass `DEFAULT_VOCABULARY` instead of `vocab`. Fixed. (found in F79 review)
 
 ### From Doc Audit (2026-03-23)

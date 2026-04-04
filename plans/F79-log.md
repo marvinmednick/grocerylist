@@ -14,4 +14,8 @@
 ## 2026-04-04 — Review 1 (Passed)
 - **Result:** Passed — no blocking issues
 - **Tests:** 366/366 passed
-- **Non-blocking:** `SmartAddItem.tsx:161,473` — `quantityEquals` calls pass `DEFAULT_VOCABULARY` instead of `vocab`; custom vocabulary not used for pill deduplication. Added to BACKLOG.md alongside the `formatQuantity` deferred gap.
+- **Non-blocking:** `SmartAddItem.tsx:161,473` — `quantityEquals` calls pass `DEFAULT_VOCABULARY` instead of `vocab`; custom vocabulary not used for pill deduplication. Fixed before commit.
+
+## 2026-04-04 — Shipped
+- **Commit:** `feat: F79 — vocabulary tables, Sizes & Packages UI, parser integration refs #79`
+- **Closed:** #79
