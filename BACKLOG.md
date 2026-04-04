@@ -8,6 +8,18 @@ See WORKFLOW.md §8 (Backlog Triage) for the full process.
 
 _(empty — all items triaged to GitHub Issues)_
 
+### From F44
+- [ ] Database-backed vocabulary tables (household-scoped, with management UI) — requires F79 scope. (deferred from F44)
+- [ ] Plural normalization in bag-of-words matching ("breasts" → "breast") — requires stemming logic. (deferred from F44, owned by F77)
+- [ ] Fraction support (`1/2 lb`) in parser — not supported V1. (deferred from F44)
+- [ ] Word-quantities (`a dozen`, `half a pound`) in parser — not supported V1. (deferred from F44)
+- [ ] Multi-word store hints (`@harris teeter`) — single-word @hint only in V1. (deferred from F44)
+- [ ] `alternate_qtys` audit — verify existing alternate_qtys values parse cleanly against F44 vocabulary seeds; flag gaps. (deferred from F44, to be done during F44 implementation)
+- [ ] `MasterItemRef` duplicated in `lib/parser.ts` and `api/items.ts` — one should import from the other to prevent silent drift. (found in F44 review)
+- [ ] `formatCount` in `quantityFormat.ts` has two identical branches; the `isInteger` check is a no-op — simplify to one branch. (found in F44 review)
+- [ ] `@co`-style multi-store match (multiple store pills shown simultaneously) not tested in SmartAddItem-parser-test. (found in F44 review)
+- [ ] Edit modal qty pre-fill and store `▸ More` expansion are untested. (found in F44 review)
+
 ## Deferred from Specs
 
 ### From F16

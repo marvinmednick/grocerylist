@@ -102,6 +102,28 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Next**: F44 design complete. Ready for DRAFT notice removal and `/spec`.
 
 ---
+### 2026-04-03 — F44 spec written
+- **Completed**: specs/F44-freeform-input-parsing.md written; PLAN.md updated (Backlog → Specced); plans/F44-log.md created; BACKLOG.md updated with 6 deferred items; design doc DRAFT notice removed; GitHub issue #44 updated with spec link and acceptance criteria.
+- **Findings**: Vocabulary storage decision: in-memory constants for F44 (F79 moves to DB tables). Rationale: parser needs to be fast (every keystroke), vocabulary is static in F44, and the interface (Vocabulary parameter) is swappable without changing the parser. `useAllItems` has a 100-item limit and includes store preferences/categories — a new `useMasterItemNames()` hook (lighter query, no limit) is the right data source for Pass 5. `useSearchItems` is kept as-is for other consumers; F44 adds a parallel parser-driven flow.
+- **Design decisions**: In-memory vocabulary for F44 (not DB tables). New `useMasterItemNames()` hook as parser data source. Parser as pure injected-dependency module (no React hooks). `useSearchItems` unchanged.
+- **Design review**: not triggered — all patterns follow existing conventions; no new persistent patterns introduced
+- **Next**: Implementor runs `./implement F44 --plan`, then `/review-plan F44`
+
+---
+### 2026-04-03 — F44 review 2 (Passed)
+- **Completed**: Full review pass. 326/326 tests. PLAN.md → In Review. GitHub #44 labeled in-review. 4 non-blocking items added to BACKLOG.md.
+- **Findings**: No blocking issues. Clean architecture: parser/formatter/vocabulary in lib/, SmartAddItem as consumer only. `MasterItemRef` duplicate and `formatCount` no-op are the only code-quality gaps.
+- **Design decisions**: none
+- **Next**: Ship when ready — `git add` untracked files and commit
+
+---
+### 2026-04-03 — F44 hotfix: prefix fallback for partial-name discovery
+- **Completed**: Fixed critical runtime regression in SmartAddItem.tsx — partial-name input (e.g. "Chick") never matched master items after F44 landed.
+- **Findings**: F44 replaced `useSearchItems` (prefix matching) with parser bag-of-words exact matching. "Chick" → `["chick"]` ≠ `["chicken"]` → no interpretations → only one-off row shown. No DB changes needed — `masterItemNames` data was loading fine. The spec deferred prefix/subset matching to F77, but the implementation removed the existing fallback without a substitute.
+- **Design decisions**: Added `prefixFallbackInterpretations` in SmartAddItem: when parser returns zero interpretations and query ≥ 2 chars, filter `masterItemNames` in-memory by name prefix and synthesize minimal `ParsedInput` rows (all qty fields null). Parser fires first; fallback only activates when parser finds nothing. This is an F44 fix, not F77 work — F77 will add richer substring/contains matching inside the parser itself.
+- **Next**: Re-test "Chick" → should show "Chicken" row; verify structured queries like "2 8oz cans chicken broth" still show parser-driven rows.
+
+---
 ### 2026-04-01 — F44 design: unified quantity format, comparison rules
 - **Completed**: Collapsed separate serialization and display formats into single natural-language format. Defined equality comparison via structured field comparison. Defined partial matching via raw input prefix. Clarified `Nx` is input-only.
 - **Findings**: The initial design had a separate `Nx` serialization format for internal storage, which caused inconsistencies — `2x` leaked into display and broke partial matching (serialized `2x` doesn't prefix-match `2lb`). The root issue: trying to make the stored TEXT string self-describing was unnecessary because the parser can re-interpret any stored string. Collapsing to one natural-language format (same for storage and display) eliminated the inconsistencies. Equality comparison parses both sides to structured fields — more robust than string comparison since `"2 loaves"` and `"2 loaf"` compare as equal. Partial matching stays on raw text (user input vs. DB string) since it's a UI heuristic, not a semantic operation.

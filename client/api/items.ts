@@ -27,6 +27,13 @@ export interface MasterItem {
   item_store_preferences?: ItemStorePreference[];
 }
 
+export interface MasterItemRef {
+  id: string;
+  name: string;
+  default_qty: string | null;
+  alternate_qtys: string[] | null;
+}
+
 export type SortOption = 'name_asc' | 'name_desc' | 'created_desc' | 'created_asc';
 
 export type Warning =
@@ -208,6 +215,22 @@ export const useAllItems = (searchTerm: string = '', sort: SortOption = 'name_as
   });
 };
 
+export const useMasterItemNames = () => {
+  return useQuery({
+    queryKey: ['master_item_names'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('items')
+        .select('id, name, default_qty, alternate_qtys')
+        .order('name');
+
+      if (error) throw error;
+      return data as MasterItemRef[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
 // Create a new Master Item
 export const useCreateMasterItem = () => {
   const queryClient = useQueryClient();
@@ -250,6 +273,7 @@ export const useCreateMasterItem = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['items'] });
       queryClient.invalidateQueries({ queryKey: ['all_items'] });
+      queryClient.invalidateQueries({ queryKey: ['master_item_names'] });
     },
   });
 };
@@ -302,6 +326,7 @@ export const useUpdateMasterItem = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['items'] });
       queryClient.invalidateQueries({ queryKey: ['all_items'] });
+      queryClient.invalidateQueries({ queryKey: ['master_item_names'] });
       queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
     },
   });

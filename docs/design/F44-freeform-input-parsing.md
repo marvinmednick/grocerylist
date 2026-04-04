@@ -1,12 +1,7 @@
 # Design: Free-form Input Parsing
-<!-- ID: F44 | Status: DRAFT — Design in progress, not ready for spec -->
+<!-- ID: F44 | Status: Specced | Spec: specs/F44-freeform-input-parsing.md -->
 <!-- Renumbered from F14 / #44 — feature number now matches GitHub issue number -->
 
-> **DRAFT — INCOMPLETE**
-> This document is being written during an active design conversation.
-> Sections marked `[OPEN]` have unresolved decisions.
-> Do not hand off to `/spec` until all Open Questions are resolved and this notice is removed.
->
 > **Parent architecture doc:** [Vocabulary, Quantity, and Input Interpretation](vocabulary-and-quantity-architecture.md)
 > — covers cross-cutting decisions (storage format, vocabulary extensibility, interaction
 > model) that span F44, F77, F78, and F79.

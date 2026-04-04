@@ -1,13 +1,35 @@
-import React, { useRef, useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, Modal, Keyboard, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Modal,
+  Keyboard,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
+} from 'react-native';
 import { Search, X, ChevronRight, ChevronDown } from 'lucide-react-native';
-import { computeWarnings, getWarningText, useSearchItems, useCreateMasterItem, type MasterItem, type Warning } from '@/api/items';
+import {
+  computeWarnings,
+  getWarningText,
+  useAllItems,
+  useCreateMasterItem,
+  useMasterItemNames,
+  type MasterItem,
+  type Warning,
+} from '@/api/items';
 import { useAddToList, useDeleteListItem } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
 import { useMyProfile } from '@/api/profile';
 import { WarningCallout } from '@/components/WarningCallout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { parseInput, tokenize, classifyTokens, groupTokens, assembleCandidate, type ParsedInput } from '@/lib/parser';
+import { DEFAULT_VOCABULARY } from '@/lib/vocabulary';
+import { formatQuantity, isPartialMatch, quantityEquals } from '@/lib/quantityFormat';
 
 interface SmartAddItemProps {
   disabled?: boolean;
@@ -15,8 +37,15 @@ interface SmartAddItemProps {
   onWarningToast?: (message: string) => void;
 }
 
-// EditTarget covers both master items (from search) and one-off items (no master record yet)
-type EditTarget = MasterItem | { name: string; id: null };
+type EditTarget = MasterItem | { name: string; id: null; default_qty?: string | null; default_category_id?: string | null; alternate_qtys?: string[] | null };
+
+type RowSelection = {
+  qty: string;
+  storeId: string | null;
+};
+
+const MAX_VISIBLE_QTY_PILLS = 7;
+const MAX_VISIBLE_STORE_PILLS = 3;
 
 const DEFAULT_WARNING_PREFS = {
   avoided: 'toast_and_badge',
@@ -25,13 +54,21 @@ const DEFAULT_WARNING_PREFS = {
   non_standard_qty: 'badge_only',
 } as const;
 
+function getRowKey(interpretation: ParsedInput, index: number): string {
+  return `${interpretation.matchedItemId ?? interpretation.name}-${index}`;
+}
+
+function dedupe(values: string[]): string[] {
+  return [...new Set(values.filter((value) => value.trim().length > 0))];
+}
+
 export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }: SmartAddItemProps) {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<EditTarget | null>(null);
-  const [selections, setSelections] = useState<Record<string, { qty: string }>>({});
-  const [otherQtyPopoverItemId, setOtherQtyPopoverItemId] = useState<string | null>(null);
+  const [rowSelections, setRowSelections] = useState<Record<string, RowSelection>>({});
+  const [otherQtyRowKey, setOtherQtyRowKey] = useState<string | null>(null);
   const [otherQtyInput, setOtherQtyInput] = useState('');
   const [oneOffQty, setOneOffQty] = useState('1');
   const [oneOffQtyPopoverOpen, setOneOffQtyPopoverOpen] = useState(false);
@@ -41,9 +78,12 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
   const [editStoreId, setEditStoreId] = useState('');
   const [editStoreDropdownOpen, setEditStoreDropdownOpen] = useState(false);
   const [editCategoryId, setEditCategoryId] = useState('');
+  const [editStoreHint, setEditStoreHint] = useState<string | null>(null);
+  const [editShowMoreStores, setEditShowMoreStores] = useState(false);
   const editQtyInputRef = useRef<TextInput>(null);
 
-  const { data: results = [] } = useSearchItems(query);
+  const { data: masterItemNames = [] } = useMasterItemNames();
+  const { data: allItems = [] } = useAllItems();
   const { mutateAsync: addItem } = useAddToList();
   const { mutateAsync: createMasterItem } = useCreateMasterItem();
   const { mutateAsync: deleteItem } = useDeleteListItem();
@@ -52,17 +92,96 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
   const myProfile = myProfileQuery?.data;
   const { pushAction } = useUndo();
 
-  const getSelection = (item: MasterItem) => {
-    return selections[item.id] || {
-      qty: item.default_qty || '1',
+  const masterDetailsById = useMemo(() => {
+    return new Map(allItems.map((item) => [item.id, item]));
+  }, [allItems]);
+
+  const masterNameById = useMemo(() => {
+    return new Map(masterItemNames.map((item) => [item.id, item]));
+  }, [masterItemNames]);
+
+  const parseResult = useMemo(() => {
+    return parseInput(query, DEFAULT_VOCABULARY, masterItemNames);
+  }, [query, masterItemNames]);
+
+  const parseCandidate = useMemo(() => {
+    return assembleCandidate(groupTokens(classifyTokens(tokenize(query), DEFAULT_VOCABULARY)));
+  }, [query]);
+
+  const prefixFallbackInterpretations: ParsedInput[] = useMemo(() => {
+    if (query.length < 2 || parseResult.interpretations.length > 0) {
+      return [];
+    }
+    // Use parser-extracted name tokens so that count/unit/@hint don't pollute the search.
+    // Match word-by-word: every name token must be a prefix of at least one word in the item name.
+    // This lets "bone" match "Chicken Bone Broth" and "1 chick @safeway" match "Chicken Breast".
+    const nameTokens = parseCandidate.nameWords
+      .flatMap((w) => w.split(/\s+/))
+      .map((w) => w.toLowerCase())
+      .filter((w) => w.length > 0);
+    if (nameTokens.length === 0) return [];
+    return masterItemNames
+      .filter((item) => {
+        const itemWords = item.name.toLowerCase().split(/\s+/);
+        return nameTokens.every((token) => itemWords.some((word) => word.startsWith(token)));
+      })
+      .map((item) => ({
+        name: item.name,
+        matchedItemId: item.id,
+        count: parseCandidate.count,
+        packageType: parseCandidate.packageType,
+        sizeDescriptive: parseCandidate.sizeDescriptive,
+        sizeQty: parseCandidate.sizeQty,
+        sizeUnit: parseCandidate.sizeUnit,
+        storeHint: parseCandidate.storeHint,
+        orphans: [],
+      }));
+  }, [query, masterItemNames, parseResult.interpretations.length, parseCandidate]);
+
+  const hasStructuredRows = query.length >= 2 && (parseResult.interpretations.length > 0 || prefixFallbackInterpretations.length > 0);
+
+  const getDefaultSelection = (rowKey: string, interpretation: ParsedInput): RowSelection => {
+    const masterRef = interpretation.matchedItemId ? masterNameById.get(interpretation.matchedItemId) : null;
+    const baseQtyOptions = dedupe([masterRef?.default_qty || '1', ...(masterRef?.alternate_qtys || [])]);
+
+    const parsedQty = formatQuantity({
+      count: interpretation.count,
+      packageType: interpretation.packageType,
+      sizeQty: interpretation.sizeQty,
+      sizeUnit: interpretation.sizeUnit,
+      sizeDescriptive: interpretation.sizeDescriptive,
+    }).trim();
+
+    let qty = baseQtyOptions[0] || '1';
+    if (parsedQty.length > 0) {
+      const exact = baseQtyOptions.find((option) => quantityEquals(parsedQty, option, DEFAULT_VOCABULARY));
+      qty = exact || parsedQty;
+    }
+
+    const hintMatches = interpretation.storeHint
+      ? (metadata?.stores || []).filter((store) =>
+          store.name.toLowerCase().startsWith(interpretation.storeHint!.toLowerCase())
+        )
+      : [];
+
+    return {
+      qty,
+      storeId: hintMatches.length > 0 ? hintMatches[0].id : activeStoreId || null,
     };
   };
 
-  const toggleSelection = (itemId: string, updates: { qty: string }) => {
-    const item = results.find((result) => result.id === itemId);
-    setSelections((prev) => ({
+  const getSelection = (rowKey: string, interpretation: ParsedInput): RowSelection => {
+    return rowSelections[rowKey] || getDefaultSelection(rowKey, interpretation);
+  };
+
+  const setSelection = (rowKey: string, interpretation: ParsedInput, updates: Partial<RowSelection>) => {
+    const current = getSelection(rowKey, interpretation);
+    setRowSelections((prev) => ({
       ...prev,
-      [itemId]: { ...getSelection(item), ...updates },
+      [rowKey]: {
+        ...current,
+        ...updates,
+      },
     }));
   };
 
@@ -70,12 +189,14 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     setQuery('');
     setIsEditing(false);
     setSelectedItem(null);
-    setSelections({});
-    setOtherQtyPopoverItemId(null);
+    setRowSelections({});
+    setOtherQtyRowKey(null);
     setOtherQtyInput('');
     setOneOffQty('1');
     setOneOffQtyPopoverOpen(false);
     setOneOffQtyInput('');
+    setEditStoreHint(null);
+    setEditShowMoreStores(false);
     Keyboard.dismiss();
   };
 
@@ -102,13 +223,13 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     }
   };
 
-  const onCommitAdd = async (item: MasterItem) => {
+  const onCommitAdd = async (item: MasterItem, interpretation: ParsedInput, rowKey: string) => {
     Keyboard.dismiss();
-    const selection = getSelection(item);
+    const selection = getSelection(rowKey, interpretation);
     const name = item.name;
     const warnings = computeWarnings(
       item.item_store_preferences,
-      activeStoreId,
+      selection.storeId,
       selection.qty,
       item.default_qty,
       item.alternate_qtys
@@ -119,7 +240,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
         name: item.name,
         item_id: item.id,
         quantity: selection.qty,
-        store_id: activeStoreId || null,
+        store_id: selection.storeId,
         category_id: item.default_category_id,
         warnings,
       });
@@ -144,10 +265,10 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
   };
 
   const onOneOffAdd = async () => {
-    const name = query;
+    const name = parseResult.rawInput;
     const forwardAction = async () => {
       return await addItem({
-        name: query,
+        name: parseResult.rawInput,
         item_id: null,
         quantity: oneOffQty,
         store_id: activeStoreId || null,
@@ -184,13 +305,15 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
       )
     : [];
 
-  const onEditAdd = (item: EditTarget) => {
+  const onEditAdd = (item: EditTarget, options?: { initialQty?: string; initialStoreId?: string | null; storeHint?: string | null }) => {
     Keyboard.dismiss();
     setSelectedItem(item);
-    setEditQty(item.default_qty || '1');
-    setEditStoreId(activeStoreId || metadata?.stores?.[0]?.id || '');
+    setEditQty(options?.initialQty || item.default_qty || '1');
+    setEditStoreId(options?.initialStoreId || activeStoreId || metadata?.stores?.[0]?.id || '');
     setEditStoreDropdownOpen(false);
     setEditCategoryId(item.default_category_id || '');
+    setEditStoreHint(options?.storeHint || null);
+    setEditShowMoreStores(false);
     setIsEditing(true);
   };
 
@@ -201,6 +324,8 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     setEditStoreId('');
     setEditStoreDropdownOpen(false);
     setEditCategoryId('');
+    setEditStoreHint(null);
+    setEditShowMoreStores(false);
   };
 
   const onOneOffEditAdd = async () => {
@@ -291,8 +416,12 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     setTimeout(() => maybeTriggerWarningToast(warnings), 400);
   };
 
+  const rankedInterpretations = parseResult.interpretations.length > 0
+    ? parseResult.interpretations
+    : prefixFallbackInterpretations;
+
   return (
-    <View style={[styles.container, disabled && { opacity: 0.6 }]}>
+    <View style={[styles.container, disabled && { opacity: 0.6 }]}> 
       <View style={styles.searchBar}>
         <Search size={20} color="#9ca3af" style={styles.searchIcon} />
         <TextInput
@@ -310,80 +439,191 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
         )}
       </View>
 
-      {(results.length > 0 || query.length > 1) && (
+      {query.length > 0 && (
         <View style={styles.dropdown}>
-          {results.length > 0 && (
+          {rankedInterpretations.length > 0 && (
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionHeaderText}>BEST MATCHES</Text>
             </View>
           )}
 
-          {results.map((item) => {
-            const selection = getSelection(item);
-            const qtyOptions = [item.default_qty || '1', ...(item.alternate_qtys || [])];
-            const hasCustomQty = !qtyOptions.includes(selection.qty);
+          {rankedInterpretations.map((interpretation, index) => {
+            const rowKey = getRowKey(interpretation, index);
+            const masterRef = interpretation.matchedItemId ? masterNameById.get(interpretation.matchedItemId) : null;
+            const fullItem = interpretation.matchedItemId ? masterDetailsById.get(interpretation.matchedItemId) : null;
+            if (!masterRef || !fullItem) {
+              return null;
+            }
+
+            const parsedQty = formatQuantity({
+              count: interpretation.count,
+              packageType: interpretation.packageType,
+              sizeQty: interpretation.sizeQty,
+              sizeUnit: interpretation.sizeUnit,
+              sizeDescriptive: interpretation.sizeDescriptive,
+            }).trim();
+
+            const baseQtyOptions = dedupe([masterRef.default_qty || '1', ...(masterRef.alternate_qtys || [])]);
+            const selected = getSelection(rowKey, interpretation);
+            const exactMatch = parsedQty
+              ? baseQtyOptions.find((option) => quantityEquals(parsedQty, option, DEFAULT_VOCABULARY))
+              : null;
+
+            let qtyOptions = [...baseQtyOptions];
+            if (!exactMatch && parsedQty.length > 0 && !qtyOptions.includes(parsedQty)) {
+              qtyOptions = [parsedQty, ...qtyOptions];
+            }
+
+            const activeQty = selected.qty;
+            const remainingQty = qtyOptions
+              .filter((option) => option !== activeQty)
+              .sort((a, b) => {
+                const aPartial = parsedQty.length > 0 && isPartialMatch(parsedQty, a);
+                const bPartial = parsedQty.length > 0 && isPartialMatch(parsedQty, b);
+                if (aPartial === bPartial) {
+                  return a.localeCompare(b);
+                }
+                return aPartial ? -1 : 1;
+              });
+            const orderedQty = dedupe([activeQty, ...remainingQty]);
+
+            const storeMatches = interpretation.storeHint
+              ? (metadata?.stores || []).filter((store) =>
+                  store.name.toLowerCase().startsWith(interpretation.storeHint!.toLowerCase())
+                )
+              : [];
+
+            const selectedStoreId = selected.storeId;
 
             return (
-              <View key={item.id} style={styles.resultRowComplex}>
+              <View key={rowKey} style={styles.resultRowComplex}>
                 <View style={styles.resultMainSection}>
-                  <TouchableOpacity style={styles.resultHeader} onPress={() => onCommitAdd(item)}>
-                    <Text style={styles.resultName}>{item.name}</Text>
+                  <TouchableOpacity style={styles.resultHeader} onPress={() => onCommitAdd(fullItem, interpretation, rowKey)}>
+                    <View style={styles.resultTitleRow}>
+                      <Text style={styles.resultName}>{interpretation.name}</Text>
+                      {interpretation.orphans.length > 0 ? (
+                        <Text style={styles.orphanText}>{interpretation.orphans.join(' ')}</Text>
+                      ) : null}
+                    </View>
                   </TouchableOpacity>
 
-                  <View style={styles.inlinePillRow}>
-                    <Text style={styles.inlineLabel}>Qty: </Text>
-                    {qtyOptions.map((qtyOption: string) => {
-                      const isActive = selection.qty === qtyOption;
-                      return (
-                        <TouchableOpacity
-                          key={qtyOption}
-                          style={[styles.inlinePill, isActive && styles.pillActiveBlue]}
-                          onPress={() => toggleSelection(item.id, { qty: qtyOption })}
-                        >
-                          <Text style={[styles.inlinePillText, isActive && styles.pillTextActive]}>{qtyOption}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                    <TouchableOpacity
-                      testID={`result-qty-chip-other-${item.id}`}
-                      style={[styles.inlinePill, hasCustomQty && styles.pillActiveBlue]}
-                      onPress={() => {
-                        setOtherQtyPopoverItemId(item.id);
-                        setOtherQtyInput('');
-                      }}
-                    >
-                      <Text style={[styles.inlinePillText, hasCustomQty && styles.pillTextActive]}>
-                        {hasCustomQty ? selection.qty : 'Other'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {otherQtyPopoverItemId === item.id && (
-                    <View style={styles.otherQtyPopover}>
+                  {otherQtyRowKey === rowKey ? (
+                    <View style={styles.inlineOtherEditor}>
                       <TextInput
-                        style={styles.otherQtyInput}
+                        style={styles.otherQtyInputInline}
                         value={otherQtyInput}
                         onChangeText={setOtherQtyInput}
+                        autoFocus
                         placeholder="e.g. 3 lbs"
                         placeholderTextColor="#9ca3af"
-                        autoFocus
                         returnKeyType="done"
                         onSubmitEditing={() => {
                           const trimmed = otherQtyInput.trim();
-                          if (trimmed) {
-                            toggleSelection(item.id, { qty: trimmed });
+                          if (trimmed.length > 0) {
+                            setSelection(rowKey, interpretation, { qty: trimmed });
                           }
-                          setOtherQtyPopoverItemId(null);
+                          setOtherQtyRowKey(null);
                         }}
                       />
+                      <TouchableOpacity
+                        testID={`qty-other-close-${fullItem.id}`}
+                        style={styles.otherCloseButton}
+                        onPress={() => setOtherQtyRowKey(null)}
+                      >
+                        <Text style={styles.otherCloseText}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={styles.inlinePillRow}>
+                      <Text style={styles.inlineLabel}>Qty: </Text>
+                      {orderedQty.slice(0, MAX_VISIBLE_QTY_PILLS).map((qtyOption) => {
+                        const isActive = activeQty === qtyOption;
+                        return (
+                          <TouchableOpacity
+                            key={qtyOption}
+                            style={[styles.inlinePill, isActive && styles.pillActiveBlue]}
+                            onPress={() => setSelection(rowKey, interpretation, { qty: qtyOption })}
+                          >
+                            <Text style={[styles.inlinePillText, isActive && styles.pillTextActive]}>{qtyOption}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                      {orderedQty.length > MAX_VISIBLE_QTY_PILLS ? (
+                        <TouchableOpacity
+                          style={styles.inlinePill}
+                          onPress={() =>
+                            onEditAdd(fullItem, {
+                              initialQty: activeQty,
+                              initialStoreId: selectedStoreId,
+                              storeHint: interpretation.storeHint,
+                            })
+                          }
+                        >
+                          <Text style={styles.inlinePillText}>...</Text>
+                        </TouchableOpacity>
+                      ) : null}
+                      <TouchableOpacity
+                        testID={`result-qty-chip-other-${fullItem.id}`}
+                        style={styles.inlinePill}
+                        onPress={() => {
+                          setOtherQtyRowKey(rowKey);
+                          setOtherQtyInput(parsedQty);
+                        }}
+                      >
+                        <Text style={styles.inlinePillText}>Other</Text>
+                      </TouchableOpacity>
                     </View>
                   )}
+
+                  {interpretation.storeHint ? (
+                    <View style={styles.inlinePillRow}>
+                      <Text style={styles.inlineLabel}>Store: </Text>
+                      {storeMatches.length === 0 ? (
+                        <Text style={styles.unresolvedStoreHint}>@{interpretation.storeHint}</Text>
+                      ) : (
+                        <>
+                          {storeMatches.slice(0, MAX_VISIBLE_STORE_PILLS).map((store) => {
+                            const isActive = selectedStoreId === store.id;
+                            return (
+                              <TouchableOpacity
+                                key={store.id}
+                                style={[styles.inlinePill, isActive && styles.pillActiveBlue]}
+                                onPress={() => setSelection(rowKey, interpretation, { storeId: store.id })}
+                              >
+                                <Text style={[styles.inlinePillText, isActive && styles.pillTextActive]}>{store.name}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                          {storeMatches.length > MAX_VISIBLE_STORE_PILLS ? (
+                            <TouchableOpacity
+                              style={styles.inlinePill}
+                              onPress={() =>
+                                onEditAdd(fullItem, {
+                                  initialQty: activeQty,
+                                  initialStoreId: selectedStoreId,
+                                  storeHint: interpretation.storeHint,
+                                })
+                              }
+                            >
+                              <Text style={styles.inlinePillText}>...</Text>
+                            </TouchableOpacity>
+                          ) : null}
+                        </>
+                      )}
+                    </View>
+                  ) : null}
                 </View>
 
                 <TouchableOpacity
-                  testID={`edit-add-${item.id}`}
+                  testID={`edit-add-${fullItem.id}`}
                   style={styles.resultEditBtn}
-                  onPress={() => onEditAdd(item)}
+                  onPress={() =>
+                    onEditAdd(fullItem, {
+                      initialQty: activeQty,
+                      initialStoreId: selectedStoreId,
+                      storeHint: interpretation.storeHint,
+                    })
+                  }
                 >
                   <ChevronRight size={20} color="#9ca3af" />
                 </TouchableOpacity>
@@ -394,7 +634,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
           <View style={styles.createRow}>
             <View style={styles.createMain}>
               <TouchableOpacity style={styles.createMainButton} onPress={onOneOffAdd}>
-                <Text style={styles.createText}>Add "{query}" (One-time)</Text>
+                <Text style={styles.createText}>Add "{parseResult.rawInput}" (One-time)</Text>
               </TouchableOpacity>
               <View style={styles.inlinePillRow}>
                 <Text style={styles.inlineLabel}>Qty: </Text>
@@ -442,7 +682,12 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
             <TouchableOpacity
               testID="edit-add-one-off"
               style={styles.createEditBtn}
-              onPress={() => onEditAdd({ name: query, id: null })}
+              onPress={() =>
+                onEditAdd(
+                  { name: parseResult.rawInput, id: null },
+                  { initialQty: oneOffQty, initialStoreId: activeStoreId || null, storeHint: null }
+                )
+              }
             >
               <ChevronRight size={20} color="#2563eb" />
             </TouchableOpacity>
@@ -452,7 +697,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
 
       <Modal visible={isEditing} animationType="slide" transparent={true}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { paddingTop: insets.top }]}>
+          <View style={[styles.modalContent, { paddingTop: insets.top }]}> 
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{selectedItem?.name || query}</Text>
               <TouchableOpacity onPress={closeEditModal} style={styles.modalCloseBtn}>
@@ -460,9 +705,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
               </TouchableOpacity>
             </View>
 
-            {selectedMasterItem ? (
-              <WarningCallout warnings={editWarnings} />
-            ) : null}
+            {selectedMasterItem ? <WarningCallout warnings={editWarnings} /> : null}
 
             <ScrollView keyboardShouldPersistTaps="handled">
               <Text style={styles.label}>Quantity</Text>
@@ -474,24 +717,33 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
                 placeholder="e.g. 1 gal"
               />
 
-              {selectedItem?.alternate_qtys?.length > 0 && (
+              {selectedItem?.alternate_qtys?.length ? (
                 <View style={{ marginBottom: 16 }}>
                   <Text style={styles.label}>Usual Quantities</Text>
                   <View style={styles.tagsContainer}>
-                    {selectedItem.alternate_qtys.map((qtyOption: string) => (
-                      <TouchableOpacity
-                        key={qtyOption}
-                        onPress={() => setEditQty(qtyOption)}
-                        style={[styles.tag, editQty === qtyOption ? styles.tagActive : styles.tagInactive]}
-                      >
-                        <Text style={editQty === qtyOption ? styles.tagTextActive : styles.tagTextInactive}>
-                          {qtyOption}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                    {[...(selectedItem.alternate_qtys || [])]
+                      .sort((a, b) => {
+                        const aPartial = editQty.length > 0 && isPartialMatch(editQty, a);
+                        const bPartial = editQty.length > 0 && isPartialMatch(editQty, b);
+                        if (aPartial === bPartial) {
+                          return a.localeCompare(b);
+                        }
+                        return aPartial ? -1 : 1;
+                      })
+                      .map((qtyOption: string) => (
+                        <TouchableOpacity
+                          key={qtyOption}
+                          onPress={() => setEditQty(qtyOption)}
+                          style={[styles.tag, editQty === qtyOption ? styles.tagActive : styles.tagInactive]}
+                        >
+                          <Text style={editQty === qtyOption ? styles.tagTextActive : styles.tagTextInactive}>
+                            {qtyOption}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
                   </View>
                 </View>
-              )}
+              ) : null}
 
               <Text style={styles.label}>Store</Text>
               <View style={{ marginBottom: 24 }}>
@@ -509,9 +761,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
                             { backgroundColor: metadata?.stores?.find((s) => s.id === editStoreId)?.color_code ?? '#9ca3af' },
                           ]}
                         />
-                        <Text style={styles.storeNameText}>
-                          {metadata?.stores?.find((s) => s.id === editStoreId)?.name ?? ''}
-                        </Text>
+                        <Text style={styles.storeNameText}>{metadata?.stores?.find((s) => s.id === editStoreId)?.name ?? ''}</Text>
                       </>
                     ) : (
                       <Text style={styles.dropdownPlaceholder}>No store</Text>
@@ -530,28 +780,55 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
                         setEditStoreDropdownOpen(false);
                       }}
                     >
-                      <Text style={[styles.storeNameText, { color: '#9ca3af' }]}>— No store —</Text>
+                      <Text style={[styles.storeNameText, { color: '#9ca3af' }]}>No store</Text>
                     </TouchableOpacity>
-                    {metadata?.stores?.map((store) => (
-                      <TouchableOpacity
-                        key={store.id}
-                        testID={`edit-store-${store.id}`}
-                        style={styles.dropdownOption}
-                        onPress={() => {
-                          setEditStoreId(store.id);
-                          setEditStoreDropdownOpen(false);
-                        }}
-                      >
-                        <View style={[styles.storeColorDot, { backgroundColor: store.color_code }]} />
-                        <Text style={styles.storeNameText}>{store.name}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    {(() => {
+                      const allStores = metadata?.stores || [];
+                      const matches = editStoreHint
+                        ? allStores.filter((store) =>
+                            store.name.toLowerCase().startsWith(editStoreHint.toLowerCase())
+                          )
+                        : allStores;
+                      const nonMatches = editStoreHint
+                        ? allStores.filter((store) =>
+                            !store.name.toLowerCase().startsWith(editStoreHint.toLowerCase())
+                          )
+                        : [];
+                      const visibleStores = editStoreHint && !editShowMoreStores ? matches : [...matches, ...nonMatches];
+
+                      return (
+                        <>
+                          {visibleStores.map((store) => (
+                            <TouchableOpacity
+                              key={store.id}
+                              testID={`edit-store-${store.id}`}
+                              style={styles.dropdownOption}
+                              onPress={() => {
+                                setEditStoreId(store.id);
+                                setEditStoreDropdownOpen(false);
+                              }}
+                            >
+                              <View style={[styles.storeColorDot, { backgroundColor: store.color_code }]} />
+                              <Text style={styles.storeNameText}>{store.name}</Text>
+                            </TouchableOpacity>
+                          ))}
+                          {editStoreHint && !editShowMoreStores && nonMatches.length > 0 ? (
+                            <TouchableOpacity
+                              style={styles.dropdownOption}
+                              onPress={() => setEditShowMoreStores(true)}
+                            >
+                              <Text style={styles.storeMoreText}>▸ More</Text>
+                            </TouchableOpacity>
+                          ) : null}
+                        </>
+                      );
+                    })()}
                   </View>
                 ) : null}
               </View>
             </ScrollView>
 
-            <View style={[styles.modalActions, { paddingBottom: insets.bottom }]}>
+            <View style={[styles.modalActions, { paddingBottom: insets.bottom }]}> 
               {selectedItem?.id ? (
                 <>
                   <TouchableOpacity style={[styles.actionBtn, styles.cancelBtn, { flex: 1 }]} onPress={closeEditModal}>
@@ -649,6 +926,17 @@ const styles = StyleSheet.create({
   resultHeader: {
     marginBottom: 4,
   },
+  resultTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  orphanText: {
+    fontSize: 13,
+    color: '#9ca3af',
+    textDecorationLine: 'line-through',
+  },
   pillActiveBlue: {
     backgroundColor: '#2563eb',
     borderColor: '#2563eb',
@@ -688,6 +976,42 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     color: '#4b5563',
+  },
+  unresolvedStoreHint: {
+    fontSize: 11,
+    color: '#9ca3af',
+    fontWeight: '600',
+  },
+  inlineOtherEditor: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  otherQtyInputInline: {
+    flex: 1,
+    fontSize: 13,
+    color: '#111827',
+    height: 32,
+  },
+  otherCloseButton: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e5e7eb',
+  },
+  otherCloseText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#374151',
   },
   otherQtyPopover: {
     marginTop: 6,
@@ -852,6 +1176,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#111827',
+  },
+  storeMoreText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#374151',
   },
   actionBtn: {
     paddingVertical: 10,
