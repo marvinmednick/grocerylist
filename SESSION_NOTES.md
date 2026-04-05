@@ -157,6 +157,13 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Next**: Ready to ship. Run `/complete F85` when merging.
 
 ---
+### 2026-04-04 — F85 /complete
+- **Completed**: F85 shipped. Two commits (feat + chore workflow protocol). Issue #85 closed. PLAN.md → Done. Backlog triaged: #86 (inline edit quantity_parsed gap) and #87 (formatQuantity count=1 suppression) promoted to GitHub Issues. Architecture doc updated to reflect write-time normalization model (was stale). SESSION_NOTES at 189 lines but all entries < 90 days — no archive needed.
+- **Design decisions**: none
+- **Design review**: updated `vocabulary-and-quantity-architecture.md` — removed "display strings rendered from structure at display time" (stale pre-F85 language); replaced with accurate write-time normalization model.
+- **Next**: Fix #87 (formatQuantity count=1 suppression).
+
+---
 ### 2026-04-04 — F85 /review-impl (Review 2, Passed)
 - **Completed**: Review 2 passed. 407/407 tests. PLAN.md → In Review. GitHub issue labeled in-review.
 - **Findings**: Normalization correctly implemented via shared `normalizeQuantityText(raw, parsed)` helper in both SmartAddItem.tsx and items.tsx — returns `formatQuantity(parsed)` when parsed and non-empty, falls back to raw text otherwise. Empty-normalization guard (`normalized.length > 0 ? normalized : rawText`) handles count-only quantities like "1" that format to empty string. All four SmartAddItem add paths and all items.tsx write paths correctly normalize. Undo snapshot in items.tsx restores old TEXT values directly (not re-normalized) which is correct — those were already normalized at the time they were saved. Also introduced Needs Fixes workflow protocol: progress file `## Needs Fixes` section, AGENT.md protocol, WORKFLOW.md section.
