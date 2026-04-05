@@ -134,6 +134,15 @@ Omitting any category means those files will be missing from the implementation.
 
 When the user types `"approved"` (same-session path) or when `plans/F[N]-plan-approved.md` exists and `./implement F[N]` is run without `--plan` (new-session path), implement the spec following the approved plan. If resuming a paused session, check `plans/F[N]-progress.md` first — read the actual file contents of any completed files to confirm their state, then continue with remaining files. Maintain the progress log throughout.
 
+## Needs Fixes
+
+When `PLAN.md` shows a feature as `Needs Fixes`, read `plans/F[N]-progress.md` **before** reading the spec. The progress file will have a `## Needs Fixes` section at the bottom listing:
+- Exactly which files to change
+- What the change is, with code snippets
+- Which tests to add or update
+
+Apply only those changes. Do not re-read the full spec looking for other work — the Needs Fixes section is the complete and authoritative list of what to fix. Do not replan unless the section explicitly says replanning is required. When done, run `npm test` and report back as usual.
+
 ## Mid-Implementation Pause
 
 If you need to stop mid-implementation (context limit, model switch, or session break):

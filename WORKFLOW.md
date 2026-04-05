@@ -133,9 +133,21 @@ Idea → Backlog → [Designed] → Specced → In Progress → In Review → Do
 | Designed | Design doc written, decisions recorded; ready to spec | `docs/design/F[N]-[slug].md` created, PLAN.md updated |
 | Specced | Spec written, GitHub issue open, ready for implementor | spec file created, PLAN.md updated, issue created, `plans/F[N]-log.md` created |
 | In Progress | Implementor is implementing | (implementor working) |
-| Needs Fixes | Review ran, found blocking issues; implementor must act | PLAN.md updated, issue comment added, log file updated |
+| Needs Fixes | Review ran, found blocking issues; implementor must act | PLAN.md updated, log file updated, **`plans/F[N]-progress.md` updated with `## Needs Fixes` section** |
 | In Review | Review passed, ready to ship | PLAN.md updated, issue labeled, log file updated |
 | Done | Committed, GitHub issue closed | PLAN.md updated to Done, issue closed, log file updated |
+
+### Needs Fixes Flow
+
+When `/review-impl` finds blocking issues, Claude:
+1. Sets `PLAN.md` status to `Needs Fixes`
+2. Appends a `## Needs Fixes` block to `plans/F[N]-progress.md` listing exactly which files to change, what to change, and which tests to add — with code snippets where needed
+3. Updates `plans/F[N]-log.md` with the blocking finding
+
+The implementor reads `plans/F[N]-progress.md` first (not the full spec), applies only the listed changes, and re-runs tests. No replanning unless the Needs Fixes block says otherwise.
+
+**Targeted fix (1–3 files, no new patterns):** apply directly from the Needs Fixes block — no replan.
+**Scope expansion or new architectural pattern:** the Needs Fixes block will say "replan required."
 
 ---
 
