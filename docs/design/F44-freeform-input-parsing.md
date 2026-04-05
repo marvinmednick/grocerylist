@@ -79,7 +79,7 @@ A grocery item can be understood as:
   `32oz box` has both.
 - For weight-sold items (`1.5 lb chicken`), there is no discrete package — the quantitative size
   *is* the purchase unit.
-- Implied count (1) is the default when no count token is present; it need not be stored explicitly.
+- `count: null` means no count token was present in the input (e.g. `"16oz"`, `"can"`). `count: 1` means the user explicitly typed "1". These are semantically distinct — both are stored and displayed faithfully.
 
 **Model → vocabulary tables:** This structure explains why three separate lookup tables are needed:
 - Units table → recognizes quantitative size units (`oz`, `lb`, `gal`, etc.)
@@ -575,6 +575,7 @@ output is `{count: 2}` regardless of whether the user typed `2x chicken` or
 
 | ParsedInput fields | Stored / displayed |
 |--------------------|--------------------|
+| `{count: 1}` | `1` |
 | `{count: 2}` | `2` |
 | `{sizeQty: 1.5, sizeUnit: "lb"}` | `1.5lb` |
 | `{sizeDescriptive: "large"}` | `large` |
@@ -585,9 +586,7 @@ output is `{count: 2}` regardless of whether the user typed `2x chicken` or
 | `{count: 3, packageType: "12-pack"}` | `3 12-packs` |
 
 Rules:
-- Count is followed by a space, omitted when null or 1 (implied)
-- Exception: count of 1 is shown when a package type is present (`1 can`) to
-  distinguish "1 can of X" from just "X"
+- Count is shown when non-null (including 1), followed by a space; omitted only when `count: null`
 - Package type is **pluralized** when count > 1, using the aliases from the packages
   table (e.g., `can→cans`, `loaf→loaves`). The alias list is the pluralization source
   — no general-purpose inflection library needed
