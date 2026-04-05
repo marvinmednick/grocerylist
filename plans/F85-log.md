@@ -21,3 +21,7 @@
 - **Result:** Passed — no blocking issues
 - **Tests:** 407/407 passed
 - **Non-blocking:** none
+
+## 2026-04-04 — Shipped
+- **Commit:** `feat: F85 — structured quantity data conversion refs #85`
+- **Closed:** #85

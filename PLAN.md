@@ -15,7 +15,7 @@
 | F79 | Quantity Units System | Done | [specs/F79-quantity-units-system.md](specs/F79-quantity-units-system.md) · [design](docs/design/F79-quantity-units-system.md) | [#79](https://github.com/marvinmednick/grocerylist/issues/79) |
 | F7 | Settings Screen | Done | [specs/F7-settings.md](specs/F7-settings.md) · [design](docs/design/F7-settings.md) | [#9](https://github.com/marvinmednick/grocerylist/issues/9) |
 | F83 | Vocabulary Definition Flow | Backlog | — | [#83](https://github.com/marvinmednick/grocerylist/issues/83) |
-| F85 | Structured Quantity Data Conversion | In Review | [specs/F85-structured-quantity-conversion.md](specs/F85-structured-quantity-conversion.md) | [#85](https://github.com/marvinmednick/grocerylist/issues/85) |
+| F85 | Structured Quantity Data Conversion | Done | [specs/F85-structured-quantity-conversion.md](specs/F85-structured-quantity-conversion.md) | [#85](https://github.com/marvinmednick/grocerylist/issues/85) |
 | F80 | Enhanced Shopping Mode (Store Focus) | Backlog | — | [#80](https://github.com/marvinmednick/grocerylist/issues/80) |
 | F81 | Dark Mode Visual Implementation | Backlog | — | [#81](https://github.com/marvinmednick/grocerylist/issues/81) |
 | F82 | Trip Notes | Backlog | — | [#82](https://github.com/marvinmednick/grocerylist/issues/82) |

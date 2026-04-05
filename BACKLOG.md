@@ -37,7 +37,8 @@ _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assig
 - [x] explicit `plural` field on packages table + `formatQuantity` cleanup — bundled into F85 spec
 
 ### From F85
-- [ ] Inline list item quantity edits do not update `quantity_parsed` — `useUpdateListItem` skips structured write. F78 can re-parse text column as fallback. (deferred from F85)
+- [x] Inline list item quantity edits do not update `quantity_parsed` — promoted to #86
+- [x] `formatQuantity` suppresses count=1 with no package type — promoted to #87
 
 ### From Doc Audit (2026-03-23)
 - [ ] `UserAvatar.tsx:38` uses absolute-positioned overlay (same pattern as the pre-F22 WarningBadge). Risk: clipping by parent containers with `overflow: hidden`, Z-index conflicts with other overlays, and keyboard-open behavior may push it off-screen. Low urgency — address in a future UI polish pass.

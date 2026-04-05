@@ -77,8 +77,14 @@ Therefore:
 
 **Decision:** Quantity storage should be structured, not free-form text. The parser is
 the normalization layer for the data model — its structured output is what gets stored.
-Display strings are rendered from structure at display time (serialization), not stored
-as the source of truth.
+
+**Display model (settled in F85):** The `quantity` / `default_qty` / `alternate_qtys` TEXT
+columns are the authoritative display values — all UI rendering reads them directly. At
+write time, when `quantity_parsed` is non-null, the corresponding TEXT field is set to
+`formatQuantity(quantity_parsed)` (normalized form). When `quantity_parsed` is null
+(unparseable or one-off input), the TEXT field stores raw user text as-is. No
+display-side code reads `quantity_parsed` directly — normalization happens once at write
+time. This model is intentional and fixed; changes require a new spec.
 
 **Rationale:** The parser, vocabulary tables, and structured storage form a coherent
 system. The architectural decision drives the feature decisions, not the other way around:
@@ -97,9 +103,9 @@ system. The architectural decision drives the feature decisions, not the other w
 
 **What this means concretely:**
 
-- `list_items` will gain structured quantity fields (exact schema TBD under F79 — could
-  be additional columns or JSONB). The existing `quantity` TEXT column may be retained as
-  a display cache or removed.
+- `list_items.quantity_parsed` (JSONB, added in F79, populated in F85) stores structured
+  quantity. The `quantity` TEXT column is the display field — kept in sync at write time
+  via `formatQuantity(quantity_parsed)` when parsed, raw text otherwise.
 - `items.alternate_qtys` will follow the same pattern for consistency — structured entries
   rather than free-form strings. Exact migration is F79 scope.
 - The existing unused `list_items.unit_id` and `items.default_unit_id` columns (FK to
