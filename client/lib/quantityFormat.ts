@@ -31,7 +31,7 @@ export function formatQuantity(fields: QuantityFields): string {
   const sizeDescriptive = fields.sizeDescriptive ?? null;
 
   const showImpliedPackageCount = packageType && !hasExplicitCount && sizeQty === null && sizeDescriptive === null;
-  const showCount = packageType ? hasExplicitCount || showImpliedPackageCount : count !== null && count !== 1;
+  const showCount = packageType ? hasExplicitCount || showImpliedPackageCount : count !== null;
   const effectiveCount = packageType ? (count ?? 1) : count;
 
   if (showCount && effectiveCount !== null) {

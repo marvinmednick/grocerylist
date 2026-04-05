@@ -6,6 +6,10 @@ describe('formatQuantity', () => {
     expect(formatQuantity({ count: 2 })).toBe('2');
   });
 
+  it('formats count=1 with no package', () => {
+    expect(formatQuantity({ count: 1, packageType: null })).toBe('1');
+  });
+
   it('formats size only', () => {
     expect(formatQuantity({ sizeQty: 1.5, sizeUnit: 'lb' })).toBe('1.5lb');
   });
@@ -55,6 +59,17 @@ describe('parseQuantityText', () => {
   it('parses bare integer count', () => {
     expect(parseQuantityText('2', vocab)).toEqual({
       count: 2,
+      packageType: null,
+      packagePlural: null,
+      sizeQty: null,
+      sizeUnit: null,
+      sizeDescriptive: null,
+    });
+  });
+
+  it('parses bare count=1', () => {
+    expect(parseQuantityText('1', vocab)).toEqual({
+      count: 1,
       packageType: null,
       packagePlural: null,
       sizeQty: null,

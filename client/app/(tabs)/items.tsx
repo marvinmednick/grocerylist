@@ -28,8 +28,7 @@ function normalizeQuantityText(rawQuantity: string, parsed: ReturnType<typeof pa
   if (!parsed) {
     return rawQuantity;
   }
-  const normalized = formatQuantity(parsed);
-  return normalized.length > 0 ? normalized : rawQuantity;
+  return formatQuantity(parsed);
 }
 
 export default function ItemsScreen() {

@@ -83,8 +83,7 @@ function normalizeQuantityText(rawQuantity: string, parsed: QuantityParsed | nul
   if (!parsed) {
     return rawQuantity;
   }
-  const normalized = formatQuantity(parsed);
-  return normalized.length > 0 ? normalized : rawQuantity;
+  return formatQuantity(parsed);
 }
 
 export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }: SmartAddItemProps) {

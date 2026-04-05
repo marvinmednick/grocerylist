@@ -188,6 +188,13 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Next**: Implementor runs `./implement F85 --plan`, then `/review-plan F85`
 
 ---
+### 2026-04-04 — /resolve 87 — formatQuantity count=1 suppression
+- **Completed**: Applied fix to #87. Changed `showCount` no-package branch from `count !== null && count !== 1` to `count !== null`. Simplified `normalizeQuantityText` in SmartAddItem.tsx and items.tsx (removed empty-string guard, now returns `formatQuantity(parsed)` directly). Added two tests: `formatQuantity({ count: 1, packageType: null })` → `"1"` and `parseQuantityText('1', vocab)` → `{ count: 1, ... }`. 409/409 tests passing.
+- **Design decisions**: none — fix was agreed in prior session
+- **Design review**: not triggered — contained one-line bug fix, no broader pattern implications
+- **Next**: Commit and close #87.
+
+---
 ### 2026-04-01 — F44 design: unified quantity format, comparison rules
 - **Completed**: Collapsed separate serialization and display formats into single natural-language format. Defined equality comparison via structured field comparison. Defined partial matching via raw input prefix. Clarified `Nx` is input-only.
 - **Findings**: The initial design had a separate `Nx` serialization format for internal storage, which caused inconsistencies — `2x` leaked into display and broke partial matching (serialized `2x` doesn't prefix-match `2lb`). The root issue: trying to make the stored TEXT string self-describing was unnecessary because the parser can re-interpret any stored string. Collapsing to one natural-language format (same for storage and display) eliminated the inconsistencies. Equality comparison parses both sides to structured fields — more robust than string comparison since `"2 loaves"` and `"2 loaf"` compare as equal. Partial matching stays on raw text (user input vs. DB string) since it's a UI heuristic, not a semantic operation.
