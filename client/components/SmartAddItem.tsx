@@ -136,7 +136,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
   }, [query, vocab]);
 
   const prefixFallbackInterpretations: ParsedInput[] = useMemo(() => {
-    if (query.length < 2 || parseResult.interpretations.length > 0) {
+    if (query.length < 2) {
       return [];
     }
     // Use parser-extracted name tokens so that count/unit/@hint don't pollute the search.
@@ -164,7 +164,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
         storeHint: parseCandidate.storeHint,
         orphans: [],
       }));
-  }, [query, masterItemNames, parseResult.interpretations.length, parseCandidate]);
+  }, [query, masterItemNames, parseCandidate]);
 
   const hasStructuredRows = query.length >= 2 && (parseResult.interpretations.length > 0 || prefixFallbackInterpretations.length > 0);
 
@@ -459,9 +459,17 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     setTimeout(() => maybeTriggerWarningToast(warnings), 400);
   };
 
-  const rankedInterpretations = parseResult.interpretations.length > 0
-    ? parseResult.interpretations
-    : prefixFallbackInterpretations;
+  const parserMatchIds = new Set(
+    parseResult.interpretations
+      .map((i) => i.matchedItemId)
+      .filter((id): id is string => id != null)
+  );
+  const rankedInterpretations = [
+    ...parseResult.interpretations,
+    ...prefixFallbackInterpretations.filter(
+      (i) => i.matchedItemId == null || !parserMatchIds.has(i.matchedItemId)
+    ),
+  ];
 
   return (
     <View style={[styles.container, disabled && { opacity: 0.6 }]}> 

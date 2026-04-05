@@ -238,6 +238,7 @@ describe('SmartAddItem parser integration', () => {
 // Supabase query shape. If the interface changes, these objects will fail to compile.
 const DISCOVERY_MASTER_ITEM_REFS: MasterItemRef[] = [
   { id: 'milk', name: 'Milk', default_qty: '1 gal', alternate_qtys: ['2'] },
+  { id: 'chicken', name: 'Chicken', default_qty: '1 lb', alternate_qtys: [] },
   { id: 'chicken-breast', name: 'Chicken Breast', default_qty: '1 lb', alternate_qtys: ['2 lb'] },
   { id: 'chicken-broth', name: 'Chicken Broth', default_qty: '1 can', alternate_qtys: ['2 cans'] },
   { id: 'bone-broth', name: 'Organic Bone Broth', default_qty: '1 carton', alternate_qtys: [] },
@@ -333,12 +334,26 @@ describe('SmartAddItem prefix fallback discovery', () => {
   });
 
   it('parser exact match takes precedence and exact name shows via parser row', async () => {
-    // "milk" exact-matches "Milk" via bag-of-words; no fallback needed.
-    // Verifies the two paths produce the same visible result so a future refactor
-    // doesn't accidentally lose the item.
+    // "milk" exact-matches "Milk" via bag-of-words; prefix fallback also runs but deduplicates.
+    // Verifies the item appears exactly once (not duplicated).
     render(<SmartAddItem activeStoreId="store-1" />);
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
 
     expect(await screen.findByText('Milk')).toBeTruthy();
+    expect(screen.queryAllByText('Milk').length).toBe(1);
+  });
+
+  it('shows subset matches alongside exact match when parser finds exact bag-of-words match', async () => {
+    // "chicken" exact-matches "Chicken" via parser; subset matches ("Chicken Breast",
+    // "Chicken Broth") must also appear — not suppressed. Covers architecture principle #6:
+    // "Context sorts, never filters".
+    render(<SmartAddItem activeStoreId="store-1" />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'chicken');
+
+    expect(await screen.findByText('Chicken')).toBeTruthy();
+    expect(screen.getByText('Chicken Breast')).toBeTruthy();
+    expect(screen.getByText('Chicken Broth')).toBeTruthy();
+    // Exact match must not be duplicated
+    expect(screen.queryAllByText('Chicken').length).toBe(1);
   });
 });

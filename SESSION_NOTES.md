@@ -195,6 +195,13 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Next**: Commit and close #87.
 
 ---
+### 2026-04-04 — /resolve 88 — exact match suppresses subset/prefix results
+- **Completed**: Fixed #88. Removed `parseResult.interpretations.length > 0` guard from `prefixFallbackInterpretations` memo so prefix fallback always runs when `query.length >= 2`. Replaced either/or merge at line 462 with merge + deduplicate-by-matchedItemId, parser results ranked first. Added "Chicken" to `DISCOVERY_MASTER_ITEM_REFS` and new test: typing "chicken" (exact parser match) must also show "Chicken Breast" and "Chicken Broth" (subset matches). Updated "milk" test comment. 410/410 tests passing.
+- **Design decisions**: none — fix is a straightforward application of architecture principle #6 ("Context sorts, never filters")
+- **Design review**: not triggered — contained fix within SmartAddItem.tsx, no broader pattern implications
+- **Next**: Commit and close #88.
+
+---
 ### 2026-04-01 — F44 design: unified quantity format, comparison rules
 - **Completed**: Collapsed separate serialization and display formats into single natural-language format. Defined equality comparison via structured field comparison. Defined partial matching via raw input prefix. Clarified `Nx` is input-only.
 - **Findings**: The initial design had a separate `Nx` serialization format for internal storage, which caused inconsistencies — `2x` leaked into display and broke partial matching (serialized `2x` doesn't prefix-match `2lb`). The root issue: trying to make the stored TEXT string self-describing was unnecessary because the parser can re-interpret any stored string. Collapsing to one natural-language format (same for storage and display) eliminated the inconsistencies. Equality comparison parses both sides to structured fields — more robust than string comparison since `"2 loaves"` and `"2 loaf"` compare as equal. Partial matching stays on raw text (user input vs. DB string) since it's a UI heuristic, not a semantic operation.
