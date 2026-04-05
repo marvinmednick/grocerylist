@@ -1,6 +1,12 @@
 export interface VocabEntry {
   canonical: string;
   aliases: string[];
+  plural?: string;
+}
+
+export interface PackageEntry {
+  canonical: string;
+  plural: string;
 }
 
 export interface Vocabulary {
@@ -25,43 +31,43 @@ export const DEFAULT_VOCABULARY: Vocabulary = {
     { canonical: 'floz', aliases: [] },
   ],
   packages: [
-    { canonical: 'can', aliases: ['cans'] },
-    { canonical: 'bottle', aliases: ['bottles'] },
-    { canonical: 'jar', aliases: ['jars'] },
-    { canonical: 'box', aliases: ['boxes'] },
-    { canonical: 'bag', aliases: ['bags'] },
-    { canonical: 'carton', aliases: ['cartons'] },
-    { canonical: 'tub', aliases: ['tubs'] },
-    { canonical: 'container', aliases: ['containers'] },
-    { canonical: 'tube', aliases: ['tubes'] },
-    { canonical: 'pouch', aliases: ['pouches'] },
-    { canonical: 'sleeve', aliases: ['sleeves'] },
-    { canonical: 'roll', aliases: ['rolls'] },
-    { canonical: 'stick', aliases: ['sticks'] },
-    { canonical: 'bar', aliases: ['bars'] },
-    { canonical: 'block', aliases: ['blocks'] },
-    { canonical: 'loaf', aliases: ['loaves'] },
-    { canonical: 'sheet', aliases: ['sheets'] },
-    { canonical: 'pack', aliases: ['packs'] },
-    { canonical: 'package', aliases: ['packages', 'pkg'] },
-    { canonical: 'case', aliases: ['cases'] },
-    { canonical: 'flat', aliases: ['flats'] },
-    { canonical: 'tray', aliases: ['trays'] },
-    { canonical: 'rack', aliases: ['racks'] },
-    { canonical: 'dozen', aliases: [] },
-    { canonical: 'pair', aliases: ['pairs'] },
-    { canonical: 'bunch', aliases: ['bunches'] },
-    { canonical: 'head', aliases: ['heads'] },
-    { canonical: 'ear', aliases: ['ears'] },
-    { canonical: 'stalk', aliases: ['stalks'] },
-    { canonical: 'sprig', aliases: ['sprigs'] },
-    { canonical: 'clove', aliases: ['cloves'] },
-    { canonical: 'fillet', aliases: ['fillets'] },
-    { canonical: 'slice', aliases: ['slices'] },
-    { canonical: 'patty', aliases: ['patties'] },
-    { canonical: 'link', aliases: ['links'] },
-    { canonical: 'tablet', aliases: ['tablets'] },
-    { canonical: 'capsule', aliases: ['capsules'] },
+    { canonical: 'can', plural: 'cans', aliases: [] },
+    { canonical: 'bottle', plural: 'bottles', aliases: [] },
+    { canonical: 'jar', plural: 'jars', aliases: [] },
+    { canonical: 'box', plural: 'boxes', aliases: [] },
+    { canonical: 'bag', plural: 'bags', aliases: [] },
+    { canonical: 'carton', plural: 'cartons', aliases: [] },
+    { canonical: 'tub', plural: 'tubs', aliases: [] },
+    { canonical: 'container', plural: 'containers', aliases: [] },
+    { canonical: 'tube', plural: 'tubes', aliases: [] },
+    { canonical: 'pouch', plural: 'pouches', aliases: [] },
+    { canonical: 'sleeve', plural: 'sleeves', aliases: [] },
+    { canonical: 'roll', plural: 'rolls', aliases: [] },
+    { canonical: 'stick', plural: 'sticks', aliases: [] },
+    { canonical: 'bar', plural: 'bars', aliases: [] },
+    { canonical: 'block', plural: 'blocks', aliases: [] },
+    { canonical: 'loaf', plural: 'loaves', aliases: [] },
+    { canonical: 'sheet', plural: 'sheets', aliases: [] },
+    { canonical: 'pack', plural: 'packs', aliases: [] },
+    { canonical: 'package', plural: 'packages', aliases: ['pkg'] },
+    { canonical: 'case', plural: 'cases', aliases: [] },
+    { canonical: 'flat', plural: 'flats', aliases: [] },
+    { canonical: 'tray', plural: 'trays', aliases: [] },
+    { canonical: 'rack', plural: 'racks', aliases: [] },
+    { canonical: 'dozen', plural: 'dozens', aliases: [] },
+    { canonical: 'pair', plural: 'pairs', aliases: [] },
+    { canonical: 'bunch', plural: 'bunches', aliases: [] },
+    { canonical: 'head', plural: 'heads', aliases: [] },
+    { canonical: 'ear', plural: 'ears', aliases: [] },
+    { canonical: 'stalk', plural: 'stalks', aliases: [] },
+    { canonical: 'sprig', plural: 'sprigs', aliases: [] },
+    { canonical: 'clove', plural: 'cloves', aliases: [] },
+    { canonical: 'fillet', plural: 'fillets', aliases: [] },
+    { canonical: 'slice', plural: 'slices', aliases: [] },
+    { canonical: 'patty', plural: 'patties', aliases: [] },
+    { canonical: 'link', plural: 'links', aliases: [] },
+    { canonical: 'tablet', plural: 'tablets', aliases: [] },
+    { canonical: 'capsule', plural: 'capsules', aliases: [] },
   ],
   sizeDescriptors: [
     { canonical: 'large', aliases: ['lg'] },
@@ -86,6 +92,10 @@ function lookup(token: string, entries: VocabEntry[]): string | null {
       return entry.canonical;
     }
 
+    if (entry.plural && entry.plural.toLowerCase() === normalized) {
+      return entry.canonical;
+    }
+
     for (const alias of entry.aliases) {
       if (alias.toLowerCase() === normalized) {
         return entry.canonical;
@@ -104,10 +114,29 @@ export function lookupPackage(token: string, vocabulary: Vocabulary): string | n
   return lookup(token, vocabulary.packages);
 }
 
+export function lookupPackageEntry(token: string, vocabulary: Vocabulary): PackageEntry | null {
+  const normalized = token.toLowerCase();
+
+  for (const entry of vocabulary.packages) {
+    const plural = entry.plural ?? `${entry.canonical}s`;
+    const matches =
+      entry.canonical.toLowerCase() === normalized ||
+      plural.toLowerCase() === normalized ||
+      entry.aliases.some((alias) => alias.toLowerCase() === normalized);
+
+    if (matches) {
+      return { canonical: entry.canonical, plural };
+    }
+  }
+
+  return null;
+}
+
 export function lookupSizeDescriptor(token: string, vocabulary: Vocabulary): string | null {
   return lookup(token, vocabulary.sizeDescriptors);
 }
 
+/** @deprecated Use packagePlural field from QuantityFields instead */
 export function getPlural(canonical: string, vocabulary: Vocabulary): string {
   const normalized = canonical.toLowerCase();
   const allEntries = [...vocabulary.units, ...vocabulary.packages, ...vocabulary.sizeDescriptors];
@@ -117,6 +146,5 @@ export function getPlural(canonical: string, vocabulary: Vocabulary): string {
     return `${canonical}s`;
   }
 
-  const aliasPlural = match.aliases.find((alias) => alias.toLowerCase() !== normalized);
-  return aliasPlural ?? `${match.canonical}s`;
+  return match.plural ?? match.aliases.find((alias) => alias.toLowerCase() !== normalized) ?? `${match.canonical}s`;
 }

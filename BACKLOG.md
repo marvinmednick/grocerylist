@@ -31,11 +31,13 @@ See WORKFLOW.md §8 (Backlog Triage) for the full process.
 _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assigned preference → discarded, pill state provides sufficient feedback.)_
 
 ### From F79
-_(all items tracked in [#85](https://github.com/marvinmednick/grocerylist/issues/85) — Quantity Parse Write-Path & Structured Data)_
-- Tracked in #85: write-time population of `list_items.quantity_parsed`, `items.default_qty_parsed`, `items.alternate_qtys_parsed`
-- Tracked in #85: explicit `plural` field on packages table + `formatQuantity` cleanup (scope expanded via comment on #85)
 - Out of scope / resolved: backfill of existing rows (data wipe acceptable per #85); `quantityEquals` DEFAULT_VOCABULARY fixed pre-commit
 - [x] `SmartAddItem.tsx:161,473` — `quantityEquals` calls pass `DEFAULT_VOCABULARY` instead of `vocab`. Fixed. (found in F79 review)
+- [x] write-time population of `list_items.quantity_parsed`, `items.default_qty_parsed`, `items.alternate_qtys_parsed` — specced as F85
+- [x] explicit `plural` field on packages table + `formatQuantity` cleanup — bundled into F85 spec
+
+### From F85
+- [ ] Inline list item quantity edits do not update `quantity_parsed` — `useUpdateListItem` skips structured write. F78 can re-parse text column as fallback. (deferred from F85)
 
 ### From Doc Audit (2026-03-23)
 - [ ] `UserAvatar.tsx:38` uses absolute-positioned overlay (same pattern as the pre-F22 WarningBadge). Risk: clipping by parent containers with `overflow: hidden`, Z-index conflicts with other overlays, and keyboard-open behavior may push it off-screen. Low urgency — address in a future UI polish pass.

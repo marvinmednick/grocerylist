@@ -55,7 +55,10 @@ describe('vocabulary hooks', () => {
     const unitsEq = jest.fn().mockReturnValue({ order: unitsOrder });
     const unitsSelect = jest.fn().mockReturnValue({ eq: unitsEq });
 
-    const packagesOrder = jest.fn().mockResolvedValue({ data: [{ id: 'p1', canonical: 'can', aliases: ['cans'] }], error: null });
+    const packagesOrder = jest.fn().mockResolvedValue({
+      data: [{ id: 'p1', canonical: 'can', aliases: [], plural: 'cans' }],
+      error: null,
+    });
     const packagesEq = jest.fn().mockReturnValue({ order: packagesOrder });
     const packagesSelect = jest.fn().mockReturnValue({ eq: packagesEq });
 
@@ -77,7 +80,7 @@ describe('vocabulary hooks', () => {
     expect(mockFrom).toHaveBeenCalledWith('size_descriptors');
     expect(result).toEqual({
       units: [{ id: 'u1', canonical: 'cup', aliases: ['cups'] }],
-      packages: [{ id: 'p1', canonical: 'can', aliases: ['cans'] }],
+      packages: [{ id: 'p1', canonical: 'can', aliases: [], plural: 'cans' }],
       sizeDescriptors: [{ id: 's1', canonical: 'large', aliases: ['lg'] }],
     });
   });
@@ -114,7 +117,7 @@ describe('vocabulary hooks', () => {
     expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['vocabulary'] });
   });
 
-  it('inserts with household_id, canonical, aliases for packages', async () => {
+  it('inserts with household_id, canonical, aliases, plural for packages', async () => {
     mockUseHousehold.mockReturnValue({ householdId: 'hh-1' });
 
     const single = jest.fn().mockResolvedValue({ data: { id: 'p1' }, error: null });
@@ -123,9 +126,9 @@ describe('vocabulary hooks', () => {
     mockFrom.mockReturnValue({ insert });
 
     const mutation = useCreateVocabularyEntry('packages');
-    await mutation.mutateAsync({ canonical: 'can', aliases: ['cans'] });
+    await mutation.mutateAsync({ canonical: 'can', aliases: [], plural: 'cans' });
 
-    expect(insert).toHaveBeenCalledWith({ household_id: 'hh-1', canonical: 'can', aliases: ['cans'] });
+    expect(insert).toHaveBeenCalledWith({ household_id: 'hh-1', canonical: 'can', aliases: [], plural: 'cans' });
   });
 
   it('inserts with household_id, canonical, aliases for size_descriptors', async () => {
@@ -167,6 +170,24 @@ describe('vocabulary hooks', () => {
     expect(eqId).toHaveBeenCalledWith('id', 'u1');
     expect(eqHousehold).toHaveBeenCalledWith('household_id', 'hh-1');
     expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['vocabulary'] });
+  });
+
+  it('updates canonical, aliases, plural for packages', async () => {
+    mockUseHousehold.mockReturnValue({ householdId: 'hh-1' });
+
+    const single = jest.fn().mockResolvedValue({ data: { id: 'p1' }, error: null });
+    const select = jest.fn().mockReturnValue({ single });
+    const eqHousehold = jest.fn().mockReturnValue({ select });
+    const eqId = jest.fn().mockReturnValue({ eq: eqHousehold });
+    const update = jest.fn().mockReturnValue({ eq: eqId });
+    mockFrom.mockReturnValue({ update });
+
+    const mutation = useUpdateVocabularyEntry('packages');
+    await mutation.mutateAsync({ id: 'p1', canonical: 'can', aliases: [], plural: 'cans' });
+
+    expect(update).toHaveBeenCalledWith({ canonical: 'can', aliases: [], plural: 'cans' });
+    expect(eqId).toHaveBeenCalledWith('id', 'p1');
+    expect(eqHousehold).toHaveBeenCalledWith('household_id', 'hh-1');
   });
 
   it('useUpdateVocabularyEntry throws when householdId is null', async () => {
@@ -251,6 +272,7 @@ describe('vocabulary hooks', () => {
         household_id: 'hh-1',
         canonical: entry.canonical,
         aliases: entry.aliases,
+        plural: entry.plural ?? `${entry.canonical}s`,
       }))
     );
   });

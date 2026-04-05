@@ -9,6 +9,7 @@ export interface VocabRow {
   id: string;
   canonical: string;
   aliases: string[];
+  plural?: string;
 }
 
 export interface VocabularyData {
@@ -33,7 +34,7 @@ export const useVocabulary = () => {
           .order('canonical'),
         supabase
           .from('packages')
-          .select('id, canonical, aliases')
+          .select('id, canonical, aliases, plural')
           .eq('household_id', householdId)
           .order('canonical'),
         supabase
@@ -63,12 +64,17 @@ export const useCreateVocabularyEntry = (type: VocabularyType) => {
   const { householdId } = useHousehold();
 
   return useMutation({
-    mutationFn: async ({ canonical, aliases }: { canonical: string; aliases: string[] }) => {
+    mutationFn: async ({ canonical, aliases, plural }: { canonical: string; aliases: string[]; plural?: string }) => {
       if (!householdId) throw new Error('No household ID found');
+
+      const payload: Record<string, unknown> = { household_id: householdId, canonical, aliases };
+      if (type === 'packages' && plural !== undefined) {
+        payload.plural = plural;
+      }
 
       const { data, error } = await supabase
         .from(type)
-        .insert({ household_id: householdId, canonical, aliases })
+        .insert(payload)
         .select()
         .single();
 
@@ -86,12 +92,27 @@ export const useUpdateVocabularyEntry = (type: VocabularyType) => {
   const { householdId } = useHousehold();
 
   return useMutation({
-    mutationFn: async ({ id, canonical, aliases }: { id: string; canonical: string; aliases: string[] }) => {
+    mutationFn: async ({
+      id,
+      canonical,
+      aliases,
+      plural,
+    }: {
+      id: string;
+      canonical: string;
+      aliases: string[];
+      plural?: string;
+    }) => {
       if (!householdId) throw new Error('No household ID found');
+
+      const payload: Record<string, unknown> = { canonical, aliases };
+      if (type === 'packages' && plural !== undefined) {
+        payload.plural = plural;
+      }
 
       const { data, error } = await supabase
         .from(type)
-        .update({ canonical, aliases })
+        .update(payload)
         .eq('id', id)
         .eq('household_id', householdId)
         .select()
@@ -152,6 +173,7 @@ export const useResetVocabularyToDefaults = (type: VocabularyType) => {
           household_id: householdId,
           canonical: entry.canonical,
           aliases: entry.aliases,
+          ...(type === 'packages' ? { plural: entry.plural ?? `${entry.canonical}s` } : {}),
         })));
 
       if (insertError) throw insertError;

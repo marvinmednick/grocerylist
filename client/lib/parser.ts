@@ -1,4 +1,4 @@
-import { lookupPackage, lookupSizeDescriptor, lookupUnit, type Vocabulary } from '@/lib/vocabulary';
+import { lookupPackageEntry, lookupSizeDescriptor, lookupUnit, type PackageEntry, type Vocabulary } from '@/lib/vocabulary';
 
 export interface Token {
   raw: string;
@@ -26,9 +26,15 @@ export interface ClassifiedToken {
 
 export type GroupedToken = ClassifiedToken;
 
+interface PackageValue {
+  canonical: string;
+  plural: string | null;
+}
+
 export interface CandidateFields {
   count: number | null;
   packageType: string | null;
+  packagePlural: string | null;
   sizeQty: number | null;
   sizeUnit: string | null;
   sizeDescriptive: string | null;
@@ -42,6 +48,7 @@ export interface ParsedInput {
   matchedItemId: string | null;
   count: number | null;
   packageType: string | null;
+  packagePlural: string | null;
   sizeDescriptive: string | null;
   sizeQty: number | null;
   sizeUnit: string | null;
@@ -179,16 +186,16 @@ export function classifyTokens(tokens: Token[], vocabulary: Vocabulary): Classif
       return {
         type: 'PACKAGE',
         raw,
-        value: raw.toLowerCase(),
+        value: { canonical: raw.toLowerCase(), plural: null } satisfies PackageValue,
       };
     }
 
-    const packageType = lookupPackage(raw, vocabulary);
-    if (packageType) {
+    const packageEntry: PackageEntry | null = lookupPackageEntry(raw, vocabulary);
+    if (packageEntry) {
       return {
         type: 'PACKAGE',
         raw,
-        value: packageType,
+        value: { canonical: packageEntry.canonical, plural: packageEntry.plural } satisfies PackageValue,
       };
     }
 
@@ -260,7 +267,8 @@ function pass3b(tokens: GroupedToken[]): GroupedToken[] {
         value: {
           qty: value.qty,
           unit: value.unit,
-          packageType: right.value as string,
+          packageType: (right.value as PackageValue).canonical,
+          packagePlural: (right.value as PackageValue).plural,
         },
       };
       return [...tokens.slice(0, i), merged, ...tokens.slice(i + 2)];
@@ -304,7 +312,7 @@ function pass3d(tokens: GroupedToken[]): GroupedToken[] {
       next[i] = {
         type: 'PACKAGE',
         raw: token.raw,
-        value: token.raw.toLowerCase(),
+        value: { canonical: token.raw.toLowerCase(), plural: null } satisfies PackageValue,
       };
       return next;
     }
@@ -348,6 +356,7 @@ export function assembleCandidate(tokens: GroupedToken[]): CandidateFields {
   const candidate: CandidateFields = {
     count: null,
     packageType: null,
+    packagePlural: null,
     sizeQty: null,
     sizeUnit: null,
     sizeDescriptive: null,
@@ -386,15 +395,18 @@ export function assembleCandidate(tokens: GroupedToken[]): CandidateFields {
     }
 
     if (token.type === 'SIZED_PACKAGE') {
-      const value = token.value as { qty: number; unit: string; packageType: string };
+      const value = token.value as { qty: number; unit: string; packageType: string; packagePlural: string | null };
       candidate.sizeQty = value.qty;
       candidate.sizeUnit = value.unit;
       candidate.packageType = value.packageType;
+      candidate.packagePlural = value.packagePlural;
       return;
     }
 
     if (token.type === 'PACKAGE') {
-      candidate.packageType = String(token.value);
+      const value = token.value as PackageValue;
+      candidate.packageType = value.canonical;
+      candidate.packagePlural = value.plural;
       return;
     }
 
@@ -496,6 +508,7 @@ export function resolveNames(candidate: CandidateFields, masterItems: MasterItem
         matchedItemId: item.id,
         count: candidate.count,
         packageType: candidate.packageType,
+        packagePlural: candidate.packagePlural,
         sizeDescriptive,
         sizeQty: candidate.sizeQty,
         sizeUnit: candidate.sizeUnit,

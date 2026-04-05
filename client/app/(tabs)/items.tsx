@@ -3,9 +3,12 @@ import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, M
 import { Search, Tag, Store, Plus, X, ChevronDown } from 'lucide-react-native';
 import { useAllItems, useCreateMasterItem, useUpdateMasterItem, MasterItem, ItemStorePreference, SortOption } from '@/api/items';
 import { useMetadata } from '@/api/metadata';
+import { useVocabulary } from '@/api/vocabulary';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HeaderActions } from '@/components/HeaderActions';
 import { useUndo } from '@/api/undoContext';
+import { formatQuantity, parseQuantityText } from '@/lib/quantityFormat';
+import { DEFAULT_VOCABULARY } from '@/lib/vocabulary';
 
 type PreferenceStatus = 'neutral' | 'preferred' | 'avoided' | 'unavailable';
 
@@ -21,6 +24,14 @@ const STORE_FILTER_THRESHOLD = 6;
 const RECENT_DAYS = 7;
 const RECENT_MS = RECENT_DAYS * 24 * 60 * 60 * 1000;
 
+function normalizeQuantityText(rawQuantity: string, parsed: ReturnType<typeof parseQuantityText>): string {
+  if (!parsed) {
+    return rawQuantity;
+  }
+  const normalized = formatQuantity(parsed);
+  return normalized.length > 0 ? normalized : rawQuantity;
+}
+
 export default function ItemsScreen() {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
@@ -31,9 +42,11 @@ export default function ItemsScreen() {
 
   const { data: items, isLoading, error } = useAllItems(search, sort);
   const { data: metadata } = useMetadata();
+  const { data: vocabulary } = useVocabulary();
   const { mutateAsync: createItem } = useCreateMasterItem();
   const { mutateAsync: updateItem } = useUpdateMasterItem();
   const { pushAction } = useUndo();
+  const vocab = vocabulary ?? DEFAULT_VOCABULARY;
 
   const [name, setName] = useState('');
   const [shortName, setShortName] = useState('');
@@ -118,17 +131,31 @@ export default function ItemsScreen() {
 
   const handleSave = async () => {
     if (!name) return;
+    const altQtyArray = altQtys
+      .split(',')
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
+    const defaultQtyParsed = parseQuantityText(qty, vocab);
+    const altParsed = altQtyArray.length > 0 ? altQtyArray.map((value) => parseQuantityText(value, vocab)) : null;
+    const parsedPayload = {
+      default_qty: normalizeQuantityText(qty, defaultQtyParsed),
+      default_qty_parsed: defaultQtyParsed,
+      alternate_qtys:
+        altQtyArray.length > 0
+          ? altQtyArray.map((value, index) => {
+              const parsed = altParsed![index];
+              return normalizeQuantityText(value, parsed);
+            })
+          : [],
+      alternate_qtys_parsed: altParsed,
+    };
 
     const payload = {
       name,
       short_name: shortName || null,
-      default_qty: qty,
-      alternate_qtys: altQtys
-        .split(',')
-        .map((value) => value.trim())
-        .filter((value) => value.length > 0),
       default_category_id: categoryId || null,
       store_preferences: buildStorePreferencesPayload(),
+      ...parsedPayload,
     };
 
     if (editingItem) {
@@ -137,6 +164,11 @@ export default function ItemsScreen() {
         short_name: editingItem.short_name || null,
         default_qty: editingItem.default_qty || '',
         alternate_qtys: editingItem.alternate_qtys || [],
+        default_qty_parsed: parseQuantityText(editingItem.default_qty || '', vocab),
+        alternate_qtys_parsed:
+          (editingItem.alternate_qtys ?? []).length > 0
+            ? (editingItem.alternate_qtys ?? []).map((value) => parseQuantityText(value, vocab))
+            : null,
         default_category_id: editingItem.default_category_id || null,
         store_preferences: (editingItem.item_store_preferences || []).map((preference: ItemStorePreference) => ({
           store_id: preference.store_id,

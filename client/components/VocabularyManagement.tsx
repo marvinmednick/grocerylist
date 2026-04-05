@@ -45,6 +45,8 @@ export function VocabularyManagement({ type, onBack, onClose }: VocabularyManage
   const [dialogVisible, setDialogVisible] = useState(false);
   const [editingEntry, setEditingEntry] = useState<VocabRow | null>(null);
   const [canonicalInput, setCanonicalInput] = useState('');
+  const [pluralInput, setPluralInput] = useState('');
+  const [pluralEditedManually, setPluralEditedManually] = useState(false);
   const [aliases, setAliases] = useState<string[]>([]);
   const [newAliasInput, setNewAliasInput] = useState('');
   const [showNewAliasInput, setShowNewAliasInput] = useState(false);
@@ -61,6 +63,8 @@ export function VocabularyManagement({ type, onBack, onClose }: VocabularyManage
   const openAddDialog = () => {
     setEditingEntry(null);
     setCanonicalInput('');
+    setPluralInput('');
+    setPluralEditedManually(false);
     setAliases([]);
     setNewAliasInput('');
     setShowNewAliasInput(false);
@@ -71,6 +75,8 @@ export function VocabularyManagement({ type, onBack, onClose }: VocabularyManage
   const openEditDialog = (entry: VocabRow) => {
     setEditingEntry(entry);
     setCanonicalInput(entry.canonical);
+    setPluralInput(entry.plural ?? '');
+    setPluralEditedManually(false);
     setAliases([...entry.aliases]);
     setNewAliasInput('');
     setShowNewAliasInput(false);
@@ -82,6 +88,8 @@ export function VocabularyManagement({ type, onBack, onClose }: VocabularyManage
     setDialogVisible(false);
     setEditingEntry(null);
     setCanonicalInput('');
+    setPluralInput('');
+    setPluralEditedManually(false);
     setAliases([]);
     setNewAliasInput('');
     setShowNewAliasInput(false);
@@ -97,14 +105,38 @@ export function VocabularyManagement({ type, onBack, onClose }: VocabularyManage
     setShowNewAliasInput(false);
   };
 
+  const handleCanonicalChange = (value: string) => {
+    setCanonicalInput(value);
+    if (type === 'packages' && !pluralEditedManually) {
+      const trimmed = value.trim();
+      setPluralInput(trimmed ? `${trimmed}s` : '');
+    }
+  };
+
+  const handlePluralChange = (value: string) => {
+    setPluralEditedManually(true);
+    setPluralInput(value);
+  };
+
   const handleSave = async () => {
     const canonical = canonicalInput.trim();
+    const plural = pluralInput.trim();
     if (!canonical) return;
+    if (type === 'packages' && !plural) return;
 
     if (editingEntry) {
-      await updateEntry.mutateAsync({ id: editingEntry.id, canonical, aliases });
+      await updateEntry.mutateAsync({
+        id: editingEntry.id,
+        canonical,
+        aliases,
+        ...(type === 'packages' ? { plural } : {}),
+      });
     } else {
-      await createEntry.mutateAsync({ canonical, aliases });
+      await createEntry.mutateAsync({
+        canonical,
+        aliases,
+        ...(type === 'packages' ? { plural } : {}),
+      });
     }
 
     closeDialog();
@@ -116,7 +148,11 @@ export function VocabularyManagement({ type, onBack, onClose }: VocabularyManage
     closeDialog();
   };
 
-  const saveDisabled = canonicalInput.trim().length === 0 || createEntry.isPending || updateEntry.isPending;
+  const saveDisabled =
+    canonicalInput.trim().length === 0 ||
+    (type === 'packages' && pluralInput.trim().length === 0) ||
+    createEntry.isPending ||
+    updateEntry.isPending;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top || 20, paddingBottom: insets.bottom || 16 }]}> 
@@ -211,10 +247,24 @@ export function VocabularyManagement({ type, onBack, onClose }: VocabularyManage
               testID="vocabulary-canonical-input"
               style={styles.textInput}
               value={canonicalInput}
-              onChangeText={setCanonicalInput}
+              onChangeText={handleCanonicalChange}
               placeholder="e.g. bottle"
               autoCapitalize="none"
             />
+
+            {type === 'packages' ? (
+              <>
+                <Text style={styles.inputLabel}>Plural form</Text>
+                <TextInput
+                  testID="vocabulary-plural-input"
+                  style={styles.textInput}
+                  value={pluralInput}
+                  onChangeText={handlePluralChange}
+                  placeholder="e.g. cans"
+                  autoCapitalize="none"
+                />
+              </>
+            ) : null}
 
             <Text style={styles.inputLabel}>Aliases</Text>
             <View style={styles.aliasChipsWrap}>

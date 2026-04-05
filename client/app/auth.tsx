@@ -42,6 +42,7 @@ async function seedVocabularyForHousehold(householdId: string): Promise<void> {
       DEFAULT_VOCABULARY.packages.map((entry) => ({
         household_id: householdId,
         canonical: entry.canonical,
+        plural: entry.plural ?? `${entry.canonical}s`,
         aliases: entry.aliases,
       }))
     ),

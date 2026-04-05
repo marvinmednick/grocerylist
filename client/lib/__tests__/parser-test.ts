@@ -73,13 +73,13 @@ describe('classifyTokens', () => {
   it('classifies packages', () => {
     const token = classify('cans')[0];
     expect(token.type).toBe('PACKAGE');
-    expect(token.value).toBe('can');
+    expect(token.value).toEqual({ canonical: 'can', plural: 'cans' });
   });
 
   it('classifies N-pack pattern', () => {
     const token = classify('6-pack')[0];
     expect(token.type).toBe('PACKAGE');
-    expect(token.value).toBe('6-pack');
+    expect(token.value).toEqual({ canonical: '6-pack', plural: null });
   });
 
   it('classifies size descriptors', () => {
@@ -166,6 +166,24 @@ describe('assembleCandidate', () => {
     expect(candidate.count).toBe(2);
   });
 
+  it('includes packagePlural for "2 cans"', () => {
+    const candidate = assembleCandidate(groupTokens(classify('2 cans')));
+    expect(candidate.packageType).toBe('can');
+    expect(candidate.packagePlural).toBe('cans');
+  });
+
+  it('includes packagePlural for "2 8oz cans"', () => {
+    const candidate = assembleCandidate(groupTokens(classify('2 8oz cans')));
+    expect(candidate.packageType).toBe('can');
+    expect(candidate.packagePlural).toBe('cans');
+  });
+
+  it('sets packagePlural null for n-pack token', () => {
+    const candidate = assembleCandidate(groupTokens(classify('4-pack')));
+    expect(candidate.packageType).toBe('4-pack');
+    expect(candidate.packagePlural).toBeNull();
+  });
+
   it('extracts bare NUMBER as count when no package', () => {
     const candidate = assembleCandidate(groupTokens(classify('2 milk')));
     expect(candidate.count).toBe(2);
@@ -211,6 +229,7 @@ describe('resolveNames', () => {
       {
         count: null,
         packageType: null,
+        packagePlural: null,
         sizeQty: null,
         sizeUnit: null,
         sizeDescriptive: null,
@@ -228,6 +247,7 @@ describe('resolveNames', () => {
       {
         count: null,
         packageType: null,
+        packagePlural: null,
         sizeQty: null,
         sizeUnit: null,
         sizeDescriptive: null,
@@ -264,6 +284,16 @@ describe('resolveNames', () => {
   it('is case-insensitive', () => {
     const result = parseInput('milk', DEFAULT_VOCABULARY, masterItems);
     expect(result.interpretations[0].name).toBe('Milk');
+  });
+
+  it('propagates packagePlural to ParsedInput', () => {
+    const result = parseInput('2 cans chicken broth', DEFAULT_VOCABULARY, masterItems);
+    expect(result.interpretations[0]).toEqual(
+      expect.objectContaining({
+        packageType: 'can',
+        packagePlural: 'cans',
+      })
+    );
   });
 });
 

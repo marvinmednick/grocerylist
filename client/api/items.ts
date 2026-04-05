@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useHousehold } from '@/lib/household';
+import type { QuantityParsed } from '@/lib/quantityFormat';
 
 export interface ItemStorePreference {
   store_id: string;
@@ -243,6 +244,8 @@ export const useCreateMasterItem = () => {
       default_category_id?: string | null;
       default_qty?: string;
       alternate_qtys?: string[];
+      default_qty_parsed?: QuantityParsed | null;
+      alternate_qtys_parsed?: (QuantityParsed | null)[] | null;
       store_preferences?: StorePreferenceInput[];
     }) => {
       if (!householdId) throw new Error('No household ID found');
@@ -291,6 +294,8 @@ export const useUpdateMasterItem = () => {
       default_category_id?: string | null;
       default_qty?: string;
       alternate_qtys?: string[];
+      default_qty_parsed?: QuantityParsed | null;
+      alternate_qtys_parsed?: (QuantityParsed | null)[] | null;
       store_preferences?: StorePreferenceInput[];
     }) => {
       if (!householdId) throw new Error('No household ID found');

@@ -5,10 +5,12 @@ import ItemsScreen from '../items';
 import { useAllItems, useCreateMasterItem, useUpdateMasterItem } from '@/api/items';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
+import { useVocabulary } from '@/api/vocabulary';
 
 jest.mock('@/api/items');
 jest.mock('@/api/metadata');
 jest.mock('@/api/undoContext');
+jest.mock('@/api/vocabulary');
 jest.mock('@/components/UserAvatar', () => ({
   UserAvatar: () => {
     const { Text } = require('react-native');
@@ -21,6 +23,7 @@ const mockUseCreateMasterItem = useCreateMasterItem as jest.Mock;
 const mockUseUpdateMasterItem = useUpdateMasterItem as jest.Mock;
 const mockUseMetadata = useMetadata as jest.Mock;
 const mockUseUndo = useUndo as jest.Mock;
+const mockUseVocabulary = useVocabulary as jest.Mock;
 
 const safeAreaMetrics = {
   insets: { top: 44, bottom: 34, left: 0, right: 0 },
@@ -55,6 +58,7 @@ describe('ItemsScreen store preference filter', () => {
       undoStack: [],
       redoStack: [],
     });
+    mockUseVocabulary.mockReturnValue({ data: undefined });
   });
 
   afterEach(() => {

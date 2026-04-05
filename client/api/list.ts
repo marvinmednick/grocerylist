@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useHousehold } from '@/lib/household';
 import type { Warning } from '@/api/items';
+import type { QuantityParsed } from '@/lib/quantityFormat';
 
 export interface ListItem {
   id: string;
@@ -128,6 +129,7 @@ export const useTogglePurchased = () => {
 export interface ListItemInsert {
   name: string;
   quantity?: string;
+  quantity_parsed?: QuantityParsed | null;
   item_id?: string | null;
   store_id?: string | null;
   category_id?: string | null;

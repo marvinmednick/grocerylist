@@ -30,7 +30,7 @@ import { WarningCallout } from '@/components/WarningCallout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { parseInput, tokenize, classifyTokens, groupTokens, assembleCandidate, type ParsedInput } from '@/lib/parser';
 import { DEFAULT_VOCABULARY } from '@/lib/vocabulary';
-import { formatQuantity, isPartialMatch, quantityEquals } from '@/lib/quantityFormat';
+import { formatQuantity, isPartialMatch, parseQuantityText, quantityEquals, type QuantityParsed } from '@/lib/quantityFormat';
 
 interface SmartAddItemProps {
   disabled?: boolean;
@@ -61,6 +61,30 @@ function getRowKey(interpretation: ParsedInput, index: number): string {
 
 function dedupe(values: string[]): string[] {
   return [...new Set(values.filter((value) => value.trim().length > 0))];
+}
+
+function extractQuantityParsed(interpretation: ParsedInput): QuantityParsed | null {
+  const { count, packageType, packagePlural, sizeQty, sizeUnit, sizeDescriptive } = interpretation;
+  if (count === null && packageType === null && sizeQty === null && sizeUnit === null && sizeDescriptive === null) {
+    return null;
+  }
+
+  return {
+    count,
+    packageType,
+    packagePlural: packagePlural ?? null,
+    sizeQty,
+    sizeUnit,
+    sizeDescriptive,
+  };
+}
+
+function normalizeQuantityText(rawQuantity: string, parsed: QuantityParsed | null): string {
+  if (!parsed) {
+    return rawQuantity;
+  }
+  const normalized = formatQuantity(parsed);
+  return normalized.length > 0 ? normalized : rawQuantity;
 }
 
 export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }: SmartAddItemProps) {
@@ -134,6 +158,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
         matchedItemId: item.id,
         count: parseCandidate.count,
         packageType: parseCandidate.packageType,
+        packagePlural: parseCandidate.packagePlural,
         sizeDescriptive: parseCandidate.sizeDescriptive,
         sizeQty: parseCandidate.sizeQty,
         sizeUnit: parseCandidate.sizeUnit,
@@ -151,6 +176,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     const parsedQty = formatQuantity({
       count: interpretation.count,
       packageType: interpretation.packageType,
+      packagePlural: interpretation.packagePlural,
       sizeQty: interpretation.sizeQty,
       sizeUnit: interpretation.sizeUnit,
       sizeDescriptive: interpretation.sizeDescriptive,
@@ -240,10 +266,13 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     );
 
     const forwardAction = async () => {
+      const quantityParsed = extractQuantityParsed(interpretation);
+      const normalizedQty = normalizeQuantityText(selection.qty, quantityParsed);
       return await addItem({
         name: item.name,
         item_id: item.id,
-        quantity: selection.qty,
+        quantity: normalizedQty,
+        quantity_parsed: quantityParsed,
         store_id: selection.storeId,
         category_id: item.default_category_id,
         warnings,
@@ -271,10 +300,13 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
   const onOneOffAdd = async () => {
     const name = parseResult.rawInput;
     const forwardAction = async () => {
+      const quantityParsed = parseQuantityText(oneOffQty, vocab);
+      const normalizedQty = normalizeQuantityText(oneOffQty, quantityParsed);
       return await addItem({
         name: parseResult.rawInput,
         item_id: null,
-        quantity: oneOffQty,
+        quantity: normalizedQty,
+        quantity_parsed: quantityParsed,
         store_id: activeStoreId || null,
         category_id: null,
         warnings: [],
@@ -335,10 +367,13 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
   const onOneOffEditAdd = async () => {
     const itemName = selectedItem?.name || query;
     const forwardAction = async () => {
+      const quantityParsed = parseQuantityText(editQty, vocab);
+      const normalizedQty = normalizeQuantityText(editQty, quantityParsed);
       return await addItem({
         name: itemName,
         item_id: null,
-        quantity: editQty,
+        quantity: normalizedQty,
+        quantity_parsed: quantityParsed,
         store_id: editStoreId || null,
         category_id: editCategoryId || null,
         warnings: [],
@@ -369,9 +404,11 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
 
     if (!itemId) {
       try {
+        const defaultQtyParsed = parseQuantityText(editQty, vocab);
         const newItem = await createMasterItem({
           name: itemName,
-          default_qty: editQty,
+          default_qty: normalizeQuantityText(editQty, defaultQtyParsed),
+          default_qty_parsed: defaultQtyParsed,
           default_category_id: editCategoryId || null,
         });
         itemId = newItem.id;
@@ -392,10 +429,13 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
       : [];
 
     const forwardAction = async () => {
+      const quantityParsed = parseQuantityText(editQty, vocab);
+      const normalizedQty = normalizeQuantityText(editQty, quantityParsed);
       return await addItem({
         name: itemName,
         item_id: itemId || null,
-        quantity: editQty,
+        quantity: normalizedQty,
+        quantity_parsed: quantityParsed,
         store_id: editStoreId || null,
         category_id: editCategoryId || null,
         warnings,
@@ -462,6 +502,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
             const parsedQty = formatQuantity({
               count: interpretation.count,
               packageType: interpretation.packageType,
+              packagePlural: interpretation.packagePlural,
               sizeQty: interpretation.sizeQty,
               sizeUnit: interpretation.sizeUnit,
               sizeDescriptive: interpretation.sizeDescriptive,

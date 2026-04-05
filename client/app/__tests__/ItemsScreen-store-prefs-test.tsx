@@ -5,11 +5,13 @@ import ItemsScreen from '../(tabs)/items';
 import { useAllItems, useCreateMasterItem, useUpdateMasterItem } from '@/api/items';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
+import { useVocabulary } from '@/api/vocabulary';
 import { useHousehold } from '@/lib/household';
 
 jest.mock('@/api/items');
 jest.mock('@/api/metadata');
 jest.mock('@/api/undoContext');
+jest.mock('@/api/vocabulary');
 jest.mock('@/lib/household', () => ({
   useHousehold: jest.fn(),
 }));
@@ -37,6 +39,7 @@ const mockUseCreateMasterItem = useCreateMasterItem as jest.Mock;
 const mockUseUpdateMasterItem = useUpdateMasterItem as jest.Mock;
 const mockUseMetadata = useMetadata as jest.Mock;
 const mockUseUndo = useUndo as jest.Mock;
+const mockUseVocabulary = useVocabulary as jest.Mock;
 const mockUseHousehold = useHousehold as jest.Mock;
 
 const safeAreaMetrics = {
@@ -92,6 +95,7 @@ describe('ItemsScreen store preferences redesign', () => {
       undoStack: [],
       redoStack: [],
     });
+    mockUseVocabulary.mockReturnValue({ data: undefined });
     mockUseHousehold.mockReturnValue({ householdId: 'h1', isLoading: false });
   });
 

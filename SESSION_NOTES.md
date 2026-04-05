@@ -149,6 +149,38 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Next**: Merge when ready; next in chain is F77 (fuzzy matching) or F78 (duplicate detection)
 
 ---
+### 2026-04-04 — F85 /review-impl
+- **Completed**: Full review of F85 implementation (packages plural column, parser pipeline, QuantityParsed, write-path population, VocabularyManagement UI). 401/401 tests pass. Migration 20250101000015 applied after review.
+- **Findings**: One blocking finding resolved during session — migration was pending. Implementation was otherwise clean: all four SmartAddItem add paths populate `quantity_parsed`, items.tsx undo snapshot captures parsed pre-edit values, `formatQuantity` no longer depends on `DEFAULT_VOCABULARY`, `VocabularyManagement` plural input correctly auto-fills and respects manual override. No pattern violations.
+- **Design decisions**: none
+- **Design review**: not triggered — no new patterns introduced
+- **Next**: Ready to ship. Run `/complete F85` when merging.
+
+---
+### 2026-04-04 — F85 /review-impl (Review 2, Passed)
+- **Completed**: Review 2 passed. 407/407 tests. PLAN.md → In Review. GitHub issue labeled in-review.
+- **Findings**: Normalization correctly implemented via shared `normalizeQuantityText(raw, parsed)` helper in both SmartAddItem.tsx and items.tsx — returns `formatQuantity(parsed)` when parsed and non-empty, falls back to raw text otherwise. Empty-normalization guard (`normalized.length > 0 ? normalized : rawText`) handles count-only quantities like "1" that format to empty string. All four SmartAddItem add paths and all items.tsx write paths correctly normalize. Undo snapshot in items.tsx restores old TEXT values directly (not re-normalized) which is correct — those were already normalized at the time they were saved. Also introduced Needs Fixes workflow protocol: progress file `## Needs Fixes` section, AGENT.md protocol, WORKFLOW.md section.
+- **Design decisions**: none beyond prior session
+- **Design review**: not triggered
+- **Next**: Run `/complete F85` to ship.
+
+---
+### 2026-04-04 — F85 Needs Fixes (post-review design clarification)
+- **Completed**: Reopened F85 as Needs Fixes. Updated spec with Display Model section and write-time normalization requirement. Updated PLAN.md status and F85 log.
+- **Findings**: After review passed, discussion clarified that write paths were not normalizing `quantity` TEXT to `formatQuantity(quantity_parsed)` — they were storing raw user input. This means "2 Cans" and "2 cans" could display differently despite identical structured data. The fix: when `quantity_parsed` is non-null, set `quantity = formatQuantity(quantity_parsed)` at write time. One-off items (null parsed) still store raw text as-is. Applies to all three write paths: SmartAddItem `quantity`, Items screen `default_qty`, and each `alternate_qtys[]` element.
+- **Design decisions**: `quantity` TEXT is the display field (no display-side code changes needed), kept in sync with structured data at write time. This model is fixed — changes require a new spec.
+- **Design review**: not triggered
+- **Next**: Implementor applies normalization fix; re-run tests; re-review.
+
+---
+### 2026-04-04 — F85 /spec
+- **Completed**: Renamed GitHub issue #85 to "F85: Structured Quantity Data Conversion"; registered F85 in PLAN.md; wrote `specs/F85-structured-quantity-conversion.md`.
+- **Findings**: Issue #85 had a scope expansion comment added during F79 review: explicit `plural TEXT NOT NULL` column on the `packages` table must be bundled with F85 because `formatQuantity` still depends on `getPlural()`/`DEFAULT_VOCABULARY` — the vocabulary-injection problem can't be closed without it. The plural column change cascades through: `VocabEntry` interface, `DEFAULT_VOCABULARY.packages` (move plurals out of aliases), `lookupPackageEntry()` (new), parser token value shape (`PackageValue { canonical, plural }`), `CandidateFields.packagePlural`, `ParsedInput.packagePlural`, `QuantityFields.packagePlural`, and `VocabularyManagement` UI (new "Plural form" input for packages). This is a broader change than the issue description implied.
+- **Design decisions**: `QuantityParsed` type defined as `Required<QuantityFields>` with `packagePlural: string | null` included. `getPlural` deprecated (not deleted). n-pack tokens get `packagePlural: null` (no vocabulary entry). `alternate_qtys_parsed` is index-aligned with `alternate_qtys` (null element for unparseable entries). Undo snapshot in items.tsx captures parsed forms of old values so JSONB columns are correctly restored on undo.
+- **Design review**: not triggered — all patterns follow established conventions
+- **Next**: Implementor runs `./implement F85 --plan`, then `/review-plan F85`
+
+---
 ### 2026-04-01 — F44 design: unified quantity format, comparison rules
 - **Completed**: Collapsed separate serialization and display formats into single natural-language format. Defined equality comparison via structured field comparison. Defined partial matching via raw input prefix. Clarified `Nx` is input-only.
 - **Findings**: The initial design had a separate `Nx` serialization format for internal storage, which caused inconsistencies — `2x` leaked into display and broke partial matching (serialized `2x` doesn't prefix-match `2lb`). The root issue: trying to make the stored TEXT string self-describing was unnecessary because the parser can re-interpret any stored string. Collapsing to one natural-language format (same for storage and display) eliminated the inconsistencies. Equality comparison parses both sides to structured fields — more robust than string comparison since `"2 loaves"` and `"2 loaf"` compare as equal. Partial matching stays on raw text (user input vs. DB string) since it's a UI heuristic, not a semantic operation.

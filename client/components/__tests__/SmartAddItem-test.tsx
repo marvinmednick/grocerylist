@@ -125,6 +125,79 @@ describe('SmartAddItem', () => {
     });
   });
 
+  it('passes quantity_parsed with packagePlural on quick-add', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), '2 cans milk');
+    fireEvent.press(await screen.findByText('Milk'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          quantity_parsed: {
+            count: 2,
+            packageType: 'can',
+            packagePlural: 'cans',
+            sizeQty: null,
+            sizeUnit: null,
+            sizeDescriptive: null,
+          },
+        })
+      );
+    });
+  });
+
+  it('normalizes quantity to formatQuantity output on quick-add when parsed', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), '2 Cans milk');
+    fireEvent.press(await screen.findByText('Milk'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          quantity: '2 cans',
+          quantity_parsed: expect.objectContaining({
+            count: 2,
+            packageType: 'can',
+            packagePlural: 'cans',
+          }),
+        })
+      );
+    });
+  });
+
+  it('passes null quantity_parsed when interpretation has no quantity fields', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
+    fireEvent.press(await screen.findByText('Milk'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          quantity_parsed: null,
+        })
+      );
+    });
+  });
+
+  it('passes raw quantity text when quantity_parsed is null', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
+    fireEvent.press(await screen.findByText('Milk'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          quantity: '1 gal',
+          quantity_parsed: null,
+        })
+      );
+    });
+  });
+
   it('uses activeStoreId for one-off add store_id', async () => {
     setItems([]);
     render(<SmartAddItem activeStoreId="store-1" />);
@@ -136,6 +209,32 @@ describe('SmartAddItem', () => {
       expect(addItem).toHaveBeenCalledWith(
         expect.objectContaining({
           store_id: 'store-1',
+        })
+      );
+    });
+  });
+
+  it('passes quantity_parsed on one-off add when qty is parseable', async () => {
+    setItems([]);
+    render(<SmartAddItem activeStoreId="store-1" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
+    fireEvent.press(screen.getByTestId('one-off-qty-chip-other'));
+    fireEvent.changeText(screen.getByPlaceholderText('e.g. 3 lbs'), '2 cans');
+    fireEvent(screen.getByPlaceholderText('e.g. 3 lbs'), 'submitEditing');
+    fireEvent.press(screen.getByText('Add "Dragonfruit" (One-time)'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          quantity_parsed: {
+            count: 2,
+            packageType: 'can',
+            packagePlural: 'cans',
+            sizeQty: null,
+            sizeUnit: null,
+            sizeDescriptive: null,
+          },
         })
       );
     });
@@ -678,7 +777,7 @@ describe('SmartAddItem', () => {
     await waitFor(() => {
       expect(addItem).toHaveBeenCalledWith(
         expect.objectContaining({
-          quantity: '3 lbs',
+          quantity: '3lb',
         })
       );
     });

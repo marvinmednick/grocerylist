@@ -1,6 +1,7 @@
 import {
   DEFAULT_VOCABULARY,
   getPlural,
+  lookupPackageEntry,
   lookupPackage,
   lookupSizeDescriptor,
   lookupUnit,
@@ -26,6 +27,15 @@ describe('vocabulary helpers', () => {
   it('lookupPackage finds canonical and aliases', () => {
     expect(lookupPackage('can', DEFAULT_VOCABULARY)).toBe('can');
     expect(lookupPackage('cans', DEFAULT_VOCABULARY)).toBe('can');
+  });
+
+  it('lookupPackageEntry returns canonical+plural for canonical and plural tokens', () => {
+    expect(lookupPackageEntry('can', DEFAULT_VOCABULARY)).toEqual({ canonical: 'can', plural: 'cans' });
+    expect(lookupPackageEntry('cans', DEFAULT_VOCABULARY)).toEqual({ canonical: 'can', plural: 'cans' });
+  });
+
+  it('lookupPackageEntry handles irregular plural', () => {
+    expect(lookupPackageEntry('loaves', DEFAULT_VOCABULARY)).toEqual({ canonical: 'loaf', plural: 'loaves' });
   });
 
   it('lookupSizeDescriptor works', () => {

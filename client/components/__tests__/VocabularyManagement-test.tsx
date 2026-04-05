@@ -38,6 +38,9 @@ describe('VocabularyManagement', () => {
     { id: 'u-2', canonical: 'box', aliases: ['boxes'] },
     { id: 'u-3', canonical: 'jar', aliases: ['jars'] },
   ];
+  const packages = [
+    { id: 'p-1', canonical: 'can', aliases: [], plural: 'cans' },
+  ];
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -50,7 +53,7 @@ describe('VocabularyManagement', () => {
     mockUseVocabulary.mockReturnValue({
       data: {
         units,
-        packages: [],
+        packages,
         sizeDescriptors: [],
       },
       isLoading: false,
@@ -62,8 +65,8 @@ describe('VocabularyManagement', () => {
     mockUseResetVocabularyToDefaults.mockReturnValue({ mutateAsync: resetMutateAsync });
   });
 
-  const renderComponent = () =>
-    render(<VocabularyManagement type="units" onBack={jest.fn()} onClose={jest.fn()} />);
+  const renderComponent = (type: 'units' | 'packages' | 'size_descriptors' = 'units') =>
+    render(<VocabularyManagement type={type} onBack={jest.fn()} onClose={jest.fn()} />);
 
   it('renders all vocabulary entries in the list', () => {
     renderComponent();
@@ -211,5 +214,52 @@ describe('VocabularyManagement', () => {
     fireEvent.press(screen.getByText('+ Add Entry'));
 
     expect(screen.getByTestId('vocabulary-save-button').props.accessibilityState?.disabled).toBe(true);
+  });
+
+  it('shows plural input when type is packages', () => {
+    renderComponent('packages');
+
+    fireEvent.press(screen.getByText('+ Add Entry'));
+    expect(screen.getByTestId('vocabulary-plural-input')).toBeTruthy();
+  });
+
+  it('hides plural input when type is units', () => {
+    renderComponent('units');
+
+    fireEvent.press(screen.getByText('+ Add Entry'));
+    expect(screen.queryByTestId('vocabulary-plural-input')).toBeNull();
+  });
+
+  it('pre-fills plural input with canonical + s on add', () => {
+    renderComponent('packages');
+
+    fireEvent.press(screen.getByText('+ Add Entry'));
+    fireEvent.changeText(screen.getByTestId('vocabulary-canonical-input'), 'bottle');
+
+    expect(screen.getByTestId('vocabulary-plural-input').props.value).toBe('bottles');
+  });
+
+  it('preserves manually set plural when canonical changes', () => {
+    renderComponent('packages');
+
+    fireEvent.press(screen.getByText('+ Add Entry'));
+    fireEvent.changeText(screen.getByTestId('vocabulary-canonical-input'), 'can');
+    fireEvent.changeText(screen.getByTestId('vocabulary-plural-input'), 'custom-plural');
+    fireEvent.changeText(screen.getByTestId('vocabulary-canonical-input'), 'tin');
+
+    expect(screen.getByTestId('vocabulary-plural-input').props.value).toBe('custom-plural');
+  });
+
+  it('passes plural to createEntry on save for packages', async () => {
+    renderComponent('packages');
+
+    fireEvent.press(screen.getByText('+ Add Entry'));
+    fireEvent.changeText(screen.getByTestId('vocabulary-canonical-input'), 'sleeve');
+    fireEvent.changeText(screen.getByTestId('vocabulary-plural-input'), 'sleeves');
+    fireEvent.press(screen.getByTestId('vocabulary-save-button'));
+
+    await waitFor(() => {
+      expect(createMutateAsync).toHaveBeenCalledWith({ canonical: 'sleeve', plural: 'sleeves', aliases: [] });
+    });
   });
 });
