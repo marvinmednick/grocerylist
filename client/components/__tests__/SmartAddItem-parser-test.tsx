@@ -241,6 +241,7 @@ const DISCOVERY_MASTER_ITEM_REFS: MasterItemRef[] = [
   { id: 'chicken', name: 'Chicken', default_qty: '1 lb', alternate_qtys: [] },
   { id: 'chicken-breast', name: 'Chicken Breast', default_qty: '1 lb', alternate_qtys: ['2 lb'] },
   { id: 'chicken-broth', name: 'Chicken Broth', default_qty: '1 can', alternate_qtys: ['2 cans'] },
+  { id: 'chicken-boneless-skinless', name: 'Chicken Boneless Skinless', default_qty: '1 lb', alternate_qtys: [] },
   { id: 'bone-broth', name: 'Organic Bone Broth', default_qty: '1 carton', alternate_qtys: [] },
 ];
 
@@ -355,5 +356,24 @@ describe('SmartAddItem prefix fallback discovery', () => {
     expect(screen.getByText('Chicken Broth')).toBeTruthy();
     // Exact match must not be duplicated
     expect(screen.queryAllByText('Chicken').length).toBe(1);
+  });
+
+  it('prefix fallback matches rank above parser partial-matches with orphans', async () => {
+    // "Chicken Boneless" — parser matches "Chicken" (orphan: "boneless") but cannot match
+    // "Chicken Boneless Skinless" (requires "skinless" which the user did not type).
+    // Prefix fallback finds "Chicken Boneless Skinless" (all input tokens are prefixes of words
+    // in the name). It should appear above "Chicken" which left "boneless" as an orphan.
+    render(<SmartAddItem activeStoreId="store-1" />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'chicken boneless');
+
+    const bonelessSkinless = await screen.findByText('Chicken Boneless Skinless');
+    const chicken = screen.getByText('Chicken');
+
+    const allText = screen.root.findAll((node) => typeof node.props?.children === 'string');
+    const bonelessIdx = allText.findIndex((n) => n.props.children === 'Chicken Boneless Skinless');
+    const chickenIdx = allText.findIndex((n) => n.props.children === 'Chicken');
+    expect(bonelessSkinless).toBeTruthy();
+    expect(chicken).toBeTruthy();
+    expect(bonelessIdx).toBeLessThan(chickenIdx);
   });
 });

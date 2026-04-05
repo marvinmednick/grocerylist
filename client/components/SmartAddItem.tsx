@@ -464,11 +464,17 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
       .map((i) => i.matchedItemId)
       .filter((id): id is string => id != null)
   );
+  const fallbackResults = prefixFallbackInterpretations.filter(
+    (i) => i.matchedItemId == null || !parserMatchIds.has(i.matchedItemId)
+  );
+  // Rank: exact parser matches (no orphans) first, then prefix fallback matches,
+  // then parser partial matches (with orphans). This ensures items that explain
+  // more of the input (e.g. "Chicken Boneless Skinless" when typing "Chicken Boneless")
+  // rank above items that leave orphan tokens (e.g. "Chicken" with orphan "boneless").
   const rankedInterpretations = [
-    ...parseResult.interpretations,
-    ...prefixFallbackInterpretations.filter(
-      (i) => i.matchedItemId == null || !parserMatchIds.has(i.matchedItemId)
-    ),
+    ...parseResult.interpretations.filter((i) => i.orphans.length === 0),
+    ...fallbackResults,
+    ...parseResult.interpretations.filter((i) => i.orphans.length > 0),
   ];
 
   return (
