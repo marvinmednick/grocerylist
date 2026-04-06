@@ -43,6 +43,7 @@ Read:
 - `USER_SCENARIOS.md` — relevant user scenarios
 - `docs/design/ui-guidelines.md` — established visual and interaction patterns
 - Any related `docs/design/` files for features that interact with this one
+- `IDEAS.md` — scan for shelved ideas relevant to this feature. If any apply, present them to the user during the design conversation as "previously shelved idea — worth incorporating?" The user decides: incorporate into design, keep shelved, or discard.
 
 ### Step 3 — Open questions
 

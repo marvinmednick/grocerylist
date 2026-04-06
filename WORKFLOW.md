@@ -92,7 +92,8 @@ Four files and one external service work together:
 | `specs/F[N]-[slug].md` | Full implementation spec — everything Gemini needs to build a feature | Claude (via `/spec`) |
 | `plans/F[N]-log.md` | Feature journal — phase-by-phase history written by Claude (spec, reviews, ship); primary session continuity record for features | Claude (at each phase transition) |
 | `plans/F[N]-progress.md` | Implementor's self-tracking scratchpad — file checklist and resume state; created and maintained by the implementor only | Implementor |
-| `BACKLOG.md` | Short-lived inbox — items land here during `/spec` and `/review-impl`, then are triaged to GitHub Issues (or discarded) right after each commit | Claude (during `/spec`, `/review-impl`, and post-commit triage) |
+| `BACKLOG.md` | Short-lived inbox — items land here during `/spec` and `/review-impl`, then are triaged to GitHub Issues (or discarded) right after each commit. Only contains **user-approved** items (discussed and explicitly deferred). | Claude (during `/spec`, `/review-impl`, and post-commit triage) |
+| `IDEAS.md` | Holding area for AI-generated enhancement suggestions not yet reviewed or prioritized. Scanned during `/design` (relevant to feature being designed?) and `/complete` (relevant to feature just shipped?). Items are triaged to backlog, kept, or discarded. | Claude (suggestions presented during `/spec`; scanned during `/design` and `/complete`) |
 | `CODING.md` | Coding conventions and patterns — the implementor's reference for every implementation | Claude (when new patterns are established) |
 | `docs/tools/gemini.md` | Gemini invocation reference (human docs) | Claude (when Gemini workflow changes) |
 | `AGENT.md` | Behavioral rules for all implementation agents | Claude (when scope discipline changes) |
@@ -610,11 +611,23 @@ When you notice something during `/spec` or `/review-impl` that shouldn't interr
 - [ ] Migrate items screen to use same consolidated header pattern as F1 (noticed during F2 spec)
 ```
 
+**Important:** Only add items to BACKLOG.md that were **discussed with the user** or represent factual findings (e.g., a bug found during review). AI-generated enhancement ideas that haven't been user-approved go to IDEAS.md instead (see below).
+
 Items that grow in scope during triage can be promoted to a full feature:
 ```
 This modal.tsx cleanup actually needs a full Settings screen — can you spec that?
 ```
 Then run `/spec Settings Screen` and it becomes a new F-number.
+
+#### IDEAS.md — AI-generated suggestions
+
+`IDEAS.md` holds enhancement suggestions that Claude generated but the user hasn't committed to. Unlike BACKLOG.md (which is a short-lived inbox of agreed-upon work), IDEAS.md is a low-pressure holding area.
+
+**How items enter:** During `/spec`, Claude separates explicitly deferred scope (→ BACKLOG.md) from its own suggestions. Each suggestion is presented to the user who triages it as: backlog (tracked), ideas (shelved), or discard.
+
+**When to scan:** During `/design` (are any ideas relevant to this feature?) and `/complete` (are any ideas relevant to what was just shipped?). If relevant ideas exist, present them. If none, note "no relevant ideas" and move on.
+
+**Maintenance:** Keep entries to one line, grouped by topic. Discard ideas superseded by shipped features.
 
 ---
 

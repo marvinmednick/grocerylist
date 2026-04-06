@@ -199,10 +199,20 @@ File: components/__tests__/FeatureName-test.tsx
 ```
 
 ### Deferred Items
-List anything intentionally left out of this spec with a brief reason. After writing the spec, append each item to BACKLOG.md under "Deferred from Specs" in this format:
+List anything intentionally left out of this spec that was **discussed and explicitly descoped** during the design or spec conversation. After writing the spec, append each item to BACKLOG.md under "Deferred from Specs" in this format:
 ```
 - [ ] [Description] — [reason]. (deferred from F[N])
 ```
+
+### Suggestions (AI-generated)
+If Claude identified enhancement ideas during spec writing that were **not discussed with the user**, list them separately under this heading. These are Claude's own suggestions, not agreed-upon deferred work.
+
+Present each suggestion to the user with a one-line description and ask for triage:
+- **Backlog** → add to BACKLOG.md (becomes a tracked item)
+- **Ideas** → add to IDEAS.md (shelved for future review)
+- **Discard** → drop it
+
+Do NOT add suggestions to BACKLOG.md without user approval. Do NOT reference "V2" or imply a roadmap that hasn't been discussed.
 
 ### What the Implementor Should NOT Change
 List any files or patterns that are out of scope for this implementation.

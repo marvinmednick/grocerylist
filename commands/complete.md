@@ -141,6 +141,13 @@ Present the full triage plan to the user before taking any action. Once confirme
    git commit -m "chore: triage backlog after [ID]"
    ```
 
+**IDEAS.md scan:** After backlog triage, read IDEAS.md. If any shelved ideas are relevant to the feature just shipped (e.g., the feature enables or supersedes an idea), present them to the user:
+- **Promote** → move to BACKLOG.md or create a GitHub issue
+- **Keep** → leave in IDEAS.md
+- **Discard** → remove (feature made it obsolete)
+
+If no ideas are relevant, note "no relevant ideas" and continue. Include any IDEAS.md changes in the backlog triage commit.
+
 ---
 
 ## Step 4.5 — SESSION_NOTES Archive Check
