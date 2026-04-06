@@ -13,6 +13,42 @@ interface AbbreviationSuggestionRow {
   suggestion: string;
 }
 
+export const useWordAliasesForWords = (
+  words: string[],
+  wordAliasMap: Map<string, string>
+): Map<string, string[]> => {
+  const requestedCanonicalWords = Array.from(
+    new Set(
+      words
+        .map((word) => word.toLowerCase().trim())
+        .filter((word) => word.length > 0)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  const requestedSet = new Set(requestedCanonicalWords);
+  const grouped = new Map<string, string[]>();
+
+  for (const [alias, canonical] of wordAliasMap.entries()) {
+    const normalizedCanonical = canonical.toLowerCase().trim();
+    const normalizedAlias = alias.toLowerCase().trim();
+
+    if (!requestedSet.has(normalizedCanonical) || normalizedAlias.length === 0) {
+      continue;
+    }
+
+    const current = grouped.get(normalizedCanonical) ?? [];
+    current.push(normalizedAlias);
+    grouped.set(normalizedCanonical, current);
+  }
+
+  for (const [canonical, aliases] of grouped.entries()) {
+    const uniqueSortedAliases = Array.from(new Set(aliases)).sort((a, b) => a.localeCompare(b));
+    grouped.set(canonical, uniqueSortedAliases);
+  }
+
+  return grouped;
+};
+
 export const useWordAliases = () => {
   const { householdId } = useHousehold();
 
@@ -121,13 +157,13 @@ export const useDeleteWordAlias = () => {
   const { householdId } = useHousehold();
 
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (identifier: string) => {
       if (!householdId) throw new Error('No household ID found');
 
       const { error } = await supabase
         .from('word_aliases')
         .delete()
-        .eq('id', id)
+        .or(`id.eq.${identifier},alias.eq.${identifier}`)
         .eq('household_id', householdId);
 
       if (error) throw error;

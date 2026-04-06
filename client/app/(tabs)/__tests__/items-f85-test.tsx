@@ -3,11 +3,19 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ItemsScreen from '../items';
 import { useAllItems, useCreateMasterItem, useUpdateMasterItem } from '@/api/items';
+import { useWordAliases } from '@/api/aliases';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
 import { useVocabulary } from '@/api/vocabulary';
 
 jest.mock('@/api/items');
+jest.mock('@/api/aliases', () => {
+  const actual = jest.requireActual('@/api/aliases');
+  return {
+    ...actual,
+    useWordAliases: jest.fn(),
+  };
+});
 jest.mock('@/api/metadata');
 jest.mock('@/api/undoContext');
 jest.mock('@/api/vocabulary');
@@ -21,6 +29,7 @@ jest.mock('@/components/UserAvatar', () => ({
 const mockUseAllItems = useAllItems as jest.Mock;
 const mockUseCreateMasterItem = useCreateMasterItem as jest.Mock;
 const mockUseUpdateMasterItem = useUpdateMasterItem as jest.Mock;
+const mockUseWordAliases = useWordAliases as jest.Mock;
 const mockUseMetadata = useMetadata as jest.Mock;
 const mockUseUndo = useUndo as jest.Mock;
 const mockUseVocabulary = useVocabulary as jest.Mock;
@@ -56,6 +65,7 @@ describe('ItemsScreen F85 parsed quantity payloads', () => {
     mockUseAllItems.mockReturnValue({ data: [item], isLoading: false, error: null });
     mockUseCreateMasterItem.mockReturnValue({ mutateAsync: createMutateAsync });
     mockUseUpdateMasterItem.mockReturnValue({ mutateAsync: updateMutateAsync });
+    mockUseWordAliases.mockReturnValue({ data: new Map<string, string>() });
     mockUseMetadata.mockReturnValue({
       data: {
         stores: [{ id: 'store-1', name: 'Market', color_code: '#2563eb' }],

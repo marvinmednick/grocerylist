@@ -22,6 +22,7 @@ export interface MasterItem {
   short_name?: string | null;
   default_qty: string | null;
   alternate_qtys: string[] | null;
+  aliases: string[];
   default_category_id: string | null;
   created_at: string;
   category?: { name: string };
@@ -245,6 +246,7 @@ export const useCreateMasterItem = () => {
       default_category_id?: string | null;
       default_qty?: string;
       alternate_qtys?: string[];
+      aliases?: string[];
       default_qty_parsed?: QuantityParsed | null;
       alternate_qtys_parsed?: (QuantityParsed | null)[] | null;
       store_preferences?: StorePreferenceInput[];
@@ -295,6 +297,7 @@ export const useUpdateMasterItem = () => {
       default_category_id?: string | null;
       default_qty?: string;
       alternate_qtys?: string[];
+      aliases?: string[];
       default_qty_parsed?: QuantityParsed | null;
       alternate_qtys_parsed?: (QuantityParsed | null)[] | null;
       store_preferences?: StorePreferenceInput[];

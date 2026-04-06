@@ -7,6 +7,7 @@ import { useHousehold } from '@/lib/household';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings } from '@/components/Settings';
 import { SizesAndPackages } from '@/components/SizesAndPackages';
+import { Abbreviations } from '@/components/Abbreviations';
 
 export const UserAvatar: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -14,6 +15,7 @@ export const UserAvatar: React.FC = () => {
   const [menuVisible, setMenuVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [sizesAndPackagesVisible, setSizesAndPackagesVisible] = useState(false);
+  const [abbreviationsVisible, setAbbreviationsVisible] = useState(false);
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -68,6 +70,15 @@ export const UserAvatar: React.FC = () => {
             >
               <Text style={styles.menuText}>Sizes & Packages</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                setAbbreviationsVisible(true);
+              }}
+            >
+              <Text style={styles.menuText}>Abbreviations</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.menuItem} onPress={handleSignOut}>
               <Text style={styles.signOutText}>Sign Out</Text>
             </TouchableOpacity>
@@ -81,6 +92,12 @@ export const UserAvatar: React.FC = () => {
         <SizesAndPackages
           visible={sizesAndPackagesVisible}
           onClose={() => setSizesAndPackagesVisible(false)}
+        />
+      ) : null}
+      {abbreviationsVisible ? (
+        <Abbreviations
+          visible={abbreviationsVisible}
+          onClose={() => setAbbreviationsVisible(false)}
         />
       ) : null}
     </View>

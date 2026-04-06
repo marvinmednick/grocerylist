@@ -1,7 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Modal, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Search, Tag, Store, Plus, X, ChevronDown } from 'lucide-react-native';
 import { useAllItems, useCreateMasterItem, useUpdateMasterItem, MasterItem, ItemStorePreference, SortOption } from '@/api/items';
+import { useWordAliases, useWordAliasesForWords } from '@/api/aliases';
 import { useMetadata } from '@/api/metadata';
 import { useVocabulary } from '@/api/vocabulary';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +10,7 @@ import { HeaderActions } from '@/components/HeaderActions';
 import { useUndo } from '@/api/undoContext';
 import { formatQuantity, parseQuantityText } from '@/lib/quantityFormat';
 import { DEFAULT_VOCABULARY } from '@/lib/vocabulary';
+import { Abbreviations } from '@/components/Abbreviations';
 
 type PreferenceStatus = 'neutral' | 'preferred' | 'avoided' | 'unavailable';
 
@@ -31,6 +33,14 @@ function normalizeQuantityText(rawQuantity: string, parsed: ReturnType<typeof pa
   return formatQuantity(parsed);
 }
 
+function tokenizeWords(raw: string): string[] {
+  return raw
+    .toLowerCase()
+    .split(/\s+/)
+    .map((token) => token.replace(/[^a-z0-9-]/g, '').trim())
+    .filter((token) => token.length > 0);
+}
+
 export default function ItemsScreen() {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
@@ -42,6 +52,7 @@ export default function ItemsScreen() {
   const { data: items, isLoading, error } = useAllItems(search, sort);
   const { data: metadata } = useMetadata();
   const { data: vocabulary } = useVocabulary();
+  const { data: wordAliasMap = new Map<string, string>() } = useWordAliases();
   const { mutateAsync: createItem } = useCreateMasterItem();
   const { mutateAsync: updateItem } = useUpdateMasterItem();
   const { pushAction } = useUndo();
@@ -51,11 +62,16 @@ export default function ItemsScreen() {
   const [shortName, setShortName] = useState('');
   const [qty, setQty] = useState('');
   const [altQtys, setAltQtys] = useState('');
+  const [aliases, setAliases] = useState<string[]>([]);
+  const [newAliasInput, setNewAliasInput] = useState('');
+  const [showAliasInput, setShowAliasInput] = useState(false);
   const [storePreferences, setStorePreferences] = useState<StorePreferencesState>({});
   const [categoryId, setCategoryId] = useState('');
   const [selectedPrefStoreId, setSelectedPrefStoreId] = useState('');
   const [prefDropdownOpen, setPrefDropdownOpen] = useState(false);
   const [prefStoreFilterText, setPrefStoreFilterText] = useState('');
+  const [abbreviationsVisible, setAbbreviationsVisible] = useState(false);
+  const [abbreviationsInitialSearch, setAbbreviationsInitialSearch] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
 
   const initializeStorePreferences = (item: MasterItem | null = null): StorePreferencesState => {
@@ -84,6 +100,9 @@ export default function ItemsScreen() {
       setShortName(item.short_name || '');
       setQty(item.default_qty || '');
       setAltQtys(item.alternate_qtys ? item.alternate_qtys.join(', ') : '');
+      setAliases(item.aliases ?? []);
+      setNewAliasInput('');
+      setShowAliasInput(false);
       setStorePreferences(initializeStorePreferences(item));
       setCategoryId(item.default_category_id || '');
     } else {
@@ -92,6 +111,9 @@ export default function ItemsScreen() {
       setShortName('');
       setQty('');
       setAltQtys('');
+      setAliases([]);
+      setNewAliasInput('');
+      setShowAliasInput(false);
       setStorePreferences(initializeStorePreferences());
       setCategoryId('');
     }
@@ -153,6 +175,7 @@ export default function ItemsScreen() {
       name,
       short_name: shortName || null,
       default_category_id: categoryId || null,
+      aliases,
       store_preferences: buildStorePreferencesPayload(),
       ...parsedPayload,
     };
@@ -163,6 +186,7 @@ export default function ItemsScreen() {
         short_name: editingItem.short_name || null,
         default_qty: editingItem.default_qty || '',
         alternate_qtys: editingItem.alternate_qtys || [],
+        aliases: editingItem.aliases ?? [],
         default_qty_parsed: parseQuantityText(editingItem.default_qty || '', vocab),
         alternate_qtys_parsed:
           (editingItem.alternate_qtys ?? []).length > 0
@@ -193,6 +217,23 @@ export default function ItemsScreen() {
     setIsModalVisible(false);
   };
 
+  const commitAlias = () => {
+    const normalized = newAliasInput.trim();
+    if (!normalized) {
+      setShowAliasInput(false);
+      setNewAliasInput('');
+      return;
+    }
+    if (aliases.some((alias) => alias.toLowerCase() === normalized.toLowerCase())) {
+      setShowAliasInput(false);
+      setNewAliasInput('');
+      return;
+    }
+    setAliases((prev) => [...prev, normalized]);
+    setShowAliasInput(false);
+    setNewAliasInput('');
+  };
+
   const selectedPrefStore = metadata?.stores?.find((store) => store.id === selectedPrefStoreId) || null;
   const selectedPrefStatus: PreferenceStatus = selectedPrefStoreId
     ? (storePreferences[selectedPrefStoreId]?.status ?? 'neutral')
@@ -220,6 +261,17 @@ export default function ItemsScreen() {
   const isNewItem = (item: MasterItem) =>
     Date.now() - new Date(item.created_at).getTime() < RECENT_MS;
   const displayedItems = recentOnly ? (items ?? []).filter(isNewItem) : (items ?? []);
+
+  const activeWords = useMemo(() => {
+    if (!editingItem) return [];
+    return Array.from(new Set([...tokenizeWords(editingItem.name), ...aliases.flatMap((alias) => tokenizeWords(alias))]));
+  }, [aliases, editingItem]);
+
+  const activeAliasRows = useMemo(() => {
+    return Array.from(useWordAliasesForWords(activeWords, wordAliasMap).entries()).sort((a, b) =>
+      a[0].localeCompare(b[0])
+    );
+  }, [activeWords, wordAliasMap]);
 
   const handleRecentToggle = () => {
     if (!recentOnly) {
@@ -374,6 +426,70 @@ export default function ItemsScreen() {
                 onChangeText={setAltQtys}
                 placeholder="e.g. 1/2 gal, 2 gal"
               />
+
+              <Text style={styles.label}>Also known as</Text>
+              <View style={styles.aliasesContainer}>
+                <View style={styles.aliasChipsWrap}>
+                  {aliases.map((alias) => (
+                    <View key={alias} style={styles.aliasChip}>
+                      <Text style={styles.aliasChipText}>{alias}</Text>
+                      <TouchableOpacity onPress={() => setAliases((prev) => prev.filter((value) => value !== alias))}>
+                        <Text style={styles.aliasChipRemove}>×</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  <TouchableOpacity
+                    testID="item-add-alias-trigger"
+                    style={styles.aliasAddButton}
+                    onPress={() => setShowAliasInput(true)}
+                  >
+                    <Text style={styles.aliasAddText}>+ Add alias</Text>
+                  </TouchableOpacity>
+                </View>
+                {showAliasInput ? (
+                  <TextInput
+                    testID="item-new-alias-input"
+                    style={styles.modalInput}
+                    value={newAliasInput}
+                    onChangeText={setNewAliasInput}
+                    placeholder="Alias"
+                    autoCapitalize="none"
+                    returnKeyType="done"
+                    onSubmitEditing={commitAlias}
+                    onBlur={() => {
+                      setShowAliasInput(false);
+                      setNewAliasInput('');
+                    }}
+                    autoFocus
+                  />
+                ) : null}
+              </View>
+
+              {editingItem ? (
+                <>
+                  <Text style={styles.label}>Active Abbreviations</Text>
+                  <View style={styles.activeAbbreviationsContainer}>
+                    {activeAliasRows.length === 0 ? (
+                      <Text style={styles.emptyCommentText}>No abbreviations defined for this item's words</Text>
+                    ) : (
+                      activeAliasRows.map(([word, wordAliases]) => (
+                        <Text key={`active-abbreviation-${word}`} style={styles.activeAbbreviationRow}>
+                          {word} → {wordAliases.join(', ')}
+                        </Text>
+                      ))
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    testID="define-abbreviations-button"
+                    onPress={() => {
+                      setAbbreviationsInitialSearch(activeWords.join(' '));
+                      setAbbreviationsVisible(true);
+                    }}
+                  >
+                    <Text style={styles.defineAbbreviationsText}>Define Abbreviations</Text>
+                  </TouchableOpacity>
+                </>
+              ) : null}
 
               <Text style={styles.label}>Store Preferences</Text>
               <View style={styles.storePreferenceContainer}>
@@ -549,6 +665,14 @@ export default function ItemsScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
+      {abbreviationsVisible ? (
+        <Abbreviations
+          visible={abbreviationsVisible}
+          onClose={() => setAbbreviationsVisible(false)}
+          initialSearch={abbreviationsInitialSearch}
+        />
+      ) : null}
+
     </View>
   );
 }
@@ -655,6 +779,62 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 16,
     fontSize: 16,
+  },
+  aliasesContainer: {
+    marginBottom: 16,
+  },
+  aliasChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+  },
+  aliasChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 999,
+    backgroundColor: '#e0e7ff',
+    paddingLeft: 10,
+    paddingRight: 8,
+    paddingVertical: 4,
+    gap: 6,
+  },
+  aliasChipText: {
+    color: '#1f2937',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  aliasChipRemove: {
+    color: '#374151',
+    fontSize: 16,
+    lineHeight: 16,
+  },
+  aliasAddButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  aliasAddText: {
+    color: '#1d4ed8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  activeAbbreviationsContainer: {
+    marginBottom: 8,
+    gap: 6,
+  },
+  activeAbbreviationRow: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  defineAbbreviationsText: {
+    color: '#2563eb',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 20,
   },
   storePreferenceContainer: {
     marginBottom: 24,

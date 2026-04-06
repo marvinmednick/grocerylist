@@ -3,11 +3,19 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ItemsScreen from '../items';
 import { useAllItems, useCreateMasterItem, useUpdateMasterItem } from '@/api/items';
+import { useWordAliases } from '@/api/aliases';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
 import { useVocabulary } from '@/api/vocabulary';
 
 jest.mock('@/api/items');
+jest.mock('@/api/aliases', () => {
+  const actual = jest.requireActual('@/api/aliases');
+  return {
+    ...actual,
+    useWordAliases: jest.fn(),
+  };
+});
 jest.mock('@/api/metadata');
 jest.mock('@/api/undoContext');
 jest.mock('@/api/vocabulary');
@@ -21,6 +29,7 @@ jest.mock('@/components/UserAvatar', () => ({
 const mockUseAllItems = useAllItems as jest.Mock;
 const mockUseCreateMasterItem = useCreateMasterItem as jest.Mock;
 const mockUseUpdateMasterItem = useUpdateMasterItem as jest.Mock;
+const mockUseWordAliases = useWordAliases as jest.Mock;
 const mockUseMetadata = useMetadata as jest.Mock;
 const mockUseUndo = useUndo as jest.Mock;
 const mockUseVocabulary = useVocabulary as jest.Mock;
@@ -49,6 +58,7 @@ describe('ItemsScreen store preference filter', () => {
     });
     mockUseCreateMasterItem.mockReturnValue({ mutateAsync: jest.fn().mockResolvedValue({ id: 'item-1' }) });
     mockUseUpdateMasterItem.mockReturnValue({ mutateAsync: jest.fn().mockResolvedValue({ id: 'item-1' }) });
+    mockUseWordAliases.mockReturnValue({ data: new Map<string, string>() });
     mockUseUndo.mockReturnValue({
       pushAction: jest.fn(),
       undoLastAction: jest.fn(),

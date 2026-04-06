@@ -57,6 +57,7 @@ Design decisions recorded in `docs/design/F90-token-item-alias-system.md` — UI
 
 #### `client/api/aliases.ts` (from F90)
 - **Add `useWordAliasesForWords` helper** — convenience function that takes a `string[]` of canonical words and a word aliases `Map`, returns a filtered `Map<string, string[]>` of `canonicalWord → [alias1, alias2, ...]`. Pure utility, no query — just reshapes the existing `useWordAliases` data. This avoids duplicating the lookup logic in the items.tsx component.
+- **Extend `useDeleteWordAlias`** — accept either a row ID (UUID) or alias key (string) as the identifier. Uses `.or('id.eq.${identifier},alias.eq.${identifier}')` so diff-based saves can delete by alias key without a separate ID lookup. Household guard preserved.
 
 ---
 
@@ -164,10 +165,11 @@ const [dialogExistingId, setDialogExistingId] = useState<string | null>(null);
 - **Canonical → Aliases view:** Group by canonical word → `Map<string, { id: string; alias: string }[]>`
 - **Alias → Canonical view:** Each alias as its own row with its canonical target
 
-**Search (OR semantics):**
+**Search (OR semantics, cross-matching):**
 - Split search text on whitespace → array of search terms
-- A row matches if ANY search term is a prefix of the row's key (canonical word in default view, alias in flipped view)
+- A row matches if ANY search term is a prefix of ANY word in the row (canonical word AND alias words in canonical view; alias AND canonical in alias view). The toggle controls display grouping, not search scope.
 - Case-insensitive matching
+- In canonical view, aliases that prefix-match a search term are highlighted (bold, `#2563eb`) to show why the row matched
 
 **Placeholder rows:**
 - After filtering existing rows, check each search term: if no existing row matches that term, add a placeholder row
@@ -206,7 +208,7 @@ Opens as a centered card modal (transparent backdrop, same as VocabularyManageme
 - **Header:** Delete pill (top-left, Trash2 icon in `#fee2e2` background — only when editing existing), title = canonical word, X close (top-right). Follows §7a modal header pattern.
 - **Canonical word field:** Read-only text when editing existing entry. Editable `TextInput` when creating new (from placeholder row or alias→canonical view placeholder).
 - **Alias chips:** Existing aliases as removable chips with `×` button. Same chip styling as VocabularyManagement.
-- **Text input:** "Add alias..." placeholder. Return key adds as chip. Single-token validation: strip whitespace, lowercase, no punctuation. Reject empty after trim.
+- **Text input:** "Add alias..." placeholder. Return key adds as chip. Single-token validation: reject whitespace (must be a single token), lowercase, trim. Punctuation is allowed (e.g. "p.b." for peanut butter). Reject empty after trim.
 - **Suggestions section:** Fetch `useAbbreviationSuggestions()` on dialog open. Show suggestions for the canonical word as tappable text buttons. Tap adds as chip (if not already present). Only shown when suggestions exist for this word.
 - **Conflict warnings:** Inline text below the input field, live-updating as user types in the alias input:
   - **Blocking (red, `#991b1b`):** "An alias 'chk' already exists (→ chicken)" — check against all word_aliases in the household. Disable Save button when any blocking conflict exists.
@@ -382,7 +384,7 @@ Below the Active Abbreviations section:
 ### What the Implementor Should NOT Change
 
 - **`client/lib/parser.ts`** — parser changes were F90 scope; no parser modifications in F91
-- **`client/api/aliases.ts`** CRUD hooks — already implemented in F90. Only add the `useWordAliasesForWords` helper utility.
+- **`client/api/aliases.ts`** CRUD hooks — already implemented in F90. Only add the `useWordAliasesForWords` helper utility and extend `useDeleteWordAlias` to accept alias key (see Files to Modify).
 - **`client/components/SmartAddItem.tsx`** — SmartAddItem integration was F90 scope
 - **`client/components/VocabularyManagement.tsx`** — no changes (the Abbreviations screen is a separate component, though it follows similar patterns)
 - **`client/components/SizesAndPackages.tsx`** — no changes
