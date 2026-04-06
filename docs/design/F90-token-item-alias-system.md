@@ -112,6 +112,27 @@ CREATE TABLE abbreviation_suggestions (
 
 **Size estimate:** ~500–2,000 rows covering common grocery vocabulary. Each row is ~30 bytes. Total: ~30–60KB. Fetched on-demand during alias definition only.
 
+**Population:** Data is maintained in a re-runnable seed script (`supabase/seeds/abbreviation_suggestions.sql`), separate from schema migrations. The script uses UPSERT (or truncate+insert) so it can be regenerated from updated LLM prompts and re-applied without migration overhead. The prompts used to generate and review the dataset are documented as comments in the script. Target: ~200–300 words with ~400–500 total (word, suggestion) pairs covering proteins, produce, dairy, bakery, preparations, qualifiers, and modifiers.
+
+### `list_items.match_metadata` column
+
+Alias provenance stored as JSONB. Null for the common case (item matched by canonical name).
+
+```sql
+ALTER TABLE list_items ADD COLUMN match_metadata JSONB;
+```
+
+**Schema:**
+```jsonb
+{
+  "matchedName": "Chicken Tenders",
+  "canonicalName": "Chicken Breast Strips",
+  "matchedVia": "alias"
+}
+```
+
+Written at add time when the item is matched via alias. Null otherwise. Never queried directly — read alongside the list item in existing `useListItems()` and item edit queries. Follows the established `quantity_parsed` JSONB pattern.
+
 ---
 
 ## Parser Integration
@@ -225,7 +246,7 @@ export interface ParsedInput {
 **Item edit screen:** Shows both canonical name and which alias was matched.
 **Audit:** `matchedVia` field records how the match occurred ('name' or 'alias').
 
-**Schema note:** The `list_items` table will need columns to persist alias provenance (matched name, canonical name, match method). Exact column definitions are deferred to the spec — the design establishes what gets stored and why; the spec defines the schema.
+**Storage:** Alias provenance is persisted in `list_items.match_metadata` (JSONB) — see Data Model section above.
 
 **Snapshot behavior:** List items preserve the name they were added with. If a master item is later renamed or an alias is removed, existing list items keep their historical `name` and `canonicalName` values. This is consistent with how `list_items.name` already works (snapshot at add time, not a live lookup) and with architecture principle #4 ("parse once, use everywhere").
 
@@ -501,11 +522,25 @@ When opened from the item edit modal's "Define Abbreviations" button:
 
 ## Open Questions
 
-1. **`abbreviation_suggestions` initial dataset** — Who curates the initial set? What's the coverage target? Should there be categories or ranking? (Can be deferred to spec time)
+None — all design questions resolved.
+
+---
+
+## Implementation Phasing
+
+F90 is split into two sequential specs:
+
+| Phase | Scope | Key deliverables |
+|-------|-------|-----------------|
+| **A: Data + Parser** | Schema (word_aliases, items.aliases, abbreviation_suggestions, list_items.match_metadata), migrations, RLS, seed script, React Query hooks, parser expansion step, ParsedInput extensions | Tables, hooks, parser changes, unit tests |
+| **B: UI** | Abbreviations screen, item edit modal sections (Also known as, Active Abbreviations, Define Abbreviations button), avatar menu entry, edit dialog, conflict warnings | Components, integration tests |
+
+Phase B depends on Phase A's hook signatures. Phase A ships first; Phase B develops against real hooks, avoiding mock/integration drift.
 
 ---
 
 ## Revision History
 - 2026-04-05: Initial DRAFT — established from F77 design conversation. Token alias and item alias models defined. Parser integration designed (variant expansion between Pass 4 and Pass 5, item alias flattening in Pass 5). Data model defined (word_aliases table, items.aliases column, abbreviation_suggestions table). Alias definition flow conceptualized. Conflict checking rules established.
 - 2026-04-05: Pass 2 — UI design complete. Abbreviations screen as unified management + definition surface (full-screen modal with toggle views, OR search, placeholder rows for new words). Item edit modal gains "Also known as" chips and read-only "Active Abbreviations" section. Avatar menu gets "Abbreviations" top-level item. Conflict warnings are inline, live-updating. All surfaces classified against ui-guidelines.md. One open question remains (abbreviation_suggestions dataset curation, deferred to spec).
-- 2026-04-05: Design review fixes — (1) Added single-token validation constraints on word_aliases (no whitespace, case-folded, trimmed, no punctuation). (2) Added dedupe precedence rule: canonical name match preferred at equal coverage. (3) Clarified toggle has independent search states per view, no cross-population; placeholder rows work in both views. (4) Added schema note: list_items columns for alias provenance deferred to spec. (5) Added snapshot behavior: list items preserve historical name/alias at add time, not refreshed on rename/removal.
+- 2026-04-05: Design review fixes — (1) Added single-token validation constraints on word_aliases (no whitespace, case-folded, trimmed, no punctuation). (2) Added dedupe precedence rule: canonical name match preferred at equal coverage. (3) Clarified toggle has independent search states per view, no cross-population; placeholder rows work in both views. (4) Added snapshot behavior: list items preserve historical name/alias at add time, not refreshed on rename/removal.
+- 2026-04-05: Finalized remaining decisions — (1) list_items.match_metadata JSONB column for alias provenance (follows quantity_parsed pattern, null for common case). (2) abbreviation_suggestions populated via re-runnable seed script with LLM-generated data. (3) Implementation phasing: two sequential specs (A: data+parser, B: UI). All open questions resolved.
