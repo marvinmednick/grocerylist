@@ -79,7 +79,25 @@ CREATE TABLE size_descriptors (
 );
 CREATE INDEX size_descriptors_household_idx ON size_descriptors(household_id);
 
--- 7. ITEMS (Master Database)
+-- 7. WORD ALIASES & ABBREVIATION SUGGESTIONS
+CREATE TABLE word_aliases (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+    alias TEXT NOT NULL,
+    canonical TEXT NOT NULL,
+    created_by UUID REFERENCES profiles(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX word_aliases_hh_alias_unique ON word_aliases (household_id, LOWER(alias));
+CREATE INDEX word_aliases_household_idx ON word_aliases(household_id);
+
+CREATE TABLE abbreviation_suggestions (
+    word TEXT NOT NULL,
+    suggestion TEXT NOT NULL,
+    PRIMARY KEY (word, suggestion)
+);
+
+-- 8. ITEMS (Master Database)
 CREATE TABLE items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -88,6 +106,7 @@ CREATE TABLE items (
     default_qty_parsed JSONB NULL,
     short_name TEXT,
     alternate_qtys TEXT[] DEFAULT '{}',
+    aliases TEXT[] NOT NULL DEFAULT '{}',
     alternate_qtys_parsed JSONB[] NULL,
     search_tokens TSVECTOR,
     household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
@@ -97,7 +116,7 @@ CREATE TABLE items (
 CREATE INDEX items_search_idx ON items USING GIN (search_tokens);
 CREATE INDEX items_household_idx ON items(household_id);
 
--- 8. SHOPPING TRIPS
+-- 9. SHOPPING TRIPS
 CREATE TABLE shopping_trips (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     started_at TIMESTAMPTZ DEFAULT NOW(),
@@ -109,7 +128,7 @@ CREATE TABLE shopping_trips (
 );
 CREATE INDEX shopping_trips_household_idx ON shopping_trips(household_id);
 
--- 9. LIST ITEMS (The Active Shopping List)
+-- 10. LIST ITEMS (The Active Shopping List)
 CREATE TABLE list_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     item_id UUID REFERENCES items(id) ON DELETE SET NULL,
@@ -124,13 +143,14 @@ CREATE TABLE list_items (
     purchased_at TIMESTAMPTZ,
     archived_at TIMESTAMPTZ,
     warnings JSONB DEFAULT '[]',
+    match_metadata JSONB,
     added_by UUID,
     household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX list_items_household_idx ON list_items(household_id);
 
--- 10. ITEM_STORE_PREFERENCES
+-- 11. ITEM_STORE_PREFERENCES
 CREATE TABLE item_store_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
@@ -160,6 +180,8 @@ ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE units ENABLE ROW LEVEL SECURITY;
 ALTER TABLE packages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE size_descriptors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE word_aliases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE abbreviation_suggestions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE list_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shopping_trips ENABLE ROW LEVEL SECURITY;
@@ -209,6 +231,12 @@ CREATE POLICY "Household members can manage size_descriptors" ON size_descriptor
     FOR ALL TO authenticated
     USING (household_id = get_my_household_id())
     WITH CHECK (household_id = get_my_household_id());
+CREATE POLICY "Users can access their household's word aliases" ON word_aliases
+    FOR ALL TO authenticated
+    USING (household_id = get_my_household_id());
+CREATE POLICY "Anyone can read abbreviation suggestions" ON abbreviation_suggestions
+    FOR SELECT TO authenticated
+    USING (true);
 
 -- Items: household-scoped
 CREATE POLICY "Household members can manage items" ON items

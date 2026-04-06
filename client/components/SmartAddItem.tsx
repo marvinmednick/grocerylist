@@ -21,6 +21,7 @@ import {
   type MasterItem,
   type Warning,
 } from '@/api/items';
+import { useWordAliases } from '@/api/aliases';
 import { useAddToList, useDeleteListItem } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
@@ -43,6 +44,12 @@ type EditTarget = MasterItem | { name: string; id: null; default_qty?: string | 
 type RowSelection = {
   qty: string;
   storeId: string | null;
+};
+
+type AliasMatchMetadata = {
+  matchedName: string;
+  canonicalName: string;
+  matchedVia: 'alias';
 };
 
 const MAX_VISIBLE_QTY_PILLS = 7;
@@ -103,10 +110,12 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
   const [editStoreDropdownOpen, setEditStoreDropdownOpen] = useState(false);
   const [editCategoryId, setEditCategoryId] = useState('');
   const [editStoreHint, setEditStoreHint] = useState<string | null>(null);
+  const [editInterpretation, setEditInterpretation] = useState<ParsedInput | null>(null);
   const [editShowMoreStores, setEditShowMoreStores] = useState(false);
   const editQtyInputRef = useRef<TextInput>(null);
 
   const { data: masterItemNames = [] } = useMasterItemNames();
+  const { data: loadedWordAliases } = useWordAliases();
   const { data: allItems = [] } = useAllItems();
   const { mutateAsync: addItem } = useAddToList();
   const { mutateAsync: createMasterItem } = useCreateMasterItem();
@@ -126,10 +135,11 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
   }, [masterItemNames]);
 
   const vocab = vocabulary ?? DEFAULT_VOCABULARY;
+  const wordAliases = loadedWordAliases ?? new Map<string, string>();
 
   const parseResult = useMemo(() => {
-    return parseInput(query, vocab, masterItemNames);
-  }, [query, vocab, masterItemNames]);
+    return parseInput(query, vocab, masterItemNames, wordAliases);
+  }, [query, vocab, masterItemNames, wordAliases]);
 
   const parseCandidate = useMemo(() => {
     return assembleCandidate(groupTokens(classifyTokens(tokenize(query), vocab)));
@@ -146,25 +156,45 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
       .flatMap((w) => w.split(/\s+/))
       .map((w) => w.toLowerCase())
       .filter((w) => w.length > 0);
+
+    const expandedNameTokens = nameTokens.map((token) => {
+      const expanded = wordAliases.get(token);
+      if (!expanded) {
+        return [token];
+      }
+      return dedupe([token, expanded.toLowerCase()]);
+    });
+
     if (nameTokens.length === 0) return [];
     return masterItemNames
-      .filter((item) => {
-        const itemWords = item.name.toLowerCase().split(/\s+/);
-        return nameTokens.every((token) => itemWords.some((word) => word.startsWith(token)));
-      })
-      .map((item) => ({
-        name: item.name,
-        matchedItemId: item.id,
-        count: parseCandidate.count,
-        packageType: parseCandidate.packageType,
-        packagePlural: parseCandidate.packagePlural,
-        sizeDescriptive: parseCandidate.sizeDescriptive,
-        sizeQty: parseCandidate.sizeQty,
-        sizeUnit: parseCandidate.sizeUnit,
-        storeHint: parseCandidate.storeHint,
-        orphans: [],
-      }));
-  }, [query, masterItemNames, parseCandidate]);
+      .flatMap((item) => {
+        const lookupNames = [item.name, ...(item.aliases ?? [])];
+        const matches = lookupNames.filter((lookupName) => {
+          const itemWords = lookupName
+            .toLowerCase()
+            .split(/\s+/)
+            .filter((word) => word.length > 0);
+          return expandedNameTokens.every((tokenOptions) =>
+            tokenOptions.some((token) => itemWords.some((word) => word.startsWith(token)))
+          );
+        });
+
+        return matches.map((lookupName) => ({
+          name: lookupName,
+          canonicalName: item.name,
+          matchedItemId: item.id,
+          matchedVia: lookupName === item.name ? 'name' : ('alias' as const),
+          count: parseCandidate.count,
+          packageType: parseCandidate.packageType,
+          packagePlural: parseCandidate.packagePlural,
+          sizeDescriptive: parseCandidate.sizeDescriptive,
+          sizeQty: parseCandidate.sizeQty,
+          sizeUnit: parseCandidate.sizeUnit,
+          storeHint: parseCandidate.storeHint,
+          orphans: [],
+        }));
+      });
+  }, [query, masterItemNames, parseCandidate, wordAliases]);
 
   const hasStructuredRows = query.length >= 2 && (parseResult.interpretations.length > 0 || prefixFallbackInterpretations.length > 0);
 
@@ -225,8 +255,20 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     setOneOffQtyPopoverOpen(false);
     setOneOffQtyInput('');
     setEditStoreHint(null);
+    setEditInterpretation(null);
     setEditShowMoreStores(false);
     Keyboard.dismiss();
+  };
+
+  const aliasMatchMetadata = (interpretation?: ParsedInput | null): AliasMatchMetadata | undefined => {
+    if (!interpretation || interpretation.matchedVia !== 'alias') {
+      return undefined;
+    }
+    return {
+      matchedName: interpretation.name,
+      canonicalName: interpretation.canonicalName,
+      matchedVia: 'alias',
+    };
   };
 
   const maybeTriggerWarningToast = (warnings: Warning[]) => {
@@ -275,6 +317,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
         store_id: selection.storeId,
         category_id: item.default_category_id,
         warnings,
+        match_metadata: aliasMatchMetadata(interpretation),
       });
     };
 
@@ -340,7 +383,15 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
       )
     : [];
 
-  const onEditAdd = (item: EditTarget, options?: { initialQty?: string; initialStoreId?: string | null; storeHint?: string | null }) => {
+  const onEditAdd = (
+    item: EditTarget,
+    options?: {
+      initialQty?: string;
+      initialStoreId?: string | null;
+      storeHint?: string | null;
+      interpretation?: ParsedInput | null;
+    }
+  ) => {
     Keyboard.dismiss();
     setSelectedItem(item);
     setEditQty(options?.initialQty || item.default_qty || '1');
@@ -348,6 +399,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     setEditStoreDropdownOpen(false);
     setEditCategoryId(item.default_category_id || '');
     setEditStoreHint(options?.storeHint || null);
+    setEditInterpretation(options?.interpretation || null);
     setEditShowMoreStores(false);
     setIsEditing(true);
   };
@@ -360,6 +412,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     setEditStoreDropdownOpen(false);
     setEditCategoryId('');
     setEditStoreHint(null);
+    setEditInterpretation(null);
     setEditShowMoreStores(false);
   };
 
@@ -376,6 +429,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
         store_id: editStoreId || null,
         category_id: editCategoryId || null,
         warnings: [],
+        match_metadata: aliasMatchMetadata(editInterpretation),
       });
     };
 
@@ -438,6 +492,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
         store_id: editStoreId || null,
         category_id: editCategoryId || null,
         warnings,
+        match_metadata: aliasMatchMetadata(editInterpretation),
       });
     };
 
@@ -614,6 +669,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
                               initialQty: activeQty,
                               initialStoreId: selectedStoreId,
                               storeHint: interpretation.storeHint,
+                              interpretation,
                             })
                           }
                         >
@@ -660,6 +716,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
                                   initialQty: activeQty,
                                   initialStoreId: selectedStoreId,
                                   storeHint: interpretation.storeHint,
+                                  interpretation,
                                 })
                               }
                             >
@@ -680,6 +737,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
                       initialQty: activeQty,
                       initialStoreId: selectedStoreId,
                       storeHint: interpretation.storeHint,
+                      interpretation,
                     })
                   }
                 >

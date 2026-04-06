@@ -19,6 +19,11 @@ export interface ListItem {
   store?: { name: string; color_code: string };
   category?: { name: string; sort_order: number };
   warnings?: Warning[];
+  match_metadata?: {
+    matchedName: string;
+    canonicalName: string;
+    matchedVia: 'alias';
+  } | null;
   master_item?: {
     short_name: string | null;
     default_qty: string | null;
@@ -134,6 +139,11 @@ export interface ListItemInsert {
   store_id?: string | null;
   category_id?: string | null;
   warnings?: Warning[];
+  match_metadata?: {
+    matchedName: string;
+    canonicalName: string;
+    matchedVia: 'alias';
+  } | null;
 }
 
 export const useAddToList = () => {

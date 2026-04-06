@@ -33,6 +33,7 @@ export interface MasterItemRef {
   name: string;
   default_qty: string | null;
   alternate_qtys: string[] | null;
+  aliases: string[];
 }
 
 export type SortOption = 'name_asc' | 'name_desc' | 'created_desc' | 'created_asc';
@@ -222,7 +223,7 @@ export const useMasterItemNames = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('items')
-        .select('id, name, default_qty, alternate_qtys')
+        .select('id, name, default_qty, alternate_qtys, aliases')
         .order('name');
 
       if (error) throw error;

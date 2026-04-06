@@ -45,7 +45,9 @@ export interface CandidateFields {
 
 export interface ParsedInput {
   name: string;
+  canonicalName: string;
   matchedItemId: string | null;
+  matchedVia: 'name' | 'alias';
   count: number | null;
   packageType: string | null;
   packagePlural: string | null;
@@ -66,6 +68,7 @@ export interface MasterItemRef {
   name: string;
   default_qty: string | null;
   alternate_qtys: string[] | null;
+  aliases: string[];
 }
 
 function parseCompound(raw: string, vocabulary: Vocabulary): { qty: number; unit: string } | null {
@@ -464,6 +467,32 @@ function consumeTokens(pool: string[], target: string[]): { ok: boolean; leftove
 }
 
 export function resolveNames(candidate: CandidateFields, masterItems: MasterItemRef[]): ParsedInput[] {
+  interface LookupEntry {
+    id: string;
+    lookupName: string;
+    canonicalName: string;
+    matchedVia: 'name' | 'alias';
+  }
+
+  const lookupEntries: LookupEntry[] = masterItems.flatMap((item) => {
+    const canonicalEntry: LookupEntry = {
+      id: item.id,
+      lookupName: item.name,
+      canonicalName: item.name,
+      matchedVia: 'name',
+    };
+    const aliasEntries = (item.aliases || [])
+      .map((alias) => alias.trim())
+      .filter((alias) => alias.length > 0)
+      .map((alias) => ({
+        id: item.id,
+        lookupName: alias,
+        canonicalName: item.name,
+        matchedVia: 'alias' as const,
+      }));
+    return [canonicalEntry, ...aliasEntries];
+  });
+
   const nameWords = normalizeWords(candidate.nameWords.flatMap((word) => word.split(/\s+/)));
   const descriptorWords = normalizeWords(candidate.sizeDescriptiveTokens);
 
@@ -478,8 +507,8 @@ export function resolveNames(candidate: CandidateFields, masterItems: MasterItem
       return;
     }
 
-    masterItems.forEach((item) => {
-      const itemTokens = splitName(item.name);
+    lookupEntries.forEach((lookupEntry) => {
+      const itemTokens = splitName(lookupEntry.lookupName);
       const consumed = consumeTokens(candidateWords, itemTokens);
       if (!consumed.ok) {
         return;
@@ -504,8 +533,10 @@ export function resolveNames(candidate: CandidateFields, masterItems: MasterItem
         : null;
 
       interpretations.push({
-        name: item.name,
-        matchedItemId: item.id,
+        name: lookupEntry.lookupName,
+        canonicalName: lookupEntry.canonicalName,
+        matchedItemId: lookupEntry.id,
+        matchedVia: lookupEntry.matchedVia,
         count: candidate.count,
         packageType: candidate.packageType,
         packagePlural: candidate.packagePlural,
@@ -538,15 +569,86 @@ export function resolveNames(candidate: CandidateFields, masterItems: MasterItem
   });
 }
 
-export function parseInput(input: string, vocabulary: Vocabulary, masterItems: MasterItemRef[]): ParseResult {
+export function expandAliases(candidate: CandidateFields, wordAliases: Map<string, string>): CandidateFields[] {
+  const expandedIndices = candidate.nameWords
+    .map((word, index) => ({ index, expanded: wordAliases.get(word.toLowerCase()) ?? null }))
+    .filter((entry): entry is { index: number; expanded: string } => entry.expanded !== null);
+
+  if (expandedIndices.length === 0) {
+    return [candidate];
+  }
+
+  let variants: CandidateFields[] = [{ ...candidate, nameWords: [...candidate.nameWords] }];
+
+  expandedIndices.forEach(({ index, expanded }) => {
+    const nextVariants: CandidateFields[] = [];
+    variants.forEach((variant) => {
+      nextVariants.push(variant);
+      const expandedWords = [...variant.nameWords];
+      expandedWords[index] = expanded;
+      nextVariants.push({
+        ...variant,
+        nameWords: expandedWords,
+      });
+    });
+    variants = nextVariants;
+  });
+
+  return variants;
+}
+
+function isPreferredInterpretation(next: ParsedInput, current: ParsedInput): boolean {
+  if (next.orphans.length !== current.orphans.length) {
+    return next.orphans.length < current.orphans.length;
+  }
+  if (next.matchedVia !== current.matchedVia) {
+    return next.matchedVia === 'name';
+  }
+  return false;
+}
+
+function parseInputInternal(
+  input: string,
+  vocabulary: Vocabulary,
+  masterItems: MasterItemRef[],
+  wordAliases: Map<string, string>
+): ParseResult {
   const tokens = tokenize(input);
   const classified = classifyTokens(tokens, vocabulary);
   const grouped = groupTokens(classified);
   const candidate = assembleCandidate(grouped);
-  const interpretations = resolveNames(candidate, masterItems);
+  const variants = expandAliases(candidate, wordAliases);
+
+  const pooledInterpretations = variants.flatMap((variant) => resolveNames(variant, masterItems));
+  const dedupedByItemId = new Map<string, ParsedInput>();
+
+  pooledInterpretations.forEach((interpretation) => {
+    if (!interpretation.matchedItemId) {
+      return;
+    }
+    const existing = dedupedByItemId.get(interpretation.matchedItemId);
+    if (!existing || isPreferredInterpretation(interpretation, existing)) {
+      dedupedByItemId.set(interpretation.matchedItemId, interpretation);
+    }
+  });
+
+  const interpretations = [...dedupedByItemId.values()].sort((a, b) => {
+    const tokensA = splitName(a.name).length;
+    const tokensB = splitName(b.name).length;
+    return tokensB - tokensA;
+  });
 
   return {
     interpretations,
     rawInput: input,
   };
+}
+
+export function parseInput(
+  input: string,
+  vocabulary: Vocabulary,
+  masterItems: MasterItemRef[],
+  wordAliases: Map<string, string> = new Map<string, string>()
+): ParseResult {
+  return parseInputInternal(input, vocabulary, masterItems, wordAliases);
 }

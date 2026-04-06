@@ -2,7 +2,7 @@
 
 > **Feature numbering convention (from 2026-03-30):** Feature IDs match their GitHub issue number (F44 = issue #44). Features F1–F23 predate this convention and retain their original numbers. Backlog features F3–F11 and F24 were renumbered in March 2026; old issues are closed with "superseded by" comments pointing to the new ones.
 >
-> **Input & vocabulary feature chain:** F44 → F79 → F90 → F77 / F83 → F78/F76. See [vocabulary-and-quantity-architecture.md](docs/design/vocabulary-and-quantity-architecture.md) for dependencies and rationale.
+> **Input & vocabulary feature chain:** F44 → F79 → F90 → F91 → F77 / F83 → F78/F76. See [vocabulary-and-quantity-architecture.md](docs/design/vocabulary-and-quantity-architecture.md) for dependencies and rationale.
 
 ## Active Features
 
@@ -16,7 +16,8 @@
 | F7 | Settings Screen | Done | [specs/F7-settings.md](specs/F7-settings.md) · [design](docs/design/F7-settings.md) | [#9](https://github.com/marvinmednick/grocerylist/issues/9) |
 | F83 | Vocabulary Definition Flow | Backlog | — | [#83](https://github.com/marvinmednick/grocerylist/issues/83) |
 | F85 | Structured Quantity Data Conversion | Done | [specs/F85-structured-quantity-conversion.md](specs/F85-structured-quantity-conversion.md) | [#85](https://github.com/marvinmednick/grocerylist/issues/85) |
-| F90 | Token & Item Alias System | Designed | [design](docs/design/F90-token-item-alias-system.md) | [#90](https://github.com/marvinmednick/grocerylist/issues/90) |
+| F90 | Token & Item Alias System (Data + Parser) | In Review | [specs/F90-token-item-alias-system.md](specs/F90-token-item-alias-system.md) · [design](docs/design/F90-token-item-alias-system.md) | [#90](https://github.com/marvinmednick/grocerylist/issues/90) |
+| F91 | Alias System UI | Specced | [specs/F91-alias-system-ui.md](specs/F91-alias-system-ui.md) · [design](docs/design/F90-token-item-alias-system.md) | [#91](https://github.com/marvinmednick/grocerylist/issues/91) |
 | F80 | Enhanced Shopping Mode (Store Focus) | Backlog | — | [#80](https://github.com/marvinmednick/grocerylist/issues/80) |
 | F81 | Dark Mode Visual Implementation | Backlog | — | [#81](https://github.com/marvinmednick/grocerylist/issues/81) |
 | F82 | Trip Notes | Backlog | — | [#82](https://github.com/marvinmednick/grocerylist/issues/82) |

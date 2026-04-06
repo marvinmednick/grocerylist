@@ -4,6 +4,7 @@ import { SmartAddItem } from '../SmartAddItem';
 import { useAllItems, useCreateMasterItem, useMasterItemNames } from '@/api/items';
 import { useAddToList, useDeleteListItem } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
+import { useWordAliases } from '@/api/aliases';
 import { useUndo } from '@/api/undoContext';
 import { useMyProfile } from '@/api/profile';
 import { useVocabulary } from '@/api/vocabulary';
@@ -19,6 +20,7 @@ jest.mock('@/api/items', () => {
 });
 jest.mock('@/api/list');
 jest.mock('@/api/metadata');
+jest.mock('@/api/aliases');
 jest.mock('@/api/undoContext');
 jest.mock('@/api/profile');
 jest.mock('@/api/vocabulary');
@@ -37,6 +39,7 @@ describe('SmartAddItem', () => {
   const mockUseAddToList = useAddToList as jest.Mock;
   const mockUseDeleteListItem = useDeleteListItem as jest.Mock;
   const mockUseMetadata = useMetadata as jest.Mock;
+  const mockUseWordAliases = useWordAliases as jest.Mock;
   const mockUseUndo = useUndo as jest.Mock;
   const mockUseMyProfile = useMyProfile as jest.Mock;
   const mockUseVocabulary = useVocabulary as jest.Mock;
@@ -84,6 +87,7 @@ describe('SmartAddItem', () => {
         categories: [{ id: 'cat-1', name: 'Other' }],
       },
     });
+    mockUseWordAliases.mockReturnValue({ data: new Map<string, string>() });
     mockUseUndo.mockReturnValue({ pushAction });
     mockUseMyProfile.mockReturnValue({
       data: {
