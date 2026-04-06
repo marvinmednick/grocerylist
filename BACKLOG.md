@@ -40,6 +40,14 @@ _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assig
 - [x] Inline list item quantity edits do not update `quantity_parsed` — promoted to #86
 - [x] `formatQuantity` suppresses count=1 with no package type — promoted to #87
 
+### From F90
+- [ ] Realtime subscription for `word_aliases` — not needed V1; React Query invalidation sufficient. (deferred from F90)
+- [ ] Fuzzy matching on alias entries — F77 scope. (deferred from F90)
+
+### From F91
+- [ ] Bulk alias import/export — not V1; users define one at a time. (deferred from F91)
+- [ ] Real-time collaboration on aliases — React Query invalidation covers single-user; realtime subscription deferred. (deferred from F91)
+
 ### From Doc Audit (2026-03-23)
 - [ ] `UserAvatar.tsx:38` uses absolute-positioned overlay (same pattern as the pre-F22 WarningBadge). Risk: clipping by parent containers with `overflow: hidden`, Z-index conflicts with other overlays, and keyboard-open behavior may push it off-screen. Low urgency — address in a future UI polish pass.
 

@@ -218,6 +218,30 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Next**: Review design doc. Then `/spec F90` when ready to implement.
 
 ---
+### 2026-04-06 — /review-impl F90 (Data + Parser)
+- **Completed**: Full implementation review of F90. All 436 tests pass. Three issues found and fixed during review: (1) migration RLS policies missing `TO authenticated` — fixed in migration file before `supabase db push`; (2) vacuous test rewritten to exercise actual parser; (3) full_schema.sql section numbering corrected. Migration applied to remote. PLAN.md updated to In Review. GitHub #90 commented and labeled `in-review`.
+- **Findings**: Implementation faithfully follows spec. Parser changes (expandAliases, resolveNames flattened lookup, parseInputInternal cross-variant dedup) are correct. All 4 SmartAddItem addItem call sites handle match_metadata appropriately. Prefix fallback correctly expands aliases and matches against item aliases. Seed data has 567 rows (exceeds 400-500 target). The migration policy omission (`TO authenticated`) was caught before push — no runtime impact since it was fixed pre-deployment.
+- **Design decisions**: none
+- **Design review**: not triggered — clean review, all patterns followed
+- **Next**: Ship F90 via `/complete F90`, then begin F91 implementation
+
+---
+### 2026-04-06 — /spec F91 (Alias System UI)
+- **Completed**: `specs/F91-alias-system-ui.md` written; PLAN.md updated (Backlog → Specced); `plans/F91-log.md` created; BACKLOG.md updated with 2 deferred items; GitHub #91 updated with spec link and acceptance criteria; `docs/design/F91-alias-system-ui.md` pointer file created (points to F90 design doc UI Design section).
+- **Findings**: Design doc consistency check passed — UserAvatar menu structure, VocabularyManagement dialog pattern, items.tsx modal layout all match. Key implementation detail: `word_aliases` stores one row per alias (alias→canonical), not one row per canonical word. The edit dialog's Save must diff original vs. current chips and issue individual create/delete calls per alias row. The `useUpdateMasterItem` already spreads `...updates` to `.update()`, so adding `aliases` to the type signature is sufficient — no mutation logic changes. The `useWordAliasesForWords` helper (new in F91) reverses the alias→canonical Map to canonical→alias[] for display in the Active Abbreviations section.
+- **Design decisions**: none — all decisions from F90 design doc; spec faithfully translates to implementation instructions
+- **Design review**: not triggered — all patterns follow established conventions (VocabularyManagement as reference for edit dialog; SizesAndPackages for full-screen modal with drill-down; editable alias chips from F79)
+- **Next**: Implement F90 first (`./implement F90 --plan`), then F91
+
+---
+### 2026-04-05 — /spec F90 (Phase A: Data + Parser)
+- **Completed**: `specs/F90-token-item-alias-system.md` written; PLAN.md updated (Designed → Specced); `plans/F90-log.md` created; BACKLOG.md updated with 5 deferred items (Phase B UI, item alias CRUD, realtime subscription, fuzzy matching); GitHub #90 updated with spec link and acceptance criteria.
+- **Findings**: Design doc was fully consistent with codebase — all referenced files, functions, and interfaces exist as documented. Key implementation details: `parseInput` gets optional 4th arg `wordAliases: Map<string, string>` for backward compatibility; `resolveNames` uses flattened lookup array (canonical entries before alias entries for dedup preference); `MasterItemRef` is duplicated in parser.ts and items.ts — both need `aliases: string[]` added (existing backlog item to deduplicate not addressed). The `prefixFallbackInterpretations` memo in SmartAddItem needs both token alias expansion AND item alias matching — two orthogonal changes in the same memo. Seed script targets ~400–500 (word, suggestion) pairs via re-runnable `INSERT ... ON CONFLICT DO NOTHING`.
+- **Design decisions**: none — all decisions from design doc; spec faithfully translates to implementation instructions
+- **Design review**: not triggered — all patterns follow established conventions (parser extension follows F44/F85 precedent; React Query hooks follow F79 vocabulary pattern; migration follows existing numbering)
+- **Next**: Implementor runs `./implement F90 --plan`, then `/review-plan F90`
+
+---
 ### 2026-04-01 — F44 design: unified quantity format, comparison rules
 - **Completed**: Collapsed separate serialization and display formats into single natural-language format. Defined equality comparison via structured field comparison. Defined partial matching via raw input prefix. Clarified `Nx` is input-only.
 - **Findings**: The initial design had a separate `Nx` serialization format for internal storage, which caused inconsistencies — `2x` leaked into display and broke partial matching (serialized `2x` doesn't prefix-match `2lb`). The root issue: trying to make the stored TEXT string self-describing was unnecessary because the parser can re-interpret any stored string. Collapsing to one natural-language format (same for storage and display) eliminated the inconsistencies. Equality comparison parses both sides to structured fields — more robust than string comparison since `"2 loaves"` and `"2 loaf"` compare as equal. Partial matching stays on raw text (user input vs. DB string) since it's a UI heuristic, not a semantic operation.
