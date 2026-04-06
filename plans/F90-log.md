@@ -15,3 +15,7 @@
   - Vacuous test `'sets matchedVia to name for unmatched items'` rewritten to exercise actual parser code
   - `full_schema.sql` section 7 label corrected from "ITEMS (Master Database)" to "WORD ALIASES & ABBREVIATION SUGGESTIONS"
 - **Non-blocking:** none remaining
+
+## 2026-04-06 — Shipped
+- **Commit:** `feat: add token & item alias system — data + parser (F90) refs #90`
+- **Closed:** #90
