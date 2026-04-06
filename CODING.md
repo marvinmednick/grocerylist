@@ -401,6 +401,25 @@ it('displays the formatted end date', () => {
 });
 ```
 
+### Composition Scenario Tests
+
+Features that touch the **input-to-match pipeline** (parser, alias expansion, prefix fallback, SmartAddItem merge/dedup/ranking) must include composition scenario tests in addition to unit tests. These verify that multiple systems work correctly together — the integration seams where bugs hide even when individual pieces pass.
+
+**When to write them:** Any feature that modifies or extends the parser, alias system, prefix fallback, or SmartAddItem's interpretation merging logic.
+
+**Pattern:** Use `SmartAddItem-parser-test.tsx` as the reference — render SmartAddItem with real parser (no spy/mock on parser), mock only the data hooks, and assert user-visible results:
+
+```typescript
+// Good: tests composition of alias expansion + prefix fallback + dedup
+it('deduplicates alias-expanded parser match with prefix fallback match', async () => {
+  // Setup: word aliases + master items with aliases
+  // Type abbreviated input
+  // Assert: item appears exactly once, not duplicated
+});
+```
+
+**What NOT to duplicate:** Don't re-test pure parser logic (covered in `parser-test.ts` / `parser-alias-test.ts`) or pure component rendering (covered in component tests). Focus on cases where **multiple systems interact**: alias expansion + ranking, alias + quantity + store hint composition, parser/fallback dedup with aliases.
+
 ### Mocking Notes
 
 `jest.setup.js` provides global mocks for:

@@ -48,6 +48,9 @@ _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assig
 - [ ] Bulk alias import/export — not V1; users define one at a time. (deferred from F91)
 - [ ] Real-time collaboration on aliases — React Query invalidation covers single-user; realtime subscription deferred. (deferred from F91)
 
+### For F83 (Fuzzy Matching Design)
+- [ ] Consider substring prefix matching at minimum length (3-4 chars) as one fuzzy strategy alongside Levenshtein, n-grams, etc. Abbreviations screen search currently uses strict prefix matching; F83 should evaluate broadening this as part of a cohesive fuzzy search design. (noted during F91 review)
+
 ### From Doc Audit (2026-03-23)
 - [ ] `UserAvatar.tsx:38` uses absolute-positioned overlay (same pattern as the pre-F22 WarningBadge). Risk: clipping by parent containers with `overflow: hidden`, Z-index conflicts with other overlays, and keyboard-open behavior may push it off-screen. Low urgency — address in a future UI polish pass.
 

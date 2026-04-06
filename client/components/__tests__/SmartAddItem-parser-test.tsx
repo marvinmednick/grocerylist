@@ -241,12 +241,12 @@ describe('SmartAddItem parser integration', () => {
 // Mock data typed against the exported interfaces — TypeScript enforces alignment with the real
 // Supabase query shape. If the interface changes, these objects will fail to compile.
 const DISCOVERY_MASTER_ITEM_REFS: MasterItemRef[] = [
-  { id: 'milk', name: 'Milk', default_qty: '1 gal', alternate_qtys: ['2'] },
-  { id: 'chicken', name: 'Chicken', default_qty: '1 lb', alternate_qtys: [] },
-  { id: 'chicken-breast', name: 'Chicken Breast', default_qty: '1 lb', alternate_qtys: ['2 lb'] },
-  { id: 'chicken-broth', name: 'Chicken Broth', default_qty: '1 can', alternate_qtys: ['2 cans'] },
-  { id: 'chicken-boneless-skinless', name: 'Chicken Boneless Skinless', default_qty: '1 lb', alternate_qtys: [] },
-  { id: 'bone-broth', name: 'Organic Bone Broth', default_qty: '1 carton', alternate_qtys: [] },
+  { id: 'milk', name: 'Milk', default_qty: '1 gal', alternate_qtys: ['2'], aliases: [] },
+  { id: 'chicken', name: 'Chicken', default_qty: '1 lb', alternate_qtys: [], aliases: [] },
+  { id: 'chicken-breast', name: 'Chicken Breast', default_qty: '1 lb', alternate_qtys: ['2 lb'], aliases: [] },
+  { id: 'chicken-broth', name: 'Chicken Broth', default_qty: '1 can', alternate_qtys: ['2 cans'], aliases: [] },
+  { id: 'chicken-boneless-skinless', name: 'Chicken Boneless Skinless', default_qty: '1 lb', alternate_qtys: [], aliases: [] },
+  { id: 'bone-broth', name: 'Organic Bone Broth', default_qty: '1 carton', alternate_qtys: [], aliases: [] },
 ];
 
 const DISCOVERY_ALL_ITEMS: MasterItem[] = DISCOVERY_MASTER_ITEM_REFS.map((ref) => ({
@@ -379,5 +379,123 @@ describe('SmartAddItem prefix fallback discovery', () => {
     expect(bonelessSkinless).toBeTruthy();
     expect(chicken).toBeTruthy();
     expect(bonelessIdx).toBeLessThan(chickenIdx);
+  });
+});
+
+// Composition scenario tests — verify that parser alias expansion, prefix fallback,
+// and SmartAddItem merge/dedup/ranking work correctly together. These catch bugs at
+// integration seams that unit tests on individual pieces would miss.
+const ALIAS_SCENARIO_REFS: MasterItemRef[] = [
+  { id: 'chicken', name: 'Chicken', default_qty: '1 lb', alternate_qtys: [], aliases: [] },
+  { id: 'chicken-breast', name: 'Chicken Breast', default_qty: '1 lb', alternate_qtys: ['2 lb'], aliases: [] },
+  { id: 'chicken-breast-strips', name: 'Chicken Breast Strips', default_qty: '1 lb', alternate_qtys: [], aliases: ['Chicken Tenders'] },
+  { id: 'chicken-broth', name: 'Chicken Broth', default_qty: '1 can', alternate_qtys: [], aliases: [] },
+];
+
+const ALIAS_SCENARIO_ALL_ITEMS: MasterItem[] = ALIAS_SCENARIO_REFS.map((ref) => ({
+  ...ref,
+  short_name: null,
+  default_category_id: 'cat-1',
+  created_at: '2024-01-01T00:00:00Z',
+  item_store_preferences: [],
+}));
+
+describe('SmartAddItem alias composition scenarios', () => {
+  const mockUseMasterItemNames = useMasterItemNames as jest.Mock;
+  const mockUseAllItems = useAllItems as jest.Mock;
+  const mockUseCreateMasterItem = useCreateMasterItem as jest.Mock;
+  const mockUseAddToList = useAddToList as jest.Mock;
+  const mockUseDeleteListItem = useDeleteListItem as jest.Mock;
+  const mockUseMetadata = useMetadata as jest.Mock;
+  const mockUseWordAliases = useWordAliases as jest.Mock;
+  const mockUseUndo = useUndo as jest.Mock;
+  const mockUseMyProfile = useMyProfile as jest.Mock;
+  const mockUseVocabulary = useVocabulary as jest.Mock;
+
+  const addItem = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    addItem.mockResolvedValue({ id: 'list-1' });
+
+    mockUseMasterItemNames.mockReturnValue({ data: ALIAS_SCENARIO_REFS });
+    mockUseAllItems.mockReturnValue({ data: ALIAS_SCENARIO_ALL_ITEMS });
+    mockUseCreateMasterItem.mockReturnValue({ mutateAsync: jest.fn().mockResolvedValue({ id: 'new' }) });
+    mockUseAddToList.mockReturnValue({ mutateAsync: addItem });
+    mockUseDeleteListItem.mockReturnValue({ mutateAsync: jest.fn() });
+    mockUseMetadata.mockReturnValue({
+      data: {
+        stores: [
+          { id: 'store-1', name: 'Safeway', color_code: '#2563eb' },
+          { id: 'store-2', name: 'Costco', color_code: '#16a34a' },
+        ],
+        categories: [{ id: 'cat-1', name: 'Other' }],
+      },
+    });
+    mockUseWordAliases.mockReturnValue({
+      data: new Map<string, string>([
+        ['chk', 'chicken'],
+        ['brst', 'breast'],
+        ['tndr', 'tenders'],
+      ]),
+    });
+    mockUseUndo.mockReturnValue({ pushAction: jest.fn() });
+    mockUseMyProfile.mockReturnValue({ data: { warning_preferences: {} } });
+    mockUseVocabulary.mockReturnValue({ data: undefined });
+  });
+
+  it('multi-token alias expansion finds exact match and deduplicates with prefix fallback', async () => {
+    // "chk brst" → parser expands to "chicken breast" via aliases → matches "Chicken Breast".
+    // Prefix fallback also expands "chk" → "chicken" and finds "Chicken Breast".
+    // The item should appear exactly once.
+    render(<SmartAddItem activeStoreId="store-1" />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'chk brst');
+
+    expect(await screen.findByText('Chicken Breast')).toBeTruthy();
+    expect(screen.queryAllByText('Chicken Breast').length).toBe(1);
+  });
+
+  it('alias expansion composes with quantity and store hint', async () => {
+    // "2 chk brst @cost" → qty 2, alias-expanded to "chicken breast", store hint "Costco".
+    // Verifies all three systems compose through the real pipeline.
+    render(<SmartAddItem activeStoreId="store-1" />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), '2 chk brst @cost');
+    fireEvent.press(await screen.findByText('Chicken Breast'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          quantity: '2',
+          store_id: 'store-2',
+        })
+      );
+    });
+  });
+
+  it('token alias + item alias finds item through both expansion layers', async () => {
+    // "chk tndr" → token expansion produces "chicken tenders" → matches item alias
+    // "Chicken Tenders" on "Chicken Breast Strips". Tests two alias systems composing.
+    render(<SmartAddItem activeStoreId="store-1" />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'chk tndr');
+
+    expect(await screen.findByText('Chicken Tenders')).toBeTruthy();
+  });
+
+  it('partial alias expansion ranks full match above orphan match', async () => {
+    // "chk brst" with aliases → parser finds "Chicken Breast" (no orphans) and also
+    // "Chicken" (orphan: "brst"). The full match should rank above the orphan match.
+    render(<SmartAddItem activeStoreId="store-1" />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'chk brst');
+
+    const breast = await screen.findByText('Chicken Breast');
+    const chicken = screen.getByText('Chicken');
+
+    const allText = screen.root.findAll((node) => typeof node.props?.children === 'string');
+    const breastIdx = allText.findIndex((n) => n.props.children === 'Chicken Breast');
+    const chickenIdx = allText.findIndex((n) => n.props.children === 'Chicken');
+    expect(breast).toBeTruthy();
+    expect(chicken).toBeTruthy();
+    expect(breastIdx).toBeLessThan(chickenIdx);
   });
 });
