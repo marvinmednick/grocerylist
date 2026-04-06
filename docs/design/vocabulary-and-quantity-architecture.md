@@ -6,8 +6,9 @@
 > the app handles vocabulary (units, packages, size descriptors), quantity storage and
 > display, and user interaction when input doesn't match known entities.
 >
-> **Related features:** F44 (free-form parsing), F77 (fuzzy matching), F78 (duplicate
-> handling), F79 (quantity units system)
+> **Related features:** F44 (free-form parsing), F79 (quantity units system), F85
+> (structured quantity conversion), F90 (token & item aliases), F77 (fuzzy matching),
+> F78 (duplicate handling), F83 (vocabulary definition flow)
 
 ---
 
@@ -184,67 +185,39 @@ mistakes. The system does not block the addition.
 
 ---
 
-## Scope Boundaries by Feature
+## Architectural Dependencies
 
-| Feature | Owns |
-|---------|------|
-| **F44** | Parser architecture (passes 1-6), vocabulary table structure, token classification rules, ranked multi-interpretation output (`ParseResult`), dropdown UI design (qty/store pills, orphan display, "Other" text input, edit modal enhancements) |
-| **F77** | Fuzzy matching, confidence scoring, multi-candidate presentation in dropdown, typo tolerance |
-| **F78** | Duplicate detection, merge strategies (additive math vs. string manipulation), operates on structured quantity fields |
-| **F79** | Structured quantity storage migration, all vocabulary table management (units + packages + size descriptors), vocabulary management settings screen, household-scoped vocabulary CRUD |
-| **F83** | Clarify/define modal, on-the-fly vocabulary definition flow during item add, vocabulary conflict prevention warnings, one-off add affordance |
+These are structural constraints — later capabilities depend on earlier ones being in place.
 
-### Recommended Implementation Order
-
-```
-F44 → F79 → F77 / F83 → F78 / F76
-```
-
-| Phase | Features | Why this order |
-|-------|----------|----------------|
-| 1 | **F44** | Establishes the parser, vocabulary table schema/seed data, and pluggable lookup interface. Foundation for everything else. |
-| 2 | **F79** | Wires up structured quantity storage and household-extensible vocabulary CRUD. Needed before users can add vocabulary entries (F83) or features can operate on structured fields (F78, F76). |
-| 3 | **F77 / F83** (parallel) | F77 extends matching via the pluggable interface F44 provides. F83 builds the definition flow on top of F79's vocabulary tables. Independent of each other. |
-| 4 | **F78 / F76** (parallel) | Both operate on structured quantity fields from F79. F78 (duplicate merge) and F76 (recipe scaling) are independent of each other. |
-
-**Note:** Each feature can be implemented and shipped incrementally. F44 works with the
-current text schema (interim state). F77 and F83 add value independently. The order
-reflects dependencies, not a requirement to batch them.
+- **Vocabulary classification must precede alias expansion.** Pass 2 (token classification against vocabulary tables) runs before alias expansion. A token classified as PACKAGE or UNIT has structural meaning that aliases must not override. This is why "can" → "canned" as an alias won't fire when "can" appears in a quantity context.
+- **Structured quantity storage must precede quantity math.** Duplicate merge (F78) and recipe scaling (F76) operate on structured fields. They require the `quantity_parsed` JSONB column and `formatQuantity` pipeline established by F79/F85.
+- **Parser architecture is the integration point.** All matching improvements (aliases, fuzzy matching, plural normalization) plug into the F44 parser pipeline. Token alias expansion runs between Pass 4 and Pass 5. Item aliases are flattened into the Pass 5 name resolution loop. Fuzzy matching extends the same lookup interface.
+- **Alias system is independent of fuzzy matching.** Token and item aliases (F90) work via exact lookup — no edit-distance computation. Fuzzy matching (F77) is a separate matching tier that can optionally apply to alias entries later.
 
 ---
 
-## Open Items
+## Open Design Questions
 
 1. **Clarify/define modal design** — conceptually defined (assign roles to tokens, choose
-   what to save, preview result) but UI layout not yet designed. Owned by **F83**.
-   Consider whether this is a new mode of the existing edit-before-add modal or a
-   separate modal.
+   what to save, preview result) but UI layout not yet designed. Relevant to **F83**.
 
-2. **Vocabulary conflict checking rules** — warn on obvious conflicts (token appears in
-   existing product names). Exact rules and severity thresholds not yet defined. Owned by **F83**.
-
-3. **Dropdown visual design for two-category results** — section dividers, styling for
-   suggested vs. known matches. Owned by **F77**.
-
-4. **One-off add affordance** — must be prominent and zero-friction. The current
-   SmartAddItem already has an `Add "[query]" (One-time)` row in the dropdown, and
-   F44's `ParseResult.rawInput` provides the full original text for this path.
-   F83 may enhance this affordance but the basic mechanism exists. Owned by **F83**.
+2. **Dropdown visual design for two-category results** — section dividers, styling for
+   suggested vs. known matches. Relevant to **F77**.
 
 ---
 
 ## Revision History
 - 2026-03-31: Initial draft — established from F44 design conversation covering quantity
   storage, vocabulary extensibility, and input interpretation model. Corrected storage
-  decision to structured (not text). Assigned all open items to features: F79 (expanded
-  to cover all vocabulary management + structured migration), F77 (two-category dropdown),
-  F83 (new — vocabulary definition flow + conflict prevention)
+  decision to structured (not text).
 - 2026-04-01: Updated to reflect F44 design completion — F44 scope expanded from single-
   interpretation to ranked multi-interpretation output; dropdown description updated with
-  specific pill/orphan UI design; one-off add affordance noted as partially existing.
-  Added three core principles derived from F44 design decisions: #5 "rank, don't decide"
-  (present alternatives, don't pick winners), #6 "context sorts, never filters" (input
-  affects ordering not visibility), #7 "extend existing surfaces" (enrich existing UI
-  before adding new elements). Revised principle #1 from "user always confirms" to
-  "every inference is visible and overridable" — pre-selected pills don't require
-  explicit per-field confirmation, just visibility and the ability to change
+  specific pill/orphan UI design. Added three core principles: #5 "rank, don't decide",
+  #6 "context sorts, never filters", #7 "extend existing surfaces". Revised principle #1
+  to "every inference is visible and overridable".
+- 2026-04-05: Restructured — removed "Scope Boundaries by Feature" table and
+  "Recommended Implementation Order" (project planning, not architecture; tracked in
+  PLAN.md). Replaced with "Architectural Dependencies" section covering structural
+  constraints between capabilities. Removed resolved open items (vocabulary conflict
+  checking now designed in F90; one-off add affordance exists). Added F90 (token & item
+  aliases) to related features.

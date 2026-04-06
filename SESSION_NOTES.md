@@ -202,6 +202,22 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Next**: Commit and close #88.
 
 ---
+### 2026-04-05 — /resolve 89 — parser partial-matches rank above better prefix fallback matches
+- **Completed**: Fixed #89. Split `rankedInterpretations` into three tiers: (1) parser results with 0 orphans, (2) prefix fallback results, (3) parser results with ≥1 orphan. Added "Chicken Boneless Skinless" to DISCOVERY_MASTER_ITEM_REFS and new ordering test. 411/411 tests passing.
+- **Findings**: `consumeTokens` requires ALL item name tokens to appear in the input, so "Chicken Boneless Skinless" (3 tokens) is never matched by the parser for "Chicken Boneless" input (missing "skinless"). It can only be discovered via prefix fallback. The prior merge order (all parser results first) incorrectly placed the partial "Chicken" match above the better fallback result.
+- **Design decisions**: none — ranking rule follows naturally from "more input explained = better match"
+- **Design review**: not triggered — contained local sort change, no new patterns
+- **Next**: Session complete.
+
+---
+### 2026-04-05 — /design F90 — Token & Item Alias System (Pass 1 + Pass 2)
+- **Completed**: Full design for F90 — both functional/data decisions (Pass 1) and UI design (Pass 2). Design doc written at `docs/design/F90-token-item-alias-system.md`. Updated `docs/design/ui-guidelines.md` Decision Log with 4 new entries. Restructured architecture doc (`docs/design/vocabulary-and-quantity-architecture.md`) — removed project-planning sections (scope boundaries table, implementation order), replaced with "Architectural Dependencies" section. Narrowed F77 GitHub issue scope (aliases moved to F90). Updated PLAN.md feature chain.
+- **Findings**: F90 was split from F77 after recognizing that aliases are a substantial independent body of work. Key insight: token aliases (word-level, composable) and item aliases (product-level, alternate names) are complementary — both needed. The abbreviations management screen unified two surfaces (general management + item-launched definition) into one screen with different entry states (empty search vs. pre-populated search from item words). Search creates placeholder rows for words without aliases, doubling as the "add new" mechanism.
+- **Design decisions**: (1) Token aliases household-scoped and global, table starts empty. (2) Additive expansion — parser tries all 2^N combinations of original + expanded tokens. (3) Vocabulary classification takes priority over alias expansion. (4) "Abbreviations" as separate avatar menu item (not under "Sizes & Packages"). (5) Single abbreviations screen for both management and definition, with toggle between canonical→aliases and alias→canonical views. (6) OR search semantics, placeholder rows for unmatched words. (7) Inline live-updating conflict warnings. (8) Item edit modal gets read-only "Active Abbreviations" section + "Define Abbreviations" launch button. (9) Architecture doc cleaned up — planning content removed, architectural constraints retained.
+- **Design review**: not triggered
+- **Next**: Review design doc. Then `/spec F90` when ready to implement.
+
+---
 ### 2026-04-01 — F44 design: unified quantity format, comparison rules
 - **Completed**: Collapsed separate serialization and display formats into single natural-language format. Defined equality comparison via structured field comparison. Defined partial matching via raw input prefix. Clarified `Nx` is input-only.
 - **Findings**: The initial design had a separate `Nx` serialization format for internal storage, which caused inconsistencies — `2x` leaked into display and broke partial matching (serialized `2x` doesn't prefix-match `2lb`). The root issue: trying to make the stored TEXT string self-describing was unnecessary because the parser can re-interpret any stored string. Collapsing to one natural-language format (same for storage and display) eliminated the inconsistencies. Equality comparison parses both sides to structured fields — more robust than string comparison since `"2 loaves"` and `"2 loaf"` compare as equal. Partial matching stays on raw text (user input vs. DB string) since it's a UI heuristic, not a semantic operation.
