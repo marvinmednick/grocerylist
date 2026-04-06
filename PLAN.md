@@ -17,7 +17,7 @@
 | F83 | Vocabulary Definition Flow | Backlog | — | [#83](https://github.com/marvinmednick/grocerylist/issues/83) |
 | F85 | Structured Quantity Data Conversion | Done | [specs/F85-structured-quantity-conversion.md](specs/F85-structured-quantity-conversion.md) | [#85](https://github.com/marvinmednick/grocerylist/issues/85) |
 | F90 | Token & Item Alias System (Data + Parser) | Done | [specs/F90-token-item-alias-system.md](specs/F90-token-item-alias-system.md) · [design](docs/design/F90-token-item-alias-system.md) | [#90](https://github.com/marvinmednick/grocerylist/issues/90) |
-| F91 | Alias System UI | Specced | [specs/F91-alias-system-ui.md](specs/F91-alias-system-ui.md) · [design](docs/design/F90-token-item-alias-system.md) | [#91](https://github.com/marvinmednick/grocerylist/issues/91) |
+| F91 | Alias System UI | Done | [specs/F91-alias-system-ui.md](specs/F91-alias-system-ui.md) · [design](docs/design/F90-token-item-alias-system.md) | [#91](https://github.com/marvinmednick/grocerylist/issues/91) |
 | F80 | Enhanced Shopping Mode (Store Focus) | Backlog | — | [#80](https://github.com/marvinmednick/grocerylist/issues/80) |
 | F81 | Dark Mode Visual Implementation | Backlog | — | [#81](https://github.com/marvinmednick/grocerylist/issues/81) |
 | F82 | Trip Notes | Backlog | — | [#82](https://github.com/marvinmednick/grocerylist/issues/82) |

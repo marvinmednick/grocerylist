@@ -248,3 +248,11 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: Single natural-language quantity format for storage and display (`2 loaves`, `2 8oz cans`). `Nx` is input-only, never stored. Equality: parse both sides, compare structured fields. Partial match: raw input prefix against raw DB strings. Pill labels: parseable values rendered, legacy values as-is.
 - **Design review**: not triggered
 - **Next**: F44 design complete. Ready for DRAFT notice removal and `/spec`.
+
+---
+### 2026-04-06 — /review-plan F91, /review-impl F91, /complete F91
+- **Completed**: Full lifecycle for F91 Alias System UI — plan review (approved with minor additions), implementation review (passed with non-blocking fixes), fixes applied, feature shipped.
+- **Findings**: Search behavior discussion led to three decisions: (1) prefix matching is correct for alias lookup, substring matching deferred to F83 fuzzy design; (2) cross-matching (both views search canonical+alias) is good UX — toggle controls display format, not search scope; (3) alias match highlighting in canonical view makes cross-matches self-explanatory. Identified gap in test strategy: unit tests on individual pieces (parser, component rendering) don't catch bugs at integration seams (merge/dedup/ranking). Added 4 composition scenario tests and CODING.md guideline requiring them for pipeline features.
+- **Design decisions**: Prefix matching for alias search (not substring). Cross-matching kept with alias highlighting. Punctuation allowed in aliases (only whitespace rejected). Composition test guideline added to CODING.md. F83 backlog note for substring matching consideration.
+- **Design review**: CODING.md updated with Composition Scenario Tests section. No DESIGN.md changes needed.
+- **Next**: Push when ready. F91 complete — alias system (data + parser + UI) fully shipped.

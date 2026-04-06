@@ -45,8 +45,8 @@ _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assig
 - [ ] Fuzzy matching on alias entries — F77 scope. (deferred from F90)
 
 ### From F91
-- [ ] Bulk alias import/export — not V1; users define one at a time. (deferred from F91)
-- [ ] Real-time collaboration on aliases — React Query invalidation covers single-user; realtime subscription deferred. (deferred from F91)
+- [x] Bulk import/export — promoted to #92 (broadened scope: aliases, master items, history)
+- [x] Real-time collaboration on aliases — discarded (not useful for the product)
 
 ### For F83 (Fuzzy Matching Design)
 - [ ] Consider substring prefix matching at minimum length (3-4 chars) as one fuzzy strategy alongside Levenshtein, n-grams, etc. Abbreviations screen search currently uses strict prefix matching; F83 should evaluate broadening this as part of a cohesive fuzzy search design. (noted during F91 review)
