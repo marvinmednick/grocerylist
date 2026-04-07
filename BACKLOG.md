@@ -8,7 +8,7 @@ See WORKFLOW.md §8 (Backlog Triage) for the full process.
 
 ### From F44
 - [ ] Database-backed vocabulary tables (household-scoped, with management UI) — requires F79 scope. (deferred from F44)
-- [ ] Plural normalization in bag-of-words matching ("breasts" → "breast") — requires stemming logic. (deferred from F44, owned by F77)
+- [x] Plural normalization in bag-of-words matching ("breasts" → "breast") — implemented in F77.
 - [ ] Fraction support (`1/2 lb`) in parser — not supported V1. (deferred from F44)
 - [ ] Word-quantities (`a dozen`, `half a pound`) in parser — not supported V1. (deferred from F44)
 - [ ] Multi-word store hints (`@harris teeter`) — single-word @hint only in V1. (deferred from F44)
@@ -42,7 +42,7 @@ _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assig
 
 ### From F90
 - [ ] Realtime subscription for `word_aliases` — not needed V1; React Query invalidation sufficient. (deferred from F90)
-- [ ] Fuzzy matching on alias entries — F77 scope. (deferred from F90)
+- [x] Fuzzy matching on alias entries — implemented in F77.
 
 ### From F91
 - [x] Bulk import/export — promoted to #92 (broadened scope: aliases, master items, history)

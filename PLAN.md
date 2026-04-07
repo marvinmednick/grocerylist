@@ -10,7 +10,7 @@
 |----|---------|--------|------|-------|
 | F2 | Multi-User Trip Management | Done | [specs/F2-multi-user-trips.md](specs/F2-multi-user-trips.md) · [design](docs/design/F2-multi-user-trips.md) | [#4](https://github.com/marvinmednick/grocerylist/issues/4) |
 | F76 | Recipes & Bundles | Backlog | — | [#76](https://github.com/marvinmednick/grocerylist/issues/76) |
-| F77 | Fuzzy Matching in Smart Add | In Review | [specs/F77-fuzzy-matching.md](specs/F77-fuzzy-matching.md) · [design](docs/design/F77-fuzzy-matching.md) | [#77](https://github.com/marvinmednick/grocerylist/issues/77) |
+| F77 | Fuzzy Matching in Smart Add | Done | [specs/F77-fuzzy-matching.md](specs/F77-fuzzy-matching.md) · [design](docs/design/F77-fuzzy-matching.md) | [#77](https://github.com/marvinmednick/grocerylist/issues/77) |
 | F78 | Duplicate Entry Handling | Backlog | — | [#78](https://github.com/marvinmednick/grocerylist/issues/78) |
 | F79 | Quantity Units System | Done | [specs/F79-quantity-units-system.md](specs/F79-quantity-units-system.md) · [design](docs/design/F79-quantity-units-system.md) | [#79](https://github.com/marvinmednick/grocerylist/issues/79) |
 | F7 | Settings Screen | Done | [specs/F7-settings.md](specs/F7-settings.md) · [design](docs/design/F7-settings.md) | [#9](https://github.com/marvinmednick/grocerylist/issues/9) |

@@ -17,3 +17,7 @@
 - **Tests:** 506/506 passed
 - **Non-blocking:** `bestFuzzyMatch` exported from `fuzzyMatch.ts` but unused in production code — (found in F77 review)
 - **Implementation notes:** Implementor added `localAlignmentDistance` (relaxed Levenshtein for length-delta=2) to meet spec requirement of `"rest" vs "breast" → 1`. Vocabulary lookups use `levenshteinDistanceStrict` with first-char guards to prevent false positives — both are sound refinements.
+
+## 2026-04-06 — Shipped
+- **Commit:** `feat: add fuzzy matching to Smart Add parser pipeline (F77) refs #77`
+- **Closed:** #77
