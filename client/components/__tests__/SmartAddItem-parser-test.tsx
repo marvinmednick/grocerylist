@@ -498,4 +498,134 @@ describe('SmartAddItem alias composition scenarios', () => {
     expect(chicken).toBeTruthy();
     expect(breastIdx).toBeLessThan(chickenIdx);
   });
+
+  it('keeps alias-expanded context matches when another token is unmatched', async () => {
+    // "chk ddd" should still surface the broader chicken matches from prefix fallback.
+    // The unknown token remains an orphan on the parser row, but it must not suppress
+    // the other chicken suggestions.
+    render(<SmartAddItem activeStoreId="store-1" />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'chk ddd');
+
+    expect(await screen.findByText('Chicken Breast')).toBeTruthy();
+    expect(screen.getByText('Chicken Broth')).toBeTruthy();
+    expect(screen.getByText('Chicken Breast Strips')).toBeTruthy();
+    expect(screen.getByText('Chicken')).toBeTruthy();
+  });
+});
+
+const FUZZY_SCENARIO_REFS: MasterItemRef[] = [
+  { id: 'chicken-breast-boneless-skinless', name: 'Chicken Breast Boneless Skinless', default_qty: '1 lb', alternate_qtys: [], aliases: [] },
+  { id: 'chicken-breast', name: 'Chicken Breast', default_qty: '1 lb', alternate_qtys: [], aliases: [] },
+  { id: 'chicken-brest', name: 'Chicken Brest', default_qty: '1 lb', alternate_qtys: [], aliases: [] },
+  { id: 'olive-oil', name: 'Olive Oil', default_qty: '1 bottle', alternate_qtys: ['2 bottles'], aliases: [] },
+  { id: 'chicken', name: 'Chicken', default_qty: '1 lb', alternate_qtys: [], aliases: [] },
+];
+
+const FUZZY_SCENARIO_ALL_ITEMS: MasterItem[] = FUZZY_SCENARIO_REFS.map((ref) => ({
+  ...ref,
+  short_name: null,
+  default_category_id: 'cat-1',
+  created_at: '2024-01-01T00:00:00Z',
+  item_store_preferences: [],
+}));
+
+describe('SmartAddItem fuzzy composition scenarios', () => {
+  const mockUseMasterItemNames = useMasterItemNames as jest.Mock;
+  const mockUseAllItems = useAllItems as jest.Mock;
+  const mockUseCreateMasterItem = useCreateMasterItem as jest.Mock;
+  const mockUseAddToList = useAddToList as jest.Mock;
+  const mockUseDeleteListItem = useDeleteListItem as jest.Mock;
+  const mockUseMetadata = useMetadata as jest.Mock;
+  const mockUseWordAliases = useWordAliases as jest.Mock;
+  const mockUseUndo = useUndo as jest.Mock;
+  const mockUseMyProfile = useMyProfile as jest.Mock;
+  const mockUseVocabulary = useVocabulary as jest.Mock;
+
+  const addItem = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    addItem.mockResolvedValue({ id: 'list-1' });
+
+    mockUseMasterItemNames.mockReturnValue({ data: FUZZY_SCENARIO_REFS });
+    mockUseAllItems.mockReturnValue({ data: FUZZY_SCENARIO_ALL_ITEMS });
+    mockUseCreateMasterItem.mockReturnValue({ mutateAsync: jest.fn().mockResolvedValue({ id: 'new' }) });
+    mockUseAddToList.mockReturnValue({ mutateAsync: addItem });
+    mockUseDeleteListItem.mockReturnValue({ mutateAsync: jest.fn() });
+    mockUseMetadata.mockReturnValue({
+      data: {
+        stores: [
+          { id: 'store-1', name: 'Safeway', color_code: '#2563eb' },
+          { id: 'store-2', name: 'Costco', color_code: '#16a34a' },
+        ],
+        categories: [{ id: 'cat-1', name: 'Other' }],
+      },
+    });
+    mockUseWordAliases.mockReturnValue({
+      data: new Map<string, string>([['chkn', 'chicken']]),
+    });
+    mockUseUndo.mockReturnValue({ pushAction: jest.fn() });
+    mockUseMyProfile.mockReturnValue({ data: { warning_preferences: {} } });
+    mockUseVocabulary.mockReturnValue({ data: undefined });
+  });
+
+  it('ranks "Chicken Breast Boneless Skinless" first for "chicken rest boneless"', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'chicken rest boneless');
+
+    const top = await screen.findByText('Chicken Breast Boneless Skinless');
+    const secondary = screen.getByText('Chicken Breast');
+    const allText = screen.root.findAll((node) => typeof node.props?.children === 'string');
+    const topIdx = allText.findIndex((node) => node.props.children === 'Chicken Breast Boneless Skinless');
+    const secondaryIdx = allText.findIndex((node) => node.props.children === 'Chicken Breast');
+
+    expect(top).toBeTruthy();
+    expect(secondary).toBeTruthy();
+    expect(topIdx).toBeLessThan(secondaryIdx);
+  });
+
+  it('parses fuzzy package in "2 botles olive oil" and uses packaged quantity on add', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), '2 botles olive oil');
+    fireEvent.press(await screen.findByText('Olive Oil'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Olive Oil',
+          quantity: expect.stringMatching(/2\s+bottle/),
+        })
+      );
+    });
+  });
+
+  it('matches "chicken breasts" to "Chicken Breast"', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'chicken breasts');
+
+    expect(await screen.findByText('Chicken Breast')).toBeTruthy();
+  });
+
+  it('uses fuzzy alias-key expansion for "chk" when only "chkn" alias exists', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'chk');
+
+    expect(await screen.findByText('Chicken')).toBeTruthy();
+  });
+
+  it('ranks exact interpretation above fuzzy interpretation', async () => {
+    render(<SmartAddItem activeStoreId="store-1" />);
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'chicken breast');
+
+    const exact = await screen.findByText('Chicken Breast');
+    const fuzzy = screen.getByText('Chicken Brest');
+    const allText = screen.root.findAll((node) => typeof node.props?.children === 'string');
+    const exactIdx = allText.findIndex((node) => node.props.children === 'Chicken Breast');
+    const fuzzyIdx = allText.findIndex((node) => node.props.children === 'Chicken Brest');
+
+    expect(exact).toBeTruthy();
+    expect(fuzzy).toBeTruthy();
+    expect(exactIdx).toBeLessThan(fuzzyIdx);
+  });
 });

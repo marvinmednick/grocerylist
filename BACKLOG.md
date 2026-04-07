@@ -48,6 +48,10 @@ _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assig
 - [x] Bulk import/export — promoted to #92 (broadened scope: aliases, master items, history)
 - [x] Real-time collaboration on aliases — discarded (not useful for the product)
 
+### From F77
+- [ ] Visual indicator for non-exact matches (fuzzy-corrected words, alias-expanded words) in dropdown rows — subtle styling to help users understand why a result appeared. (deferred from F77 design)
+- [ ] `bestFuzzyMatch` exported from `fuzzyMatch.ts` but unused in production code — remove or document as utility. (found in F77 review)
+
 ### For F83 (Fuzzy Matching Design)
 - [ ] Consider substring prefix matching at minimum length (3-4 chars) as one fuzzy strategy alongside Levenshtein, n-grams, etc. Abbreviations screen search currently uses strict prefix matching; F83 should evaluate broadening this as part of a cohesive fuzzy search design. (noted during F91 review)
 

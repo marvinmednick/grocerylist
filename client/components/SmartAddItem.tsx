@@ -29,8 +29,9 @@ import { useMyProfile } from '@/api/profile';
 import { useVocabulary } from '@/api/vocabulary';
 import { WarningCallout } from '@/components/WarningCallout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { parseInput, tokenize, classifyTokens, groupTokens, assembleCandidate, type ParsedInput } from '@/lib/parser';
+import { matchQualityScore, parseInput, tokenize, classifyTokens, groupTokens, assembleCandidate, type ParsedInput } from '@/lib/parser';
 import { DEFAULT_VOCABULARY } from '@/lib/vocabulary';
+import { editDistanceThreshold, levenshteinDistance, normalizePlural } from '@/lib/fuzzyMatch';
 import { formatQuantity, isPartialMatch, parseQuantityText, quantityEquals, type QuantityParsed } from '@/lib/quantityFormat';
 
 interface SmartAddItemProps {
@@ -165,7 +166,75 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
       return dedupe([token, expanded.toLowerCase()]);
     });
 
-    if (nameTokens.length === 0) return [];
+    const evaluateTokenWordMatch = (
+      token: string,
+      word: string
+    ): { matched: boolean; tier: 0 | 1 | 2; distance: number; usedFuzzy: boolean } => {
+      if (word.startsWith(token)) {
+        return { matched: true, tier: 0, distance: 0, usedFuzzy: false };
+      }
+
+      if (normalizePlural(word).startsWith(normalizePlural(token))) {
+        return { matched: true, tier: 1, distance: 0, usedFuzzy: false };
+      }
+
+      if (token.length < 3 || word.length < 3) {
+        return { matched: false, tier: 2, distance: Number.POSITIVE_INFINITY, usedFuzzy: false };
+      }
+
+      const distance = levenshteinDistance(token, word);
+      const threshold = editDistanceThreshold(Math.min(token.length, word.length));
+      if (distance <= threshold) {
+        return { matched: true, tier: 2, distance, usedFuzzy: true };
+      }
+
+      return { matched: false, tier: 2, distance: Number.POSITIVE_INFINITY, usedFuzzy: false };
+    };
+
+    const findBestMatchForTokenOptions = (
+      tokenOptions: string[],
+      words: string[]
+    ): { matched: boolean; fuzzyCount: number } => {
+      let best: { tier: 0 | 1 | 2; distance: number; usedFuzzy: boolean } | null = null;
+
+      tokenOptions.forEach((token) => {
+        words.forEach((word) => {
+          const result = evaluateTokenWordMatch(token, word);
+          if (!result.matched) {
+            return;
+          }
+
+          if (!best || result.tier < best.tier || (result.tier === best.tier && result.distance < best.distance)) {
+            best = {
+              tier: result.tier,
+              distance: result.distance,
+              usedFuzzy: result.usedFuzzy,
+            };
+          }
+        });
+      });
+
+      if (!best) {
+        return { matched: false, fuzzyCount: 0 };
+      }
+
+      return { matched: true, fuzzyCount: best.usedFuzzy ? 1 : 0 };
+    };
+
+    const allLookupWords = masterItemNames.flatMap((item) =>
+      [item.name, ...(item.aliases ?? [])]
+        .flatMap((lookupName) => lookupName.toLowerCase().split(/\s+/))
+        .filter((word) => word.length > 0)
+    );
+    const productiveTokenOptionIndices = expandedNameTokens
+      .map((tokenOptions, index) => (findBestMatchForTokenOptions(tokenOptions, allLookupWords).matched ? index : -1))
+      .filter((index) => index !== -1);
+    const productiveTokenOptions = productiveTokenOptionIndices.map((index) => expandedNameTokens[index]);
+    const fallbackOrphans = expandedNameTokens
+      .filter((_, index) => !productiveTokenOptionIndices.includes(index))
+      .map((tokenOptions) => tokenOptions[0]);
+
+    if (productiveTokenOptions.length === 0) return [];
     return masterItemNames
       .flatMap((item) => {
         const lookupNames = [item.name, ...(item.aliases ?? [])];
@@ -174,25 +243,35 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
             .toLowerCase()
             .split(/\s+/)
             .filter((word) => word.length > 0);
-          return expandedNameTokens.every((tokenOptions) =>
-            tokenOptions.some((token) => itemWords.some((word) => word.startsWith(token)))
-          );
+          return productiveTokenOptions.every((tokenOptions) => findBestMatchForTokenOptions(tokenOptions, itemWords).matched);
         });
 
-        return matches.map((lookupName) => ({
-          name: lookupName,
-          canonicalName: item.name,
-          matchedItemId: item.id,
-          matchedVia: lookupName === item.name ? 'name' : ('alias' as const),
-          count: parseCandidate.count,
-          packageType: parseCandidate.packageType,
-          packagePlural: parseCandidate.packagePlural,
-          sizeDescriptive: parseCandidate.sizeDescriptive,
-          sizeQty: parseCandidate.sizeQty,
-          sizeUnit: parseCandidate.sizeUnit,
-          storeHint: parseCandidate.storeHint,
-          orphans: [],
-        }));
+        return matches.map((lookupName) => {
+          const itemWords = lookupName
+            .toLowerCase()
+            .split(/\s+/)
+            .filter((word) => word.length > 0);
+          const fuzzyCount = productiveTokenOptions.reduce((count, tokenOptions) => {
+            const match = findBestMatchForTokenOptions(tokenOptions, itemWords);
+            return count + match.fuzzyCount;
+          }, 0);
+
+          return {
+            name: lookupName,
+            canonicalName: item.name,
+            matchedItemId: item.id,
+            matchedVia: lookupName === item.name ? 'name' : ('alias' as const),
+            count: parseCandidate.count,
+            packageType: parseCandidate.packageType,
+            packagePlural: parseCandidate.packagePlural,
+            sizeDescriptive: parseCandidate.sizeDescriptive,
+            sizeQty: parseCandidate.sizeQty,
+            sizeUnit: parseCandidate.sizeUnit,
+            storeHint: parseCandidate.storeHint,
+            orphans: fallbackOrphans,
+            fuzzyCount,
+          } satisfies ParsedInput;
+        });
       });
   }, [query, masterItemNames, parseCandidate, wordAliases]);
 
@@ -514,23 +593,45 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     setTimeout(() => maybeTriggerWarningToast(warnings), 400);
   };
 
-  const parserMatchIds = new Set(
-    parseResult.interpretations
-      .map((i) => i.matchedItemId)
-      .filter((id): id is string => id != null)
-  );
-  const fallbackResults = prefixFallbackInterpretations.filter(
-    (i) => i.matchedItemId == null || !parserMatchIds.has(i.matchedItemId)
-  );
-  // Rank: exact parser matches (no orphans) first, then prefix fallback matches,
-  // then parser partial matches (with orphans). This ensures items that explain
-  // more of the input (e.g. "Chicken Boneless Skinless" when typing "Chicken Boneless")
-  // rank above items that leave orphan tokens (e.g. "Chicken" with orphan "boneless").
-  const rankedInterpretations = [
-    ...parseResult.interpretations.filter((i) => i.orphans.length === 0),
-    ...fallbackResults,
-    ...parseResult.interpretations.filter((i) => i.orphans.length > 0),
-  ];
+  const rankedInterpretations = useMemo(() => {
+    const merged = [...parseResult.interpretations, ...prefixFallbackInterpretations];
+    const bestByItemId = new Map<string, ParsedInput>();
+
+    merged.forEach((interpretation, index) => {
+      const key = interpretation.matchedItemId ?? `${interpretation.name.toLowerCase()}::${index}`;
+      const current = bestByItemId.get(key);
+      if (!current) {
+        bestByItemId.set(key, interpretation);
+        return;
+      }
+
+      const scoreDelta = matchQualityScore(interpretation) - matchQualityScore(current);
+      if (scoreDelta > 0) {
+        bestByItemId.set(key, interpretation);
+        return;
+      }
+      if (scoreDelta < 0) {
+        return;
+      }
+
+      const interpretationTokenCount = interpretation.name.split(/\s+/).filter((token) => token.length > 0).length;
+      const currentTokenCount = current.name.split(/\s+/).filter((token) => token.length > 0).length;
+      if (interpretationTokenCount > currentTokenCount) {
+        bestByItemId.set(key, interpretation);
+      }
+    });
+
+    return [...bestByItemId.values()].sort((a, b) => {
+      const scoreDelta = matchQualityScore(b) - matchQualityScore(a);
+      if (scoreDelta !== 0) {
+        return scoreDelta;
+      }
+
+      const tokensA = a.name.split(/\s+/).filter((token) => token.length > 0).length;
+      const tokensB = b.name.split(/\s+/).filter((token) => token.length > 0).length;
+      return tokensB - tokensA;
+    });
+  }, [parseResult.interpretations, prefixFallbackInterpretations]);
 
   return (
     <View style={[styles.container, disabled && { opacity: 0.6 }]}> 

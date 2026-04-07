@@ -1,3 +1,5 @@
+import { editDistanceThreshold, levenshteinDistanceStrict } from '@/lib/fuzzyMatch';
+
 export interface VocabEntry {
   canonical: string;
   aliases: string[];
@@ -106,12 +108,80 @@ function lookup(token: string, entries: VocabEntry[]): string | null {
   return null;
 }
 
+interface FuzzyLookupCandidate<T> {
+  value: T;
+  tokens: string[];
+}
+
+function bestFuzzyCandidate<T>(token: string, candidates: FuzzyLookupCandidate<T>[]): T | null {
+  const normalized = token.toLowerCase();
+
+  let best: { value: T; distance: number; candidateLength: number } | null = null;
+
+  candidates.forEach((candidate) => {
+    candidate.tokens.forEach((candidateToken) => {
+      const candidateNormalized = candidateToken.toLowerCase();
+      const firstCharsMatch =
+        normalized.length >= 2 && candidateNormalized.length >= 2
+          ? normalized.slice(0, 2) === candidateNormalized.slice(0, 2)
+          : normalized[0] === candidateNormalized[0];
+      if (!firstCharsMatch) {
+        return;
+      }
+
+      const threshold = editDistanceThreshold(Math.min(normalized.length, candidateNormalized.length));
+      const distance = levenshteinDistanceStrict(normalized, candidateNormalized);
+      if (distance > threshold) {
+        return;
+      }
+
+      if (!best || distance < best.distance || (distance === best.distance && candidateNormalized.length < best.candidateLength)) {
+        best = { value: candidate.value, distance, candidateLength: candidateNormalized.length };
+      }
+    });
+  });
+
+  return best?.value ?? null;
+}
+
+function fuzzyLookup(token: string, entries: VocabEntry[]): string | null {
+  const candidates: FuzzyLookupCandidate<string>[] = entries.map((entry) => {
+    const plural = entry.plural ? [entry.plural] : [];
+    return {
+      value: entry.canonical,
+      tokens: [entry.canonical, ...entry.aliases, ...plural],
+    };
+  });
+
+  return bestFuzzyCandidate(token, candidates);
+}
+
+export function fuzzyLookupUnit(token: string, vocabulary: Vocabulary): string | null {
+  return fuzzyLookup(token, vocabulary.units);
+}
+
+export function fuzzyLookupPackageEntry(token: string, vocabulary: Vocabulary): PackageEntry | null {
+  const candidates: FuzzyLookupCandidate<PackageEntry>[] = vocabulary.packages.map((entry) => {
+    const plural = entry.plural ?? `${entry.canonical}s`;
+    return {
+      value: { canonical: entry.canonical, plural },
+      tokens: [entry.canonical, plural, ...entry.aliases],
+    };
+  });
+
+  return bestFuzzyCandidate(token, candidates);
+}
+
+export function fuzzyLookupSizeDescriptor(token: string, vocabulary: Vocabulary): string | null {
+  return fuzzyLookup(token, vocabulary.sizeDescriptors);
+}
+
 export function lookupUnit(token: string, vocabulary: Vocabulary): string | null {
-  return lookup(token, vocabulary.units);
+  return lookup(token, vocabulary.units) ?? fuzzyLookupUnit(token, vocabulary);
 }
 
 export function lookupPackage(token: string, vocabulary: Vocabulary): string | null {
-  return lookup(token, vocabulary.packages);
+  return lookup(token, vocabulary.packages) ?? fuzzyLookup(token, vocabulary.packages);
 }
 
 export function lookupPackageEntry(token: string, vocabulary: Vocabulary): PackageEntry | null {
@@ -129,11 +199,11 @@ export function lookupPackageEntry(token: string, vocabulary: Vocabulary): Packa
     }
   }
 
-  return null;
+  return fuzzyLookupPackageEntry(token, vocabulary);
 }
 
 export function lookupSizeDescriptor(token: string, vocabulary: Vocabulary): string | null {
-  return lookup(token, vocabulary.sizeDescriptors);
+  return lookup(token, vocabulary.sizeDescriptors) ?? fuzzyLookupSizeDescriptor(token, vocabulary);
 }
 
 /** @deprecated Use packagePlural field from QuantityFields instead */

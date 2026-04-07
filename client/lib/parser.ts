@@ -1,4 +1,12 @@
-import { lookupPackageEntry, lookupSizeDescriptor, lookupUnit, type PackageEntry, type Vocabulary } from '@/lib/vocabulary';
+import { editDistanceThreshold, levenshteinDistance, normalizePlural } from '@/lib/fuzzyMatch';
+import {
+  fuzzyLookupPackageEntry,
+  fuzzyLookupSizeDescriptor,
+  fuzzyLookupUnit,
+  lookupUnit,
+  type PackageEntry,
+  type Vocabulary,
+} from '@/lib/vocabulary';
 
 export interface Token {
   raw: string;
@@ -56,6 +64,7 @@ export interface ParsedInput {
   sizeUnit: string | null;
   storeHint: string | null;
   orphans: string[];
+  fuzzyCount: number;
 }
 
 export interface ParseResult {
@@ -84,6 +93,46 @@ function parseCompound(raw: string, vocabulary: Vocabulary): { qty: number; unit
   }
 
   return { qty, unit };
+}
+
+function lookupExact(token: string, entries: { canonical: string; aliases: string[]; plural?: string }[]): string | null {
+  const normalized = token.toLowerCase();
+
+  for (const entry of entries) {
+    if (entry.canonical.toLowerCase() === normalized) {
+      return entry.canonical;
+    }
+
+    if (entry.plural && entry.plural.toLowerCase() === normalized) {
+      return entry.canonical;
+    }
+
+    for (const alias of entry.aliases) {
+      if (alias.toLowerCase() === normalized) {
+        return entry.canonical;
+      }
+    }
+  }
+
+  return null;
+}
+
+function lookupPackageEntryExact(token: string, vocabulary: Vocabulary): PackageEntry | null {
+  const normalized = token.toLowerCase();
+
+  for (const entry of vocabulary.packages) {
+    const plural = entry.plural ?? `${entry.canonical}s`;
+    const matches =
+      entry.canonical.toLowerCase() === normalized ||
+      plural.toLowerCase() === normalized ||
+      entry.aliases.some((alias) => alias.toLowerCase() === normalized);
+
+    if (matches) {
+      return { canonical: entry.canonical, plural };
+    }
+  }
+
+  return null;
 }
 
 export function tokenize(input: string): Token[] {
@@ -176,7 +225,7 @@ export function classifyTokens(tokens: Token[], vocabulary: Vocabulary): Classif
       };
     }
 
-    const unit = lookupUnit(raw, vocabulary);
+    const unit = lookupExact(raw, vocabulary.units);
     if (unit) {
       return {
         type: 'UNIT',
@@ -193,7 +242,7 @@ export function classifyTokens(tokens: Token[], vocabulary: Vocabulary): Classif
       };
     }
 
-    const packageEntry: PackageEntry | null = lookupPackageEntry(raw, vocabulary);
+    const packageEntry: PackageEntry | null = lookupPackageEntryExact(raw, vocabulary);
     if (packageEntry) {
       return {
         type: 'PACKAGE',
@@ -202,12 +251,39 @@ export function classifyTokens(tokens: Token[], vocabulary: Vocabulary): Classif
       };
     }
 
-    const sizeDescriptor = lookupSizeDescriptor(raw, vocabulary);
+    const sizeDescriptor = lookupExact(raw, vocabulary.sizeDescriptors);
     if (sizeDescriptor) {
       return {
         type: 'SIZE_DESCRIPTIVE',
         raw,
         value: sizeDescriptor,
+      };
+    }
+
+    const fuzzyUnit = fuzzyLookupUnit(raw, vocabulary);
+    if (fuzzyUnit) {
+      return {
+        type: 'UNIT',
+        raw,
+        value: fuzzyUnit,
+      };
+    }
+
+    const fuzzyPackageEntry = fuzzyLookupPackageEntry(raw, vocabulary);
+    if (fuzzyPackageEntry) {
+      return {
+        type: 'PACKAGE',
+        raw,
+        value: { canonical: fuzzyPackageEntry.canonical, plural: fuzzyPackageEntry.plural } satisfies PackageValue,
+      };
+    }
+
+    const fuzzySizeDescriptor = fuzzyLookupSizeDescriptor(raw, vocabulary);
+    if (fuzzySizeDescriptor) {
+      return {
+        type: 'SIZE_DESCRIPTIVE',
+        raw,
+        value: fuzzySizeDescriptor,
       };
     }
 
@@ -452,18 +528,46 @@ function buildPowerSet(words: string[]): string[][] {
   return results;
 }
 
-function consumeTokens(pool: string[], target: string[]): { ok: boolean; leftovers: string[] } {
+interface ConsumeResult {
+  ok: boolean;
+  leftovers: string[];
+  fuzzyCount: number;
+}
+
+function consumeTokensFuzzy(pool: string[], target: string[]): ConsumeResult {
   const available = [...pool];
+  let fuzzyCount = 0;
 
   for (const token of target) {
-    const idx = available.indexOf(token);
-    if (idx === -1) {
-      return { ok: false, leftovers: pool };
+    const exactIndex = available.indexOf(token);
+    if (exactIndex !== -1) {
+      available.splice(exactIndex, 1);
+      continue;
     }
-    available.splice(idx, 1);
+
+    const normalizedTarget = normalizePlural(token);
+    const pluralIndex = available.findIndex((candidateToken) => normalizePlural(candidateToken) === normalizedTarget);
+    if (pluralIndex !== -1) {
+      available.splice(pluralIndex, 1);
+      continue;
+    }
+
+    const fuzzyIndex = available.findIndex((candidateToken) => {
+      if (candidateToken.length < 3 || token.length < 3) {
+        return false;
+      }
+      const threshold = editDistanceThreshold(Math.min(candidateToken.length, token.length));
+      return levenshteinDistance(candidateToken, token) <= threshold;
+    });
+    if (fuzzyIndex === -1) {
+      return { ok: false, leftovers: pool, fuzzyCount: 0 };
+    }
+
+    available.splice(fuzzyIndex, 1);
+    fuzzyCount += 1;
   }
 
-  return { ok: true, leftovers: available };
+  return { ok: true, leftovers: available, fuzzyCount };
 }
 
 export function resolveNames(candidate: CandidateFields, masterItems: MasterItemRef[]): ParsedInput[] {
@@ -509,7 +613,7 @@ export function resolveNames(candidate: CandidateFields, masterItems: MasterItem
 
     lookupEntries.forEach((lookupEntry) => {
       const itemTokens = splitName(lookupEntry.lookupName);
-      const consumed = consumeTokens(candidateWords, itemTokens);
+      const consumed = consumeTokensFuzzy(candidateWords, itemTokens);
       if (!consumed.ok) {
         return;
       }
@@ -519,12 +623,7 @@ export function resolveNames(candidate: CandidateFields, masterItems: MasterItem
         return;
       }
 
-      const orphans = candidateWords.filter((word, index) => {
-        const prior = candidateWords.slice(0, index);
-        const usedInItem = itemTokens.filter((token) => token === word).length;
-        const usedBefore = prior.filter((token) => token === word).length;
-        return usedBefore >= usedInItem;
-      });
+      const orphans = consumed.leftovers;
 
       const sizeDescriptive = candidate.sizeDescriptive
         ? descriptorSet.has(candidate.sizeDescriptive.toLowerCase())
@@ -545,6 +644,7 @@ export function resolveNames(candidate: CandidateFields, masterItems: MasterItem
         sizeUnit: candidate.sizeUnit,
         storeHint: candidate.storeHint,
         orphans,
+        fuzzyCount: consumed.fuzzyCount,
       });
     });
   });
@@ -563,6 +663,11 @@ export function resolveNames(candidate: CandidateFields, masterItems: MasterItem
   });
 
   return [...deduped.values()].sort((a, b) => {
+    const scoreDelta = matchQualityScore(b) - matchQualityScore(a);
+    if (scoreDelta !== 0) {
+      return scoreDelta;
+    }
+
     const tokensA = splitName(a.name).length;
     const tokensB = splitName(b.name).length;
     return tokensB - tokensA;
@@ -571,7 +676,34 @@ export function resolveNames(candidate: CandidateFields, masterItems: MasterItem
 
 export function expandAliases(candidate: CandidateFields, wordAliases: Map<string, string>): CandidateFields[] {
   const expandedIndices = candidate.nameWords
-    .map((word, index) => ({ index, expanded: wordAliases.get(word.toLowerCase()) ?? null }))
+    .map((word, index) => {
+      const normalizedWord = word.toLowerCase();
+      const exactMatch = wordAliases.get(normalizedWord);
+      if (exactMatch) {
+        return { index, expanded: exactMatch };
+      }
+
+      let bestAliasKey: string | null = null;
+      let bestDistance = Number.POSITIVE_INFINITY;
+
+      for (const aliasKey of wordAliases.keys()) {
+        const threshold = editDistanceThreshold(Math.min(normalizedWord.length, aliasKey.length));
+        const distance = levenshteinDistance(normalizedWord, aliasKey);
+        if (distance > threshold) {
+          continue;
+        }
+
+        if (!bestAliasKey || distance < bestDistance || (distance === bestDistance && aliasKey.length < bestAliasKey.length)) {
+          bestAliasKey = aliasKey;
+          bestDistance = distance;
+        }
+      }
+
+      return {
+        index,
+        expanded: bestAliasKey ? wordAliases.get(bestAliasKey) ?? null : null,
+      };
+    })
     .filter((entry): entry is { index: number; expanded: string } => entry.expanded !== null);
 
   if (expandedIndices.length === 0) {
@@ -597,9 +729,18 @@ export function expandAliases(candidate: CandidateFields, wordAliases: Map<strin
   return variants;
 }
 
+export function matchQualityScore(interpretation: ParsedInput): number {
+  const exactCount = splitName(interpretation.name).length - interpretation.orphans.length - interpretation.fuzzyCount;
+  return exactCount * 2 + interpretation.fuzzyCount;
+}
+
 function isPreferredInterpretation(next: ParsedInput, current: ParsedInput): boolean {
-  if (next.orphans.length !== current.orphans.length) {
-    return next.orphans.length < current.orphans.length;
+  const scoreDelta = matchQualityScore(next) - matchQualityScore(current);
+  if (scoreDelta !== 0) {
+    return scoreDelta > 0;
+  }
+  if (next.fuzzyCount !== current.fuzzyCount) {
+    return next.fuzzyCount < current.fuzzyCount;
   }
   if (next.matchedVia !== current.matchedVia) {
     return next.matchedVia === 'name';
@@ -633,6 +774,11 @@ function parseInputInternal(
   });
 
   const interpretations = [...dedupedByItemId.values()].sort((a, b) => {
+    const scoreDelta = matchQualityScore(b) - matchQualityScore(a);
+    if (scoreDelta !== 0) {
+      return scoreDelta;
+    }
+
     const tokensA = splitName(a.name).length;
     const tokensB = splitName(b.name).length;
     return tokensB - tokensA;

@@ -256,3 +256,19 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: Prefix matching for alias search (not substring). Cross-matching kept with alias highlighting. Punctuation allowed in aliases (only whitespace rejected). Composition test guideline added to CODING.md. F83 backlog note for substring matching consideration.
 - **Design review**: CODING.md updated with Composition Scenario Tests section. No DESIGN.md changes needed.
 - **Next**: Push when ready. F91 complete — alias system (data + parser + UI) fully shipped.
+
+---
+### 2026-04-06 — /design F77, /spec F77
+- **Completed**: Design and spec for F77 Fuzzy Matching in Smart Add. Full design conversation resolved all functional and UI questions.
+- **Findings**: Key design pivot: fuzzy matching works at the **token level** within name resolution, not as a separate item-level fallback pass. User's insight: "chicken rest boneless" should fuzzy-match "rest"→"breast" and rank Chicken Breast Boneless Skinless first — a post-parser fallback wouldn't fire because exact matches already exist. This eliminated the two-section dropdown concept entirely. Vocab and alias fuzzy matching included in V1 scope (originally deferred) because mobile keyboard typos affect all word types, and incremental cost is low once Levenshtein function exists.
+- **Design decisions**: Token-level fuzzy (not item-level). Single ranked list (dropped two-section dropdown). Scoring: exact=2, fuzzy=1, orphan=0. Plural normalization via suffix stripping before edit distance. Edit distance thresholds: 1 for 3-4 char words, 2 for 5+. Fuzzy applied to vocab lookups (Pass 2), alias keys, and name resolution. Visual indicator for fuzzy matches deferred to backlog.
+- **Design review**: No novel UI patterns — all changes are in matching logic.
+- **Next**: `/review-plan F77` then implementation. Review Level: Full.
+
+---
+### 2026-04-06 — /review-plan F77, /review-impl F77
+- **Completed**: Plan review identified 4 gaps (fuzzyCount semantics ambiguity, test cases summarized not enumerated, prefix expression imprecise, spurious migration entry); corrected plan written to `plans/F77-plan-approved.md`. Implementation review passed — all 506 tests pass. PLAN.md updated to In Review. GitHub #77 commented and labeled `in-review`.
+- **Findings**: Implementor added `localAlignmentDistance` (windowed Levenshtein for length-delta=2 words) to meet spec's `"rest" vs "breast" → 1` requirement — standard Levenshtein gives 2 for that pair. Vocabulary fuzzy lookups correctly use `levenshteinDistanceStrict` with first-char guards to prevent false positives (e.g., "rest" incorrectly fuzzy-matching a vocab word). `bestFuzzyMatch` utility is exported but unused in production code (only tested). `fuzzyCount` semantics correctly implemented: plural normalization = exact (score 2, fuzzyCount 0), edit-distance = fuzzy (score 1, fuzzyCount 1).
+- **Design decisions**: none
+- **Design review**: not triggered — clean review, no pattern violations or new patterns
+- **Next**: Ship F77 via `/complete F77`.

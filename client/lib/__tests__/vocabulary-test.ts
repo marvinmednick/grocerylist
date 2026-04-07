@@ -1,5 +1,8 @@
 import {
   DEFAULT_VOCABULARY,
+  fuzzyLookupPackageEntry,
+  fuzzyLookupSizeDescriptor,
+  fuzzyLookupUnit,
   getPlural,
   lookupPackageEntry,
   lookupPackage,
@@ -46,5 +49,42 @@ describe('vocabulary helpers', () => {
   it('getPlural returns plural form', () => {
     expect(getPlural('can', DEFAULT_VOCABULARY)).toBe('cans');
     expect(getPlural('loaf', DEFAULT_VOCABULARY)).toBe('loaves');
+  });
+});
+
+describe('fuzzy vocabulary helpers', () => {
+  it('fuzzyLookupUnit matches misspelled unit', () => {
+    expect(fuzzyLookupUnit('ounze', DEFAULT_VOCABULARY)).toBe('oz');
+  });
+
+  it('fuzzyLookupUnit matches misspelled alias', () => {
+    expect(fuzzyLookupUnit('poumd', DEFAULT_VOCABULARY)).toBe('lb');
+  });
+
+  it('fuzzyLookupUnit still supports exact match', () => {
+    expect(fuzzyLookupUnit('oz', DEFAULT_VOCABULARY)).toBe('oz');
+  });
+
+  it('fuzzyLookupUnit returns null for unrelated token', () => {
+    expect(fuzzyLookupUnit('xyz', DEFAULT_VOCABULARY)).toBeNull();
+  });
+
+  it('fuzzyLookupPackageEntry matches misspelled plural', () => {
+    expect(fuzzyLookupPackageEntry('botles', DEFAULT_VOCABULARY)).toEqual({
+      canonical: 'bottle',
+      plural: 'bottles',
+    });
+  });
+
+  it('fuzzyLookupPackageEntry matches misspelled canonical', () => {
+    expect(fuzzyLookupPackageEntry('bunc', DEFAULT_VOCABULARY)).toEqual({
+      canonical: 'bunch',
+      plural: 'bunches',
+    });
+  });
+
+  it('fuzzyLookupSizeDescriptor matches misspelled descriptors', () => {
+    expect(fuzzyLookupSizeDescriptor('larg', DEFAULT_VOCABULARY)).toBe('large');
+    expect(fuzzyLookupSizeDescriptor('smal', DEFAULT_VOCABULARY)).toBe('small');
   });
 });
