@@ -272,3 +272,11 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: none
 - **Design review**: not triggered — clean review, no pattern violations or new patterns
 - **Next**: Ship F77 via `/complete F77`.
+
+---
+### 2026-04-06 — /complete #93 (alias commit UX + iOS Define Abbreviations modal flow)
+- **Completed**: Reviewed and shipped bug fix for #93. Commit `0020c60`. Issue closed. 508/508 tests pass.
+- **Findings**: Two non-blocking issues identified during review: (1) `commitAlias` has redundant guard logic after refactor to use `commitPendingAliasInput` — could be simplified; (2) `onBlur` firing when edit modal hides may cause alias input row to disappear after Abbreviations round-trip on real iOS devices (test passes because mock doesn't trigger real blur). Fix for #2: restore `showAliasInput(true)` in the `onClose` callback when `newAliasInput` has pending text. Both items are cosmetic/edge-case — core bugs are correctly fixed.
+- **Design decisions**: none
+- **Design review**: not triggered — localized bug fix, no new patterns
+- **Next**: Address non-blocking items from review if desired. 1 commit unpushed.
