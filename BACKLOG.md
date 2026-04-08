@@ -10,7 +10,7 @@ See WORKFLOW.md §8 (Backlog Triage) for the full process.
 - [ ] Database-backed vocabulary tables (household-scoped, with management UI) — requires F79 scope. (deferred from F44)
 - [x] Plural normalization in bag-of-words matching ("breasts" → "breast") — implemented in F77.
 - [ ] Fraction support (`1/2 lb`) in parser — not supported V1. (deferred from F44)
-- [ ] Word-quantities (`a dozen`, `half a pound`) in parser — not supported V1. (deferred from F44)
+- [x] Word-quantities (`a dozen`, `half a pound`) in parser — promoted to #94 (broadened scope: all word-to-number normalization for voice input).
 - [ ] Multi-word store hints (`@harris teeter`) — single-word @hint only in V1. (deferred from F44)
 - [ ] `alternate_qtys` audit — verify existing alternate_qtys values parse cleanly against F44 vocabulary seeds; flag gaps. (deferred from F44, to be done during F44 implementation)
 - [ ] `MasterItemRef` duplicated in `lib/parser.ts` and `api/items.ts` — one should import from the other to prevent silent drift. (found in F44 review)

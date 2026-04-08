@@ -237,11 +237,63 @@ Before shipping any modal (dialog or full-screen), verify:
 | ☐ | X close button top-right (always present) | §7a |
 | ☐ | Cancel button in action row for dialog modals | §7a |
 | ☐ | Destructive action (if any) top-left as icon pill, not in action row | §7a |
+| ☐ | No stacked modals — close the current modal before opening another (see §7d) | §7d |
+| ☐ | `handleSave` flushes pending sub-inputs (alias chips, tag editors, etc.) before building payload (see §7e) | §7e |
 
 **Reference implementations (use as copy-from baseline):**
 - Dialog modal: `app/(tabs)/items.tsx` — X close + action row + in-document dropdown
 - Full-screen modal: `components/Settings.tsx` — keyboard-safe scroll, safe-area insets
 - Multi-step modal: `components/MultiTripModal.tsx`
+
+---
+
+### 7d. No Stacked Native Modals
+
+iOS silently drops or ignores a second `<Modal>` presented while one is already visible. **Never open a modal while another modal is active.**
+
+When navigating from one modal to another:
+1. Close the first modal (`setFirstVisible(false)`)
+2. Open the second modal (`setSecondVisible(true)`)
+3. Use a state flag (e.g., `resumeEditAfterX`) to restore the first modal when the second closes
+
+```tsx
+// Opening second modal from within first
+onPress={() => {
+  setResumeFirstAfterSecond(true);
+  setFirstVisible(false);
+  setSecondVisible(true);
+}}
+
+// Second modal onClose
+onClose={() => {
+  setSecondVisible(false);
+  if (resumeFirstAfterSecond) {
+    setFirstVisible(true);
+    setResumeFirstAfterSecond(false);
+  }
+}}
+```
+
+**Reference:** `items.tsx` — "Define Abbreviations" flow closes edit modal before opening Abbreviations modal, restores on return (#93).
+
+---
+
+### 7e. Flush Pending Sub-Inputs on Save
+
+Modal forms with inline sub-inputs (alias chips, tag editors, etc.) must commit any pending input at the top of `handleSave`, before building the save payload. This prevents data loss when the user types a value and taps Save without explicitly confirming the sub-input.
+
+```tsx
+const handleSave = async () => {
+  // Flush pending sub-input FIRST
+  const aliasesToSave = commitPendingInput(aliases);
+  // Then build payload using flushed values
+  const payload = { ...fields, aliases: aliasesToSave };
+};
+```
+
+Additionally, `onBlur` handlers on sub-inputs must not destructively clear uncommitted user input. Hide the input UI if needed, but preserve the typed value so the parent Save can consume it.
+
+**Reference:** `items.tsx` — alias input `onBlur` hides the field but preserves `newAliasInput`; `handleSave` calls `commitPendingAliasInput()` (#93).
 
 ---
 
@@ -398,5 +450,7 @@ When a new visual or interaction pattern is established during a `/design` sessi
 | Editable alias chips | Chip row with `×` remove button per chip + `+ Add alias` inline text input (Return to confirm, blur to dismiss). Extension of the established chip selection pattern from SmartAddItem. Use for any form field that manages a variable-length list of short text values. | F79 | Dialog modal (7a) context; chips are removable unlike read-only qty chips |
 | Avatar menu structure | Tap avatar → flat popover menu. Top-level items: "General" (profile/app settings), "Sizes & Packages" (vocabulary management), and "Abbreviations" (token alias management). "Sizes & Packages" navigates to a drill-down screen with three rows (Units, Packages, Sizes), each opening a full-screen management modal. | F79, F90 | Drill-down screen, not cascading popover — uses established full-screen modal pattern. "Abbreviations" added as 3rd top-level item in F90. |
 | Abbreviations screen | Full-screen modal with toggle (canonical→aliases / alias→canonical), OR search bar, one row per word. Search creates placeholder rows for words without aliases. Tap row → edit dialog (§7a) with alias chips, text input, suggestions, inline conflict warnings. Launched from avatar menu (empty search) or item edit ("Define Abbreviations" button pre-populates search with item's words). | F90 | Unified management + definition surface; no separate "add" button — search creates new entries |
+| No stacked native modals | Close first modal before opening second; resume flag to restore on return. iOS silently drops stacked modals. | #93 | See §7d. Reference impl: `items.tsx` Define Abbreviations flow |
+| Flush pending sub-inputs on Save | `handleSave` commits inline sub-inputs (alias chips, tags) before building payload. `onBlur` must not clear uncommitted input. | #93 | See §7e. Reference impl: `items.tsx` `commitPendingAliasInput()` |
 | Inline conflict warnings (alias creation) | Amber/red warning text below input field, live-updating per keystroke. Blocking conflicts (duplicate alias key) show red text and disable Save. Non-blocking conflicts (vocabulary token overlap, item name overlap, unknown canonical word) show amber text but allow Save. | F90 | First live-validating inline warning in the app; pattern reusable for other form validation |
 | Item edit — read-only alias reference | "Active Abbreviations" section on item edit modal showing token aliases relevant to this item's words. Read-only text format: `chicken → chk, chkn`. "Define Abbreviations" button launches Abbreviations screen with pre-populated search. | F90 | Read-only reference + launch point; alias editing happens on the Abbreviations screen, not inline |

@@ -251,6 +251,10 @@ This applies to any `transparent` modal with a dimmed backdrop (e.g., alert dial
 
 **Common mistake:** Using a plain `View` for modal content with fixed `paddingBottom` instead of safe area insets. This works on some devices but clips content or overlaps the status bar on others.
 
+5. **No stacked native modals:** iOS silently drops a second `<Modal>` presented while one is visible. Close the first modal before opening the second; use a resume flag to restore it on return. See `ui-guidelines.md` §7d.
+
+6. **Flush pending sub-inputs on Save:** Modal forms with inline sub-inputs (alias chips, tag editors) must commit pending input at the top of `handleSave` before building the payload. `onBlur` handlers must not destructively clear uncommitted user input — hide the input UI if needed, but preserve the value for the save path to consume. See `ui-guidelines.md` §7e.
+
 ## Supabase Query Patterns
 
 **Read with joins (the standard pattern):**

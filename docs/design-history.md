@@ -51,3 +51,19 @@ Updated via `/design-review` at the end of each workflow step that produces a de
 **Scope applied**: Both mocks added to jest.setup.js, applying globally to all tests. `DraggableFlatList` also required mocking because it wraps FlatList and its `ScaleDecorator` uses `CellProvider` context provided by FlatList internals.
 
 **Codified in**: `client/jest.setup.js` (the mocks are the implementation)
+
+---
+
+## 2026-04-06 — No stacked native modals + flush pending sub-inputs on Save (source: #93 bug fix)
+
+**Changed**: Added two new modal rules to ui-guidelines.md (§7d, §7e), CODING.md §7 (points 5-6), and the §7c compliance checklist.
+
+**Problem 1 — Stacked modals**: `items.tsx` opened the Abbreviations `<Modal>` while the edit item `<Modal>` was still visible. iOS silently drops the second modal, so "Define Abbreviations" did nothing on iOS.
+
+**Problem 2 — Data loss on Save**: The alias `TextInput` inside the edit modal committed only via `onSubmitEditing`. The `onBlur` handler cleared the input, so tapping Save (which triggers blur before the save handler) lost the typed alias.
+
+**Generalized principles**:
+1. Never present a second `<Modal>` while one is active — close first, open second, use a resume flag to restore on return.
+2. `handleSave` must flush all pending sub-inputs (alias chips, tag editors, inline add fields) before building the payload. `onBlur` must not destructively clear uncommitted user input.
+
+**Codified in**: `docs/design/ui-guidelines.md` §7c checklist, §7d, §7e; `CODING.md` §7 points 5-6; Decision Log entries
