@@ -41,6 +41,52 @@ function tokenizeWords(raw: string): string[] {
     .filter((token) => token.length > 0);
 }
 
+function normalizeAliasList(values: string[]): string[] {
+  return values.map((value) => value.toLowerCase().trim()).filter((value) => value.length > 0);
+}
+
+function normalizeAlternateQtyInput(raw: string): string[] {
+  return raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+}
+
+function normalizeStorePreferencesForCompare(storePreferences: StorePreferencesState): string[] {
+  return Object.entries(storePreferences)
+    .filter(([, preference]) => preference.status !== 'neutral' || preference.comment.trim().length > 0)
+    .map(([storeId, preference]) => `${storeId}:${preference.status}:${preference.comment.trim()}`)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function serializeFormSnapshot({
+  name,
+  shortName,
+  qty,
+  altQtys,
+  categoryId,
+  aliases,
+  storePreferences,
+}: {
+  name: string;
+  shortName: string;
+  qty: string;
+  altQtys: string;
+  categoryId: string;
+  aliases: string[];
+  storePreferences: StorePreferencesState;
+}): string {
+  return JSON.stringify({
+    name: name.trim(),
+    shortName: shortName.trim(),
+    qty: qty.trim(),
+    altQtys: normalizeAlternateQtyInput(altQtys),
+    categoryId: categoryId.trim(),
+    aliases: normalizeAliasList(aliases),
+    storePreferences: normalizeStorePreferencesForCompare(storePreferences),
+  });
+}
+
 export default function ItemsScreen() {
   const insets = useSafeAreaInsets();
   const [search, setSearch] = useState('');
@@ -74,6 +120,7 @@ export default function ItemsScreen() {
   const [abbreviationsInitialSearch, setAbbreviationsInitialSearch] = useState('');
   const [resumeEditAfterAbbreviations, setResumeEditAfterAbbreviations] = useState(false);
   const [resumeAliasInputAfterAbbreviations, setResumeAliasInputAfterAbbreviations] = useState(false);
+  const [initialFormSnapshot, setInitialFormSnapshot] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const initializeStorePreferences = (item: MasterItem | null = null): StorePreferencesState => {
@@ -97,17 +144,34 @@ export default function ItemsScreen() {
 
   const openModal = (item: MasterItem | null = null) => {
     if (item) {
+      const initialStorePreferences = initializeStorePreferences(item);
+      const initialAliases = item.aliases ?? [];
+      const initialAltQtys = item.alternate_qtys ? item.alternate_qtys.join(', ') : '';
+
       setEditingItem(item);
       setName(item.name);
       setShortName(item.short_name || '');
       setQty(item.default_qty || '');
-      setAltQtys(item.alternate_qtys ? item.alternate_qtys.join(', ') : '');
-      setAliases(item.aliases ?? []);
+      setAltQtys(initialAltQtys);
+      setAliases(initialAliases);
       setNewAliasInput('');
       setShowAliasInput(false);
-      setStorePreferences(initializeStorePreferences(item));
+      setStorePreferences(initialStorePreferences);
       setCategoryId(item.default_category_id || '');
+      setInitialFormSnapshot(
+        serializeFormSnapshot({
+          name: item.name,
+          shortName: item.short_name || '',
+          qty: item.default_qty || '',
+          altQtys: initialAltQtys,
+          categoryId: item.default_category_id || '',
+          aliases: initialAliases,
+          storePreferences: initialStorePreferences,
+        })
+      );
     } else {
+      const initialStorePreferences = initializeStorePreferences();
+
       setEditingItem(null);
       setName('');
       setShortName('');
@@ -116,8 +180,19 @@ export default function ItemsScreen() {
       setAliases([]);
       setNewAliasInput('');
       setShowAliasInput(false);
-      setStorePreferences(initializeStorePreferences());
+      setStorePreferences(initialStorePreferences);
       setCategoryId('');
+      setInitialFormSnapshot(
+        serializeFormSnapshot({
+          name: '',
+          shortName: '',
+          qty: '',
+          altQtys: '',
+          categoryId: '',
+          aliases: [],
+          storePreferences: initialStorePreferences,
+        })
+      );
     }
     setSelectedPrefStoreId('');
     setPrefStoreFilterText('');
@@ -237,6 +312,7 @@ export default function ItemsScreen() {
 
     setResumeEditAfterAbbreviations(false);
     setResumeAliasInputAfterAbbreviations(false);
+    setInitialFormSnapshot(null);
     setIsModalVisible(false);
   };
 
@@ -284,6 +360,37 @@ export default function ItemsScreen() {
       a[0].localeCompare(b[0])
     );
   }, [activeWords, wordAliasMap]);
+
+  const currentFormSnapshot = useMemo(
+    () =>
+      serializeFormSnapshot({
+        name,
+        shortName,
+        qty,
+        altQtys,
+        categoryId,
+        aliases,
+        storePreferences,
+      }),
+    [name, shortName, qty, altQtys, categoryId, aliases, storePreferences]
+  );
+
+  const hasPendingAliasToCommit = useMemo(() => {
+    const normalized = newAliasInput.trim().toLowerCase();
+    if (!normalized) {
+      return false;
+    }
+    return !aliases.some((alias) => alias.toLowerCase() === normalized);
+  }, [aliases, newAliasInput]);
+
+  const canSave = useMemo(() => {
+    if (name.trim().length === 0) {
+      return false;
+    }
+
+    const hasFormChanges = initialFormSnapshot !== null && currentFormSnapshot !== initialFormSnapshot;
+    return hasFormChanges || hasPendingAliasToCommit;
+  }, [name, initialFormSnapshot, currentFormSnapshot, hasPendingAliasToCommit]);
 
   const handleRecentToggle = () => {
     if (!recentOnly) {
@@ -678,8 +785,13 @@ export default function ItemsScreen() {
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsModalVisible(false)}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity testID="item-modal-save-btn" style={styles.saveBtn} onPress={handleSave}>
-                <Text style={styles.saveBtnText}>Save</Text>
+              <TouchableOpacity
+                testID="item-modal-save-btn"
+                style={[styles.saveBtn, !canSave && styles.saveBtnDisabled]}
+                onPress={handleSave}
+                disabled={!canSave}
+              >
+                <Text style={[styles.saveBtnText, !canSave && styles.saveBtnTextDisabled]}>Save</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1039,6 +1151,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#2563eb',
     alignItems: 'center',
   },
+  saveBtnDisabled: {
+    backgroundColor: '#9ca3af',
+  },
   cancelBtnText: { fontWeight: '700', color: '#4b5563' },
   saveBtnText: { fontWeight: '700', color: 'white' },
+  saveBtnTextDisabled: { color: '#e5e7eb' },
 });

@@ -280,3 +280,11 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: none
 - **Design review**: not triggered — localized bug fix, no new patterns
 - **Next**: Address non-blocking items from review if desired. 1 commit unpushed.
+
+---
+### 2026-04-06 — /review-impl #95 (dirty-state Save)
+- **Completed**: Review of #95 implementation — dirty-state Save button in item edit modal. 510/510 tests pass. Passed with no blocking issues.
+- **Findings**: Implementation uses `serializeFormSnapshot` (pure function, JSON.stringify of normalized fields) + `useMemo` for efficient comparison. Three non-blocking observations: (1) case-insensitive alias normalization means delete+re-add with different case isn't a "change" (arguably correct); (2) `initialFormSnapshot` nulled on save means failed saves leave button disabled (no practical impact); (3) store-prefs test lost payload-shape coverage for cleared-comment case. Also noted `resumeAliasInputAfterAbbreviations` state — the other LLM also addressed the blur-on-modal-hide edge case from our #93 review.
+- **Design decisions**: none
+- **Design review**: not triggered — patterns followed, no new patterns
+- **Next**: Ready to ship #95 via `/complete 95`.

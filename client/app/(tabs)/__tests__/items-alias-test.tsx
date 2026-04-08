@@ -123,6 +123,11 @@ describe('ItemsScreen alias behavior', () => {
       </SafeAreaProvider>
     );
 
+  const isSaveDisabled = () => {
+    const button = screen.getByTestId('item-modal-save-btn');
+    return Boolean(button.props.disabled ?? button.props.accessibilityState?.disabled);
+  };
+
   it('renders existing alias chips, allows remove/add, saves aliases, and undo restores original aliases', async () => {
     renderScreen();
 
@@ -165,6 +170,20 @@ describe('ItemsScreen alias behavior', () => {
     expect(screen.queryByText('Tenders')).toBeNull();
     expect(screen.queryByText('Active Abbreviations')).toBeNull();
     expect(screen.queryByText('Define Abbreviations')).toBeNull();
+    expect(isSaveDisabled()).toBe(true);
+  });
+
+  it('disables Save until form is dirty and re-disables after reverting changes', () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByText('Chicken Breast — 1 lb'));
+    expect(isSaveDisabled()).toBe(true);
+
+    fireEvent.changeText(screen.getByDisplayValue('Chicken Breast'), 'Chicken Breast Organic');
+    expect(isSaveDisabled()).toBe(false);
+
+    fireEvent.changeText(screen.getByDisplayValue('Chicken Breast Organic'), 'Chicken Breast');
+    expect(isSaveDisabled()).toBe(true);
   });
 
   it('commits pending alias input when modal Save is tapped without submitEditing', async () => {
@@ -173,6 +192,7 @@ describe('ItemsScreen alias behavior', () => {
     fireEvent.press(screen.getByText('Chicken Breast — 1 lb'));
     fireEvent.press(screen.getByTestId('item-add-alias-trigger'));
     fireEvent.changeText(screen.getByTestId('item-new-alias-input'), 'Cutlets');
+    expect(isSaveDisabled()).toBe(false);
     fireEvent.press(screen.getByTestId('item-modal-save-btn'));
 
     await waitFor(() => {
@@ -194,6 +214,16 @@ describe('ItemsScreen alias behavior', () => {
     fireEvent.press(screen.getByTestId('item-new-alias-add-button'));
 
     expect(screen.getByText('Cutlets')).toBeTruthy();
+  });
+
+  it('keeps Save disabled for duplicate pending alias text', () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByText('Chicken Breast — 1 lb'));
+    fireEvent.press(screen.getByTestId('item-add-alias-trigger'));
+    fireEvent.changeText(screen.getByTestId('item-new-alias-input'), 'Tenders');
+
+    expect(isSaveDisabled()).toBe(true);
   });
 
   it('shows Active Abbreviations rows including words from item aliases and empty state when none', () => {

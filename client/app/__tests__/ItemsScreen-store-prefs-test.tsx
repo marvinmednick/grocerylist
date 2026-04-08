@@ -246,7 +246,7 @@ describe('ItemsScreen store preferences redesign', () => {
     expect(screen.queryByTestId('save-comment-btn')).toBeNull();
   });
 
-  it('clearing comment field and saving modal removes comment from All Store Comments list', async () => {
+  it('clearing comment field back to baseline disables Save and avoids no-op update', async () => {
     renderScreen();
     openEditModal();
     selectPreferenceStore('store-1');
@@ -257,16 +257,13 @@ describe('ItemsScreen store preferences redesign', () => {
     fireEvent.changeText(screen.getByTestId('inline-comment-input'), '');
     expect(screen.queryByText('Market — "Only on sale"')).toBeNull();
 
+    expect(screen.getByTestId('item-modal-save-btn').props.accessibilityState?.disabled).toBe(true);
+
     await act(async () => {
       fireEvent.press(screen.getByTestId('item-modal-save-btn'));
     });
 
-    expect(updateMutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 'item-1',
-        store_preferences: [],
-      })
-    );
+    expect(updateMutateAsync).not.toHaveBeenCalled();
   });
 
   it('tapping store name in summary selects it in dropdown and populates comment field', () => {
