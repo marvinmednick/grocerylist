@@ -255,6 +255,8 @@ This applies to any `transparent` modal with a dimmed backdrop (e.g., alert dial
 
 6. **Flush pending sub-inputs on Save:** Modal forms with inline sub-inputs (alias chips, tag editors) must commit pending input at the top of `handleSave` before building the payload. `onBlur` handlers must not destructively clear uncommitted user input — hide the input UI if needed, but preserve the value for the save path to consume. See `ui-guidelines.md` §7e.
 
+7. **Dirty-state Save for edit modals:** Edit modals must disable Save until the form diverges from its initial state. Snapshot form state on open, compare via `JSON.stringify` of normalized fields, derive `canSave` with `useMemo`. Add/create modals use form-validity checks instead. See `ui-guidelines.md` §7f for the full pattern.
+
 ## Supabase Query Patterns
 
 **Read with joins (the standard pattern):**

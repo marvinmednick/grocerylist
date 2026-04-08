@@ -55,6 +55,11 @@ _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assig
 ### For F83 (Fuzzy Matching Design)
 - [ ] Consider substring prefix matching at minimum length (3-4 chars) as one fuzzy strategy alongside Levenshtein, n-grams, etc. Abbreviations screen search currently uses strict prefix matching; F83 should evaluate broadening this as part of a cohesive fuzzy search design. (noted during F91 review)
 
+### Dirty-State Save (from #95 review)
+- [ ] `app/(tabs)/index.tsx` edit-item modal — add dirty-state Save per §7f. Apply when this modal is next modified.
+- [ ] `components/Abbreviations.tsx` edit dialog — add dirty-state Save per §7f. Apply when this component is next modified.
+- [ ] `components/VocabularyManagement.tsx` edit dialogs (units, packages, sizes) — add dirty-state Save per §7f. Apply when this component is next modified.
+
 ### From Doc Audit (2026-03-23)
 - [ ] `UserAvatar.tsx:38` uses absolute-positioned overlay (same pattern as the pre-F22 WarningBadge). Risk: clipping by parent containers with `overflow: hidden`, Z-index conflicts with other overlays, and keyboard-open behavior may push it off-screen. Low urgency — address in a future UI polish pass.
 

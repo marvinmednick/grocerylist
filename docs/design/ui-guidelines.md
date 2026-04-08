@@ -239,9 +239,10 @@ Before shipping any modal (dialog or full-screen), verify:
 | ☐ | Destructive action (if any) top-left as icon pill, not in action row | §7a |
 | ☐ | No stacked modals — close the current modal before opening another (see §7d) | §7d |
 | ☐ | `handleSave` flushes pending sub-inputs (alias chips, tag editors, etc.) before building payload (see §7e) | §7e |
+| ☐ | Edit modals: Save disabled until form is dirty (see §7f) | §7f |
 
 **Reference implementations (use as copy-from baseline):**
-- Dialog modal: `app/(tabs)/items.tsx` — X close + action row + in-document dropdown
+- Dialog modal: `app/(tabs)/items.tsx` — X close + action row + dirty-state Save + in-document dropdown
 - Full-screen modal: `components/Settings.tsx` — keyboard-safe scroll, safe-area insets
 - Multi-step modal: `components/MultiTripModal.tsx`
 
@@ -294,6 +295,37 @@ const handleSave = async () => {
 Additionally, `onBlur` handlers on sub-inputs must not destructively clear uncommitted user input. Hide the input UI if needed, but preserve the typed value so the parent Save can consume it.
 
 **Reference:** `items.tsx` — alias input `onBlur` hides the field but preserves `newAliasInput`; `handleSave` calls `commitPendingAliasInput()` (#93).
+
+---
+
+### 7f. Dirty-State Save for Edit Modals
+
+Edit modals (modals that open with pre-populated data) must disable Save until the form has meaningful changes. This prevents no-op saves and gives users clear feedback about whether they've changed anything.
+
+**Pattern:**
+
+1. On modal open, serialize form state to a snapshot string (`initialFormSnapshot`)
+2. Use `useMemo` to serialize current form state on every change (`currentFormSnapshot`)
+3. Derive `canSave` from snapshot comparison + any pending sub-inputs:
+   ```tsx
+   const canSave = useMemo(() => {
+     if (requiredField.trim().length === 0) return false;
+     const hasFormChanges = initialFormSnapshot !== null
+       && currentFormSnapshot !== initialFormSnapshot;
+     return hasFormChanges || hasPendingSubInput;
+   }, [requiredField, initialFormSnapshot, currentFormSnapshot, hasPendingSubInput]);
+   ```
+4. Apply to Save button: `disabled={!canSave}` + disabled styling (`backgroundColor: '#9ca3af'`, text `color: '#e5e7eb'`)
+
+**Serialization guidelines:**
+- Normalize before comparing: trim strings, lowercase case-insensitive fields, sort unordered collections
+- Filter out default/neutral values (e.g., store preferences with status `'neutral'` and empty comment)
+- Use `JSON.stringify` on the normalized object — simple, deterministic, no custom equality logic needed
+- Keep the serialization function pure and outside the component (at module scope)
+
+**Applies to:** Edit modals only. Add/create modals use form-validity checks instead (e.g., require name to be non-empty) — they don't have a baseline to compare against.
+
+**Reference:** `items.tsx` — `serializeFormSnapshot()`, `currentFormSnapshot`, `canSave` (#95).
 
 ---
 
