@@ -20,9 +20,25 @@ jest.mock('@/api/aliases', () => {
   };
 });
 jest.mock('@/components/Abbreviations', () => ({
-  Abbreviations: ({ visible, initialSearch }: { visible: boolean; initialSearch?: string }) => {
-    const { Text } = require('react-native');
-    return visible ? <Text>Abbrev Modal: {initialSearch}</Text> : null;
+  Abbreviations: ({
+    visible,
+    initialSearch,
+    onClose,
+  }: {
+    visible: boolean;
+    initialSearch?: string;
+    onClose: () => void;
+  }) => {
+    const { Text, TouchableOpacity, View } = require('react-native');
+    if (!visible) return null;
+    return (
+      <View>
+        <Text>Abbrev Modal: {initialSearch}</Text>
+        <TouchableOpacity testID="abbrev-modal-close" onPress={onClose}>
+          <Text>Close Abbrev</Text>
+        </TouchableOpacity>
+      </View>
+    );
   },
 }));
 jest.mock('@/components/UserAvatar', () => ({
@@ -151,6 +167,35 @@ describe('ItemsScreen alias behavior', () => {
     expect(screen.queryByText('Define Abbreviations')).toBeNull();
   });
 
+  it('commits pending alias input when modal Save is tapped without submitEditing', async () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByText('Chicken Breast — 1 lb'));
+    fireEvent.press(screen.getByTestId('item-add-alias-trigger'));
+    fireEvent.changeText(screen.getByTestId('item-new-alias-input'), 'Cutlets');
+    fireEvent.press(screen.getByTestId('item-modal-save-btn'));
+
+    await waitFor(() => {
+      expect(updateMutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'item-1',
+          aliases: ['Tenders', 'Cutlets'],
+        })
+      );
+    });
+  });
+
+  it('adds alias chip when Add button is tapped', () => {
+    renderScreen();
+
+    fireEvent.press(screen.getByText('Chicken Breast — 1 lb'));
+    fireEvent.press(screen.getByTestId('item-add-alias-trigger'));
+    fireEvent.changeText(screen.getByTestId('item-new-alias-input'), 'Cutlets');
+    fireEvent.press(screen.getByTestId('item-new-alias-add-button'));
+
+    expect(screen.getByText('Cutlets')).toBeTruthy();
+  });
+
   it('shows Active Abbreviations rows including words from item aliases and empty state when none', () => {
     renderScreen();
 
@@ -162,12 +207,19 @@ describe('ItemsScreen alias behavior', () => {
     expect(screen.queryByText('tenders → tndr')).toBeNull();
   });
 
-  it('opens Define Abbreviations with initial search words from item name and aliases', () => {
+  it('opens Define Abbreviations with initial search words and restores edit modal on close', () => {
     renderScreen();
 
     fireEvent.press(screen.getByText('Chicken Breast — 1 lb'));
+    fireEvent.press(screen.getByTestId('item-add-alias-trigger'));
+    fireEvent.changeText(screen.getByTestId('item-new-alias-input'), 'Cutlets');
     fireEvent.press(screen.getByTestId('define-abbreviations-button'));
 
     expect(screen.getByText('Abbrev Modal: chicken breast tenders')).toBeTruthy();
+    expect(screen.queryByText('Edit Item')).toBeNull();
+
+    fireEvent.press(screen.getByTestId('abbrev-modal-close'));
+    expect(screen.getByText('Edit Item')).toBeTruthy();
+    expect(screen.getByTestId('item-new-alias-input').props.value).toBe('Cutlets');
   });
 });

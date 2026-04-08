@@ -72,6 +72,8 @@ export default function ItemsScreen() {
   const [prefStoreFilterText, setPrefStoreFilterText] = useState('');
   const [abbreviationsVisible, setAbbreviationsVisible] = useState(false);
   const [abbreviationsInitialSearch, setAbbreviationsInitialSearch] = useState('');
+  const [resumeEditAfterAbbreviations, setResumeEditAfterAbbreviations] = useState(false);
+  const [resumeAliasInputAfterAbbreviations, setResumeAliasInputAfterAbbreviations] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   const initializeStorePreferences = (item: MasterItem | null = null): StorePreferencesState => {
@@ -120,6 +122,8 @@ export default function ItemsScreen() {
     setSelectedPrefStoreId('');
     setPrefStoreFilterText('');
     setPrefDropdownOpen(false);
+    setResumeEditAfterAbbreviations(false);
+    setResumeAliasInputAfterAbbreviations(false);
     setIsModalVisible(true);
   };
 
@@ -150,8 +154,25 @@ export default function ItemsScreen() {
       }));
   };
 
+  const commitPendingAliasInput = (currentAliases: string[]): string[] => {
+    const normalized = newAliasInput.trim();
+    if (!normalized) {
+      return currentAliases;
+    }
+    if (currentAliases.some((alias) => alias.toLowerCase() === normalized.toLowerCase())) {
+      return currentAliases;
+    }
+    const nextAliases = [...currentAliases, normalized];
+    setAliases(nextAliases);
+    setShowAliasInput(false);
+    setNewAliasInput('');
+    return nextAliases;
+  };
+
   const handleSave = async () => {
     if (!name) return;
+    const aliasesToSave = commitPendingAliasInput(aliases);
+
     const altQtyArray = altQtys
       .split(',')
       .map((value) => value.trim())
@@ -175,7 +196,7 @@ export default function ItemsScreen() {
       name,
       short_name: shortName || null,
       default_category_id: categoryId || null,
-      aliases,
+      aliases: aliasesToSave,
       store_preferences: buildStorePreferencesPayload(),
       ...parsedPayload,
     };
@@ -214,22 +235,13 @@ export default function ItemsScreen() {
       await createItem(payload);
     }
 
+    setResumeEditAfterAbbreviations(false);
+    setResumeAliasInputAfterAbbreviations(false);
     setIsModalVisible(false);
   };
 
   const commitAlias = () => {
-    const normalized = newAliasInput.trim();
-    if (!normalized) {
-      setShowAliasInput(false);
-      setNewAliasInput('');
-      return;
-    }
-    if (aliases.some((alias) => alias.toLowerCase() === normalized.toLowerCase())) {
-      setShowAliasInput(false);
-      setNewAliasInput('');
-      return;
-    }
-    setAliases((prev) => [...prev, normalized]);
+    commitPendingAliasInput(aliases);
     setShowAliasInput(false);
     setNewAliasInput('');
   };
@@ -447,21 +459,27 @@ export default function ItemsScreen() {
                   </TouchableOpacity>
                 </View>
                 {showAliasInput ? (
-                  <TextInput
-                    testID="item-new-alias-input"
-                    style={styles.modalInput}
-                    value={newAliasInput}
-                    onChangeText={setNewAliasInput}
-                    placeholder="Alias"
-                    autoCapitalize="none"
-                    returnKeyType="done"
-                    onSubmitEditing={commitAlias}
-                    onBlur={() => {
-                      setShowAliasInput(false);
-                      setNewAliasInput('');
-                    }}
-                    autoFocus
-                  />
+                  <View style={styles.aliasInputRow}>
+                    <TextInput
+                      testID="item-new-alias-input"
+                      style={[styles.modalInput, styles.aliasInputField]}
+                      value={newAliasInput}
+                      onChangeText={setNewAliasInput}
+                      placeholder="Alias"
+                      autoCapitalize="none"
+                      returnKeyType="done"
+                      onSubmitEditing={commitAlias}
+                      onBlur={() => setShowAliasInput(false)}
+                      autoFocus
+                    />
+                    <TouchableOpacity
+                      testID="item-new-alias-add-button"
+                      style={styles.aliasInputAddButton}
+                      onPress={commitAlias}
+                    >
+                      <Text style={styles.aliasInputAddButtonText}>Add</Text>
+                    </TouchableOpacity>
+                  </View>
                 ) : null}
               </View>
 
@@ -483,6 +501,9 @@ export default function ItemsScreen() {
                     testID="define-abbreviations-button"
                     onPress={() => {
                       setAbbreviationsInitialSearch(activeWords.join(' '));
+                      setResumeEditAfterAbbreviations(true);
+                      setResumeAliasInputAfterAbbreviations(showAliasInput || newAliasInput.trim().length > 0);
+                      setIsModalVisible(false);
                       setAbbreviationsVisible(true);
                     }}
                   >
@@ -668,7 +689,15 @@ export default function ItemsScreen() {
       {abbreviationsVisible ? (
         <Abbreviations
           visible={abbreviationsVisible}
-          onClose={() => setAbbreviationsVisible(false)}
+          onClose={() => {
+            setAbbreviationsVisible(false);
+            if (resumeEditAfterAbbreviations) {
+              setIsModalVisible(true);
+              setShowAliasInput(resumeAliasInputAfterAbbreviations);
+              setResumeEditAfterAbbreviations(false);
+              setResumeAliasInputAfterAbbreviations(false);
+            }
+          }}
           initialSearch={abbreviationsInitialSearch}
         />
       ) : null}
@@ -782,6 +811,26 @@ const styles = StyleSheet.create({
   },
   aliasesContainer: {
     marginBottom: 16,
+  },
+  aliasInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  aliasInputField: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  aliasInputAddButton: {
+    borderRadius: 10,
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  aliasInputAddButtonText: {
+    color: '#2563eb',
+    fontSize: 13,
+    fontWeight: '700',
   },
   aliasChipsWrap: {
     flexDirection: 'row',
