@@ -36,7 +36,7 @@
 | F23 | Store Dropdown in Edit Modals | Done | [specs/F23-store-dropdown-edit-modals.md](specs/F23-store-dropdown-edit-modals.md) | [#74](https://github.com/marvinmednick/grocerylist/issues/74) |
 | F75 | Backend Logging & Diagnostics | Backlog | — | [#75](https://github.com/marvinmednick/grocerylist/issues/75) |
 | F96 | Swipe Actions on Shopping List Rows | Backlog | — | [#96](https://github.com/marvinmednick/grocerylist/issues/96) |
-| F94 | Voice Input Parser Normalization | Specced | [specs/F94-voice-input-normalization.md](specs/F94-voice-input-normalization.md) | [#94](https://github.com/marvinmednick/grocerylist/issues/94) |
+| F94 | Voice Input Parser Normalization | Done | [specs/F94-voice-input-normalization.md](specs/F94-voice-input-normalization.md) | [#94](https://github.com/marvinmednick/grocerylist/issues/94) |
 | F98 | Multi-Word Store Name Matching | Backlog | — | [#98](https://github.com/marvinmednick/grocerylist/issues/98) |
 
 **Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `Needs Fixes` → `In Review` → `Done`

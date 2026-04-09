@@ -6,3 +6,7 @@
 - **Review Level:** Full
 - **Scope:** Pre-parse normalization function that converts voice-style input (word-numbers like "two", "at Store" keyword) into parser-ready syntax ("2", "@Store"). Covers word-to-number lookup table (cardinals 0–12, fractions, "dozen") and "at" → "@" store hint conversion with store-name prefix validation.
 - **Closes on ship:** #94
+
+## 2026-04-08 — Shipped
+- **Commit:** `feat: voice input normalization — word-numbers and "at" store hints refs #94`
+- **Closed:** #94
