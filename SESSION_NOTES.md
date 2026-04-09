@@ -288,3 +288,11 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: none
 - **Design review**: not triggered — patterns followed, no new patterns
 - **Next**: Ready to ship #95 via `/complete 95`.
+
+---
+### 2026-04-08 — /feature F96, F97, F98; /spec F94
+- **Completed**: Registered F96 (Swipe Actions on Shopping List Rows, #96). Registered F97 ("at" keyword store hint, #97) and F98 (multi-word store matching, #98), then merged F97 into F94 (voice input normalization, #94) to avoid needing a multi-feature spec. Closed #97. Wrote spec for F94: `specs/F94-voice-input-normalization.md`. Updated PLAN.md, BACKLOG.md, created plans/F94-log.md.
+- **Findings**: Key design decision — normalization as a pre-parse function (option B) rather than extending `parseInput` signature (option A). Rationale: `parseInput` is a pure parser that doesn't need the store list; normalization handles all voice artifacts in one place before tokenization. The "at" keyword only converts to `@` when the next word prefix-matches a known store name, avoiding false positives. `parseResult.rawInput` must be overridden back to the original query so the one-off "Add" row shows un-normalized text.
+- **Design decisions**: Pre-parse `normalizeVoiceInput(input, storeNames)` function in parser.ts. Word-number table: cardinals 0–12, half, quarter, dozen. "at" → "@" only when next word matches a store prefix. "a dozen" deferred (ambiguous "a"). Quoted-region awareness deferred.
+- **Design review**: not triggered — no novel patterns; pure function follows existing parser conventions
+- **Next**: Triage compound fraction suggestion. Implementor runs `./implement F94 --plan`, then `/review-plan F94`.

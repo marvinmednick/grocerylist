@@ -407,6 +407,26 @@ it('displays the formatted end date', () => {
 });
 ```
 
+### Test Granularity
+
+**One logical scenario per `it()` block.** Each distinct input/output pair or behavioral case gets its own test. Multiple `expect()` calls within a block are fine when they assert different facets of the *same* scenario (e.g., checking both `count` and `packageType` from one parse result), but distinct inputs should be separate tests.
+
+```typescript
+// Good: separate scenarios, clear failure diagnostics
+it('converts "two milk" → "2 milk"', () => { ... });
+it('converts "half pound" → "0.5 pound"', () => { ... });
+it('converts "dozen eggs" → "12 eggs"', () => { ... });
+
+// Bad: multiple unrelated scenarios in one block
+it('normalizes basic number words', () => {
+  expect(normalize('two milk')).toBe('2 milk');
+  expect(normalize('half pound')).toBe('0.5 pound');  // if this fails, test name doesn't help
+  expect(normalize('dozen eggs')).toBe('12 eggs');
+});
+```
+
+**Why:** When a test fails in CI, the `it()` description is the first thing you see. Specific descriptions eliminate triage time.
+
 ### Composition Scenario Tests
 
 Features that touch the **input-to-match pipeline** (parser, alias expansion, prefix fallback, SmartAddItem merge/dedup/ranking) must include composition scenario tests in addition to unit tests. These verify that multiple systems work correctly together — the integration seams where bugs hide even when individual pieces pass.
