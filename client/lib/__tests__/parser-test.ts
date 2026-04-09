@@ -2,6 +2,7 @@ import {
   assembleCandidate,
   classifyTokens,
   groupTokens,
+  normalizeVoiceInput,
   parseInput,
   resolveNames,
   tokenize,
@@ -298,6 +299,29 @@ describe('resolveNames', () => {
 });
 
 describe('parseInput', () => {
+  it('parses voice input "two cans chicken broth" with word-number normalization', () => {
+    const normalized = normalizeVoiceInput('two cans chicken broth', []);
+    const result = parseInput(normalized, DEFAULT_VOCABULARY, masterItems);
+    expect(result.interpretations[0]).toEqual(
+      expect.objectContaining({
+        name: 'Chicken Broth',
+        count: 2,
+        packageType: 'can',
+      })
+    );
+  });
+
+  it('parses "milk at safeway" with "at" store hint normalization', () => {
+    const normalized = normalizeVoiceInput('milk at safeway', ['Safeway']);
+    const result = parseInput(normalized, DEFAULT_VOCABULARY, masterItems);
+    expect(result.interpretations[0]).toEqual(
+      expect.objectContaining({
+        name: 'Milk',
+        storeHint: 'safeway',
+      })
+    );
+  });
+
   it('parses "2 milk"', () => {
     const result = parseInput('2 milk', DEFAULT_VOCABULARY, masterItems);
     expect(result.interpretations[0]).toEqual(

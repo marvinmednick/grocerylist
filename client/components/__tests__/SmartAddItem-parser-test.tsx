@@ -145,6 +145,24 @@ describe('SmartAddItem parser integration', () => {
     expect(screen.getByText('Safeway')).toBeTruthy();
   });
 
+  it('shows store pill when user types "milk at Safeway"', async () => {
+    render(<SmartAddItem activeStoreId="store-2" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk at Safeway');
+
+    expect(await screen.findByText('Store: ')).toBeTruthy();
+    expect(screen.getByText('Safeway')).toBeTruthy();
+  });
+
+  it('shows parsed qty from voice input "two milk"', async () => {
+    render(<SmartAddItem activeStoreId="store-2" />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'two milk');
+
+    expect(await screen.findByTestId('result-qty-chip-other-master-1')).toBeTruthy();
+    expect(screen.getByText('2')).toBeTruthy();
+  });
+
   it('does not show store pills without @hint', () => {
     render(<SmartAddItem activeStoreId="store-2" />);
 

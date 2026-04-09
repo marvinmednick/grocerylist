@@ -80,6 +80,25 @@ export interface MasterItemRef {
   aliases: string[];
 }
 
+const VOICE_WORD_TO_NUMBER: Record<string, string> = {
+  zero: '0',
+  one: '1',
+  two: '2',
+  three: '3',
+  four: '4',
+  five: '5',
+  six: '6',
+  seven: '7',
+  eight: '8',
+  nine: '9',
+  ten: '10',
+  eleven: '11',
+  twelve: '12',
+  half: '0.5',
+  quarter: '0.25',
+  dozen: '12',
+};
+
 function parseCompound(raw: string, vocabulary: Vocabulary): { qty: number; unit: string } | null {
   const match = raw.match(/^(\d+(?:\.\d+)?)([a-zA-Z]+)$/);
   if (!match) {
@@ -133,6 +152,39 @@ function lookupPackageEntryExact(token: string, vocabulary: Vocabulary): Package
   }
 
   return null;
+}
+
+export function normalizeVoiceInput(input: string, storeNames: string[]): string {
+  const normalizedNumbers = input.replace(/\b([a-z]+)\b/gi, (word) => {
+    return VOICE_WORD_TO_NUMBER[word.toLowerCase()] ?? word;
+  });
+
+  if (!normalizedNumbers.trim()) {
+    return '';
+  }
+
+  const stores = storeNames.map((name) => name.toLowerCase());
+  const tokens = normalizedNumbers.split(/\s+/);
+  const normalizedTokens: string[] = [];
+
+  for (let i = 0; i < tokens.length; i += 1) {
+    const token = tokens[i];
+    const nextToken = tokens[i + 1];
+
+    if (
+      token.toLowerCase() === 'at' &&
+      nextToken &&
+      stores.some((storeName) => nextToken.length > 0 && storeName.startsWith(nextToken.toLowerCase()))
+    ) {
+      normalizedTokens.push(`@${nextToken}`);
+      i += 1;
+      continue;
+    }
+
+    normalizedTokens.push(token);
+  }
+
+  return normalizedTokens.join(' ');
 }
 
 export function tokenize(input: string): Token[] {

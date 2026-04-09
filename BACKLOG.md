@@ -11,7 +11,7 @@ See WORKFLOW.md §8 (Backlog Triage) for the full process.
 - [x] Plural normalization in bag-of-words matching ("breasts" → "breast") — implemented in F77.
 - [ ] Fraction support (`1/2 lb`) in parser — not supported V1. (deferred from F44)
 - [x] Word-quantities (`a dozen`, `half a pound`) in parser — promoted to #94 (broadened scope: all word-to-number normalization for voice input).
-- [ ] Multi-word store hints (`@harris teeter`) — single-word @hint only in V1. (deferred from F44)
+- [x] Multi-word store hints (`@harris teeter`) — promoted to #98 (F98).
 - [ ] `alternate_qtys` audit — verify existing alternate_qtys values parse cleanly against F44 vocabulary seeds; flag gaps. (deferred from F44, to be done during F44 implementation)
 - [ ] `MasterItemRef` duplicated in `lib/parser.ts` and `api/items.ts` — one should import from the other to prevent silent drift. (found in F44 review)
 - [ ] `formatCount` in `quantityFormat.ts` has two identical branches; the `isInteger` check is a no-op — simplify to one branch. (found in F44 review)
@@ -59,6 +59,10 @@ _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assig
 - [ ] `app/(tabs)/index.tsx` edit-item modal — add dirty-state Save per §7f. Apply when this modal is next modified.
 - [ ] `components/Abbreviations.tsx` edit dialog — add dirty-state Save per §7f. Apply when this component is next modified.
 - [ ] `components/VocabularyManagement.tsx` edit dialogs (units, packages, sizes) — add dirty-state Save per §7f. Apply when this component is next modified.
+
+### From F94
+- [ ] "a dozen" → "1 dozen" normalization — the word "a" is too ambiguous to normalize globally. (deferred from F94)
+- [ ] Quoted-region awareness in `normalizeVoiceInput` — currently "at" inside quotes is also transformed. Not a practical issue for voice input. (deferred from F94)
 
 ### From Doc Audit (2026-03-23)
 - [ ] `UserAvatar.tsx:38` uses absolute-positioned overlay (same pattern as the pre-F22 WarningBadge). Risk: clipping by parent containers with `overflow: hidden`, Z-index conflicts with other overlays, and keyboard-open behavior may push it off-screen. Low urgency — address in a future UI polish pass.

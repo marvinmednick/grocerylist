@@ -29,7 +29,16 @@ import { useMyProfile } from '@/api/profile';
 import { useVocabulary } from '@/api/vocabulary';
 import { WarningCallout } from '@/components/WarningCallout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { matchQualityScore, parseInput, tokenize, classifyTokens, groupTokens, assembleCandidate, type ParsedInput } from '@/lib/parser';
+import {
+  matchQualityScore,
+  normalizeVoiceInput,
+  parseInput,
+  tokenize,
+  classifyTokens,
+  groupTokens,
+  assembleCandidate,
+  type ParsedInput,
+} from '@/lib/parser';
 import { DEFAULT_VOCABULARY } from '@/lib/vocabulary';
 import { editDistanceThreshold, levenshteinDistance, normalizePlural } from '@/lib/fuzzyMatch';
 import { formatQuantity, isPartialMatch, parseQuantityText, quantityEquals, type QuantityParsed } from '@/lib/quantityFormat';
@@ -137,14 +146,20 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
 
   const vocab = vocabulary ?? DEFAULT_VOCABULARY;
   const wordAliases = loadedWordAliases ?? new Map<string, string>();
+  const storeNamesList = useMemo(() => {
+    return (metadata?.stores || []).map((s) => s.name);
+  }, [metadata?.stores]);
 
   const parseResult = useMemo(() => {
-    return parseInput(query, vocab, masterItemNames, wordAliases);
-  }, [query, vocab, masterItemNames, wordAliases]);
+    const normalizedQuery = normalizeVoiceInput(query, storeNamesList);
+    const result = parseInput(normalizedQuery, vocab, masterItemNames, wordAliases);
+    return { ...result, rawInput: query };
+  }, [query, storeNamesList, vocab, masterItemNames, wordAliases]);
 
   const parseCandidate = useMemo(() => {
-    return assembleCandidate(groupTokens(classifyTokens(tokenize(query), vocab)));
-  }, [query, vocab]);
+    const normalizedQuery = normalizeVoiceInput(query, storeNamesList);
+    return assembleCandidate(groupTokens(classifyTokens(tokenize(normalizedQuery), vocab)));
+  }, [query, storeNamesList, vocab]);
 
   const prefixFallbackInterpretations: ParsedInput[] = useMemo(() => {
     if (query.length < 2) {
