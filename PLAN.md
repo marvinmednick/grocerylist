@@ -38,7 +38,7 @@
 | F96 | Swipe Actions on Shopping List Rows | Backlog | — | [#96](https://github.com/marvinmednick/grocerylist/issues/96) |
 | F94 | Voice Input Parser Normalization | Done | [specs/F94-voice-input-normalization.md](specs/F94-voice-input-normalization.md) | [#94](https://github.com/marvinmednick/grocerylist/issues/94) |
 | F98 | Multi-Word Store Name Matching | Backlog | — | [#98](https://github.com/marvinmednick/grocerylist/issues/98) |
-| F99 | Quick-Accept: Enter Key + Voice Trigger | In Review | [specs/F99-quick-accept.md](specs/F99-quick-accept.md) · [design](docs/design/F99-quick-accept.md) | [#99](https://github.com/marvinmednick/grocerylist/issues/99) |
+| F99 | Quick-Accept: Enter Key + Voice Trigger | Done | [specs/F99-quick-accept.md](specs/F99-quick-accept.md) · [design](docs/design/F99-quick-accept.md) | [#99](https://github.com/marvinmednick/grocerylist/issues/99) |
 
 **Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `Needs Fixes` → `In Review` → `Done`
 (`Designed` is optional — features with clear requirements can go `Backlog` → `Specced` directly)

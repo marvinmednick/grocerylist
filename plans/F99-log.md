@@ -30,3 +30,7 @@
   3. Style assertion updated to `borderLeftWidth`/`borderLeftColor`
 - **Non-blocking:** both resolved in Review 2 fix-up — helper consolidation applied; second item discarded as duplicate coverage.
 - **Next:** Ready to ship via `/complete F99`.
+
+## 2026-04-09 — Shipped
+- **Commit:** `feat: F99 quick-accept Enter key + voice trigger word`
+- **Closed:** #99
