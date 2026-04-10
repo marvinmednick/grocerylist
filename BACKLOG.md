@@ -67,3 +67,7 @@ _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assig
 ### From Doc Audit (2026-03-23)
 - [ ] `UserAvatar.tsx:38` uses absolute-positioned overlay (same pattern as the pre-F22 WarningBadge). Risk: clipping by parent containers with `overflow: hidden`, Z-index conflicts with other overlays, and keyboard-open behavior may push it off-screen. Low urgency — address in a future UI polish pass.
 
+### From F99
+- [x] `useQuickAcceptState.ts` — consolidated `isArmed`/`isArmedRef` behind `setArmed(next)` helper in Review 2 fix-up.
+- [x] SmartAddItem-quickaccept-test.tsx non-null non-default profile test — discarded; duplicates the custom-profile test's code path.
+

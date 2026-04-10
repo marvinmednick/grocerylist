@@ -296,3 +296,35 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: Pre-parse `normalizeVoiceInput(input, storeNames)` function in parser.ts. Word-number table: cardinals 0–12, half, quarter, dozen. "at" → "@" only when next word matches a store prefix. "a dozen" deferred (ambiguous "a"). Quoted-region awareness deferred.
 - **Design review**: not triggered — no novel patterns; pure function follows existing parser conventions
 - **Next**: Triage compound fraction suggestion. Implementor runs `./implement F94 --plan`, then `/review-plan F94`.
+
+---
+### 2026-04-09 — /design F99 (Quick-Accept: Enter Key + Voice Trigger)
+- **Completed**: Full interactive design session for F99. Wrote design doc `docs/design/F99-quick-accept.md`. Updated PLAN.md (F99 → Designed). Added two novel patterns to `docs/design/ui-guidelines.md` decision log (top-result highlight two-tier, armed-state search box tint).
+- **Findings**: Voice keyboards (iOS dictation, Android voice) deliver text as complete words/phrases to onChangeText, not character-by-character — confirmed via React Native source code investigation. This is critical: the trigger word arrives atomically, so detection while Armed works reliably. Keyboard typing of the trigger word letter-by-letter would disarm on each keystroke, but keyboard users use the Enter key instead. iOS has explicit `dictationRecognizing` detection in native layer but it's not exposed to JS.
+- **Design decisions**: (1) Settings in `profiles.quick_accept_settings` JSONB (synced across devices, not AsyncStorage). (2) State machine: Idle → (timer expires) → Armed → (trigger word while armed) → fires add. Enter key bypasses arming. (3) Trigger detection at SmartAddItem level via whitespace-split last token, not in parser. (4) Reuse existing `onCommitAdd`/`onOneOffAdd` handlers — no new mutations. (5) Two-tier visual: always-on blue-50 on top result, armed blue-100 + blue left border. Search box bg → blue-50 when armed. (6) `returnKeyType="done"`. (7) Hook extracted to `client/lib/useQuickAcceptState.ts`.
+- **Design review**: Two novel UI patterns established and logged in ui-guidelines.md — first pre-selected dropdown row highlight, and first search-box state-dependent background tint.
+- **Next**: `/spec F99` when ready to write implementation spec.
+
+---
+### 2026-04-09 — /spec F99 (Quick-Accept: Enter Key + Voice Trigger)
+- **Completed**: Wrote implementation spec `specs/F99-quick-accept.md`. Updated PLAN.md (F99 → Specced). Created `plans/F99-log.md`.
+- **Findings**: Hook needs ref-mirror pattern for `isArmed` to avoid stale closures in `onChangeText` callback. Search bar base color is `#f3f4f6` (gray-100), armed state shifts to `#eff6ff` (blue-50) — sufficient contrast. Settings section reuses all existing styles from Settings.tsx.
+- **Design decisions**: None new — spec implements the design doc decisions.
+- **Design review**: not triggered
+- **Next**: Implementor runs `./implement F99`, then `/review-plan F99`.
+
+---
+### 2026-04-09 — /review-impl F99 (Needs Fixes)
+- **Completed**: Reviewed F99 implementation against spec. 557/557 tests pass. Updated PLAN.md (F99 → Needs Fixes), appended log entry, added two non-blocking items to BACKLOG.md.
+- **Findings**: Three blocking issues. (1) Migration `20250101000017_f99_quick_accept_settings.sql` is local-only per `supabase migration list` — still pending on remote. (2) `topResultArmed` style in `SmartAddItem.tsx:1201-1204` uses `borderColor: '#2563eb'` without any `borderWidth`, so the 3px blue left bar specified in spec §"Armed state" and the plan never renders. Spec calls for `borderLeftWidth: 3` + `borderLeftColor: '#2563eb'`. (3) Integration test `SmartAddItem-quickaccept-test.tsx:215` asserts `topRowStyle.borderColor === '#2563eb'`, which matches the buggy implementation rather than spec — false confidence; when style is fixed the assertion must shift to `borderLeftWidth` + `borderLeftColor`. Root cause on (2)+(3): implementor converted the style to `borderColor` and wrote the test against the code, not against the spec, and no design/visual review caught it.
+- **Design decisions**: None new.
+- **Design review**: not triggered — no new patterns; finding is a spec deviation, not a pattern question.
+- **Next**: Implementor fixes style, updates test assertion, applies migration to remote (`npx supabase db push`), re-runs tests, updates progress log, requests re-review.
+
+---
+### 2026-04-09 — /review-impl F99 Review 2 (Passed)
+- **Completed**: Re-reviewed F99 after implementor fixes. All three blocking items from Review 1 resolved. 557/557 tests pass. Updated PLAN.md (F99 → In Review), appended Review 2 entry to `plans/F99-log.md`, added `in-review` label + comment on issue #99.
+- **Findings**: `topResultArmed` now has `borderLeftWidth: 3` and `borderLeftColor: '#2563eb'` per spec. Integration test assertion flipped to `borderLeftWidth`/`borderLeftColor`. Migration `20250101000017_f99_quick_accept_settings.sql` now in both Local and Remote columns of `supabase migration list`.
+- **Design decisions**: none
+- **Design review**: not triggered
+- **Next**: `/complete F99` to ship.

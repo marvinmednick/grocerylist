@@ -25,7 +25,7 @@ import { useWordAliases } from '@/api/aliases';
 import { useAddToList, useDeleteListItem } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
-import { useMyProfile } from '@/api/profile';
+import { DEFAULT_QUICK_ACCEPT_SETTINGS, useMyProfile } from '@/api/profile';
 import { useVocabulary } from '@/api/vocabulary';
 import { WarningCallout } from '@/components/WarningCallout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,6 +42,7 @@ import {
 import { DEFAULT_VOCABULARY } from '@/lib/vocabulary';
 import { editDistanceThreshold, levenshteinDistance, normalizePlural } from '@/lib/fuzzyMatch';
 import { formatQuantity, isPartialMatch, parseQuantityText, quantityEquals, type QuantityParsed } from '@/lib/quantityFormat';
+import { useQuickAcceptState } from '@/lib/useQuickAcceptState';
 
 interface SmartAddItemProps {
   disabled?: boolean;
@@ -134,6 +135,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
   const { data: vocabulary } = useVocabulary();
   const myProfileQuery = useMyProfile();
   const myProfile = myProfileQuery?.data;
+  const quickAcceptSettings = myProfile?.quick_accept_settings ?? DEFAULT_QUICK_ACCEPT_SETTINGS;
   const { pushAction } = useUndo();
 
   const masterDetailsById = useMemo(() => {
@@ -466,6 +468,24 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     clearAndClose();
   };
 
+  const onAcceptTop = async () => {
+    if (query.trim().length === 0) {
+      return;
+    }
+
+    if (rankedInterpretations.length > 0) {
+      const topInterpretation = rankedInterpretations[0];
+      const topRowKey = getRowKey(topInterpretation, 0);
+      const fullItem = topInterpretation.matchedItemId ? masterDetailsById.get(topInterpretation.matchedItemId) : undefined;
+      if (fullItem) {
+        await onCommitAdd(fullItem, topInterpretation, topRowKey);
+        return;
+      }
+    }
+
+    await onOneOffAdd();
+  };
+
   const selectedMasterItem = selectedItem?.id ? selectedItem : null;
   const editWarnings = selectedMasterItem
     ? computeWarnings(
@@ -648,20 +668,33 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     });
   }, [parseResult.interpretations, prefixFallbackInterpretations]);
 
+  const { isArmed, handleTextChange, handleSubmitEditing } = useQuickAcceptState({
+    triggerWord: quickAcceptSettings.trigger_word,
+    armingDelayMs: quickAcceptSettings.arming_delay_ms,
+    query,
+    onAcceptTop,
+  });
+
   return (
     <View style={[styles.container, disabled && { opacity: 0.6 }]}> 
-      <View style={styles.searchBar}>
+      <View testID="smart-add-search-bar" style={[styles.searchBar, isArmed && styles.searchBarArmed]}>
         <Search size={20} color="#9ca3af" style={styles.searchIcon} />
         <TextInput
           style={styles.input}
           placeholder={disabled ? 'Loading household...' : 'Add item...'}
           value={query}
-          onChangeText={setQuery}
+          onChangeText={(text) => setQuery(handleTextChange(text))}
+          onSubmitEditing={handleSubmitEditing}
+          returnKeyType="done"
           placeholderTextColor="#9ca3af"
           editable={!disabled}
         />
         {query.length > 0 && !disabled && (
-          <TouchableOpacity onPress={() => setQuery('')} style={styles.clearBtn}>
+          <TouchableOpacity
+            testID="smart-add-clear-button"
+            onPress={() => setQuery(handleTextChange(''))}
+            style={styles.clearBtn}
+          >
             <X size={18} color="#6b7280" />
           </TouchableOpacity>
         )}
@@ -725,7 +758,15 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
             const selectedStoreId = selected.storeId;
 
             return (
-              <View key={rowKey} style={styles.resultRowComplex}>
+              <View
+                key={rowKey}
+                testID={`smart-add-result-row-${index}`}
+                style={[
+                  styles.resultRowComplex,
+                  index === 0 && styles.topResultHighlight,
+                  index === 0 && isArmed && styles.topResultArmed,
+                ]}
+              >
                 <View style={styles.resultMainSection}>
                   <TouchableOpacity style={styles.resultHeader} onPress={() => onCommitAdd(fullItem, interpretation, rowKey)}>
                     <View style={styles.resultTitleRow}>
@@ -1104,6 +1145,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
+  searchBarArmed: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+  },
   searchIcon: {
     marginRight: 8,
   },
@@ -1150,6 +1195,14 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     borderBottomWidth: 1,
     borderBottomColor: '#f9fafb',
+  },
+  topResultHighlight: {
+    backgroundColor: '#eff6ff',
+  },
+  topResultArmed: {
+    backgroundColor: '#dbeafe',
+    borderLeftWidth: 3,
+    borderLeftColor: '#2563eb',
   },
   resultMainSection: {
     flex: 1,

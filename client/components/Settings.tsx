@@ -14,6 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { useHousehold } from '@/lib/household';
 import {
+  DEFAULT_QUICK_ACCEPT_SETTINGS,
+  type QuickAcceptSettings,
   useHouseholdMemberColors,
   useHouseholdName,
   useMyProfile,
@@ -79,15 +81,22 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose }) => {
   const [shortNameInput, setShortNameInput] = useState(displayNameShort ?? '');
   const [selectedColor, setSelectedColor] = useState(avatarColor ?? PROFILE_COLORS[0].hex);
   const [warningPrefs, setWarningPrefs] = useState<WarningPreferences>(DEFAULT_WARNING_PREFS);
+  const [triggerWord, setTriggerWord] = useState(DEFAULT_QUICK_ACCEPT_SETTINGS.trigger_word);
+  const [armingDelay, setArmingDelay] = useState(String(DEFAULT_QUICK_ACCEPT_SETTINGS.arming_delay_ms));
 
   useEffect(() => {
     if (visible) {
+      const quickAcceptSettings: QuickAcceptSettings = myProfile?.quick_accept_settings ?? DEFAULT_QUICK_ACCEPT_SETTINGS;
       setNameInput(displayName ?? '');
       setShortNameInput(displayNameShort ?? '');
       setSelectedColor(avatarColor ?? PROFILE_COLORS[0].hex);
       setWarningPrefs(myProfile?.warning_preferences ?? DEFAULT_WARNING_PREFS);
+      setTriggerWord(quickAcceptSettings.trigger_word);
+      setArmingDelay(String(quickAcceptSettings.arming_delay_ms));
     }
-  }, [visible, displayName, displayNameShort, avatarColor, myProfile?.warning_preferences]);
+  }, [visible, displayName, displayNameShort, avatarColor, myProfile?.warning_preferences, myProfile?.quick_accept_settings]);
+
+  const triggerWordValid = /^[a-zA-Z]+$/.test(triggerWord);
 
   const colorInUse = useMemo(
     () => memberColors.includes(selectedColor),
@@ -100,6 +109,10 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose }) => {
       display_name_short: shortNameInput,
       color: selectedColor,
       warning_preferences: warningPrefs,
+      quick_accept_settings: {
+        trigger_word: triggerWord.toLowerCase().trim(),
+        arming_delay_ms: Math.max(500, Math.min(5000, parseInt(armingDelay, 10) || 1500)),
+      },
     });
   };
 
@@ -174,6 +187,35 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose }) => {
           <Text style={styles.rowLabel}>Dark Mode</Text>
           <Switch testID="settings-dark-mode-switch" value={isDark} onValueChange={toggleTheme} />
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Quick Accept</Text>
+        <Text style={styles.label}>Trigger Word</Text>
+        <TextInput
+          testID="settings-trigger-word-input"
+          value={triggerWord}
+          onChangeText={setTriggerWord}
+          style={styles.input}
+          autoCapitalize="none"
+          autoCorrect={false}
+          placeholder="e.g. enter"
+          placeholderTextColor="#9ca3af"
+        />
+        {!triggerWordValid && triggerWord.length > 0 ? (
+          <Text style={styles.colorWarning}>Must be a single word (letters only)</Text>
+        ) : null}
+
+        <Text style={styles.label}>Arming Delay (ms)</Text>
+        <TextInput
+          testID="settings-arming-delay-input"
+          value={armingDelay}
+          onChangeText={setArmingDelay}
+          style={styles.input}
+          keyboardType="numeric"
+          placeholder="1500"
+          placeholderTextColor="#9ca3af"
+        />
       </View>
 
       <View style={styles.section}>

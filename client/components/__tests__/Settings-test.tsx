@@ -128,6 +128,10 @@ describe('Settings', () => {
       display_name: 'Alice Cooper',
       display_name_short: 'AC',
       color: '#16a34a',
+      quick_accept_settings: {
+        trigger_word: 'enter',
+        arming_delay_ms: 1500,
+      },
       warning_preferences: {
         avoided: 'toast_and_badge',
         unavailable: 'toast_and_badge',

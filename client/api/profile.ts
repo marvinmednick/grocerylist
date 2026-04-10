@@ -6,6 +6,7 @@ interface UpdateProfilePayload {
   display_name_short: string;
   color: string;
   warning_preferences?: WarningPreferences;
+  quick_accept_settings?: QuickAcceptSettings;
 }
 
 export interface WarningPreferences {
@@ -15,12 +16,23 @@ export interface WarningPreferences {
   non_standard_qty: 'toast_and_badge' | 'badge_only' | 'off';
 }
 
+export interface QuickAcceptSettings {
+  trigger_word: string;
+  arming_delay_ms: number;
+}
+
+export const DEFAULT_QUICK_ACCEPT_SETTINGS: QuickAcceptSettings = {
+  trigger_word: 'enter',
+  arming_delay_ms: 1500,
+};
+
 interface MyProfile {
   household_id: string;
   display_name: string | null;
   display_name_short: string | null;
   color: string | null;
   warning_preferences: WarningPreferences | null;
+  quick_accept_settings: QuickAcceptSettings | null;
 }
 
 export interface HouseholdMember {
@@ -34,7 +46,13 @@ export const useUpdateProfile = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ display_name, display_name_short, color, warning_preferences }: UpdateProfilePayload) => {
+    mutationFn: async ({
+      display_name,
+      display_name_short,
+      color,
+      warning_preferences,
+      quick_accept_settings,
+    }: UpdateProfilePayload) => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -45,7 +63,7 @@ export const useUpdateProfile = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .update({ display_name, display_name_short, color, warning_preferences })
+        .update({ display_name, display_name_short, color, warning_preferences, quick_accept_settings })
         .eq('id', session.user.id);
 
       if (error) {
