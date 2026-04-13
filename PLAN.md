@@ -40,6 +40,7 @@
 | F98 | Multi-Word Store Name Matching | Backlog | — | [#98](https://github.com/marvinmednick/grocerylist/issues/98) |
 | F99 | Quick-Accept: Enter Key + Voice Trigger | Done | [specs/F99-quick-accept.md](specs/F99-quick-accept.md) · [design](docs/design/F99-quick-accept.md) | [#99](https://github.com/marvinmednick/grocerylist/issues/99) |
 | F100 | Voice Trigger Android Streaming Fix | Done | [specs/F100-voice-trigger-android-fix.md](specs/F100-voice-trigger-android-fix.md) | [#100](https://github.com/marvinmednick/grocerylist/issues/100) |
+| F101 | Voice Input Mode (Speech Recognition API) | Backlog | — | [#101](https://github.com/marvinmednick/grocerylist/issues/101) |
 
 **Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `Needs Fixes` → `In Review` → `Done`
 (`Designed` is optional — features with clear requirements can go `Backlog` → `Specced` directly)
