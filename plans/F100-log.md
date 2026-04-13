@@ -10,3 +10,7 @@
 - **Result:** Passed — no blocking issues
 - **Tests:** 564/564 passed
 - **Non-blocking:** none
+
+## 2026-04-13 — Shipped
+- **Commit:** `feat: F100 voice trigger Android streaming fix — prefix tolerance + default trigger word`
+- **Closed:** #100

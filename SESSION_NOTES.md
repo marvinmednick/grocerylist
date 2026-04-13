@@ -344,3 +344,11 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: none
 - **Design review**: not triggered — bug fix on existing pattern, no new patterns
 - **Next**: `/complete F100` to ship.
+
+---
+### 2026-04-13 — /complete F100
+- **Completed**: F100 shipped. Prefix tolerance fix for Android streaming dictation + default trigger word "enter" → "done" + Settings IME hint. Issue #100 closed. PLAN.md → Done. Created #101 (voice input mode via speech recognition API) for the long-term dictation solution. Investigated keepOpen behavior (keeping keyboard/dictation alive after trigger) — confirmed iOS terminates dictation when controlled TextInput value changes programmatically; reverted keepOpen changes.
+- **Findings**: Root cause of dictation termination confirmed via on-device logging: no onBlur or keyboard:didHide events — iOS silently invalidates dictation when `setQuery('')` triggers a value prop change. The only solution for persistent dictation across item adds is a speech recognition library (`expo-speech-recognition` or `@react-native-voice/voice`) that manages its own recording session.
+- **Design decisions**: none
+- **Design review**: not triggered — bug fix, no new patterns
+- **Next**: F101 (voice input mode) when ready. SESSION_NOTES at 346 lines but all entries within 90 days — no archive needed.
