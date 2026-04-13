@@ -224,7 +224,7 @@ describe('SmartAddItem quick accept integration', () => {
       jest.advanceTimersByTime(1500);
     });
 
-    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk enter');
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk done');
 
     await waitFor(() => {
       expect(addItem).toHaveBeenCalledWith(
@@ -238,10 +238,10 @@ describe('SmartAddItem quick accept integration', () => {
   it('trigger-word typed while idle does not auto-add and remains literal text', () => {
     render(<SmartAddItem activeStoreId="store-1" />);
 
-    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk enter');
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk done');
 
     expect(addItem).not.toHaveBeenCalled();
-    expect(screen.getByPlaceholderText('Add item...').props.value).toBe('milk enter');
+    expect(screen.getByPlaceholderText('Add item...').props.value).toBe('milk done');
   });
 
   it('custom profile trigger word works', async () => {

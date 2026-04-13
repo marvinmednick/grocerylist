@@ -22,7 +22,7 @@ export interface QuickAcceptSettings {
 }
 
 export const DEFAULT_QUICK_ACCEPT_SETTINGS: QuickAcceptSettings = {
-  trigger_word: 'enter',
+  trigger_word: 'done',
   arming_delay_ms: 1500,
 };
 

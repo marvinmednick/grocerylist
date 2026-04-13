@@ -129,7 +129,7 @@ describe('Settings', () => {
       display_name_short: 'AC',
       color: '#16a34a',
       quick_accept_settings: {
-        trigger_word: 'enter',
+        trigger_word: 'done',
         arming_delay_ms: 1500,
       },
       warning_preferences: {

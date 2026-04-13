@@ -328,3 +328,19 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: none
 - **Design review**: not triggered
 - **Next**: `/complete F99` to ship.
+
+---
+### 2026-04-10 — /spec F100 (Voice Trigger Android Streaming Fix)
+- **Completed**: Created issue #100 and wrote spec `specs/F100-voice-trigger-android-fix.md`. Registered F100 in PLAN.md (Specced). Created `plans/F100-log.md`.
+- **Findings**: Android testing of F99 revealed two issues: (1) Android dictation streams partial text updates (e.g., "\nPop" → "\nPopcorn") causing premature disarming — the state machine disarms on the first partial token that doesn't match the full trigger word, so the complete word is missed. (2) "enter" as default trigger word is intercepted by Android IME as a key action, producing newline characters instead of literal text. Fix: prefix tolerance (stay armed when last token is a prefix of trigger word), change default to "done", add IME warning hint in Settings.
+- **Design decisions**: Prefix check only applies when already armed — no impact on unarmed behavior. "done" chosen as new default (no IME special meaning, short, natural voice command). Migration updates existing "enter" defaults to "done".
+- **Design review**: not triggered — bug fix on existing pattern, no new patterns
+- **Next**: Implementor runs implementation commands from spec.
+
+---
+### 2026-04-10 — /review-impl F100 (Passed)
+- **Completed**: Full review of F100 implementation. 564/564 tests pass. Migration 20250101000018 applied locally and remotely. PLAN.md updated to In Review. GitHub #100 commented and labeled `in-review`.
+- **Findings**: Clean implementation — prefix tolerance logic correctly placed after exact match check and before unconditional disarm. All 7 spec test cases present with correct assertions. Cascading test updates in Settings-test.tsx and SmartAddItem-quickaccept-test.tsx correctly updated "enter" → "done" references. No pattern violations, no scope creep.
+- **Design decisions**: none
+- **Design review**: not triggered — bug fix on existing pattern, no new patterns
+- **Next**: `/complete F100` to ship.

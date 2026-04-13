@@ -232,6 +232,166 @@ describe('useQuickAcceptState', () => {
     expect(onAcceptTop).not.toHaveBeenCalled();
   });
 
+  it('stays armed when last token is a prefix of trigger word', () => {
+    const { result } = renderHook(() =>
+      useQuickAcceptState({
+        triggerWord: 'popcorn',
+        armingDelayMs: 1000,
+        query: '',
+        onAcceptTop: jest.fn(),
+      })
+    );
+
+    act(() => {
+      result.current.handleTextChange('milk');
+      jest.advanceTimersByTime(1000);
+    });
+
+    expect(result.current.isArmed).toBe(true);
+
+    act(() => {
+      result.current.handleTextChange('milk pop');
+    });
+
+    expect(result.current.isArmed).toBe(true);
+  });
+
+  it('accepts trigger after prefix partial arrives (streaming dictation)', () => {
+    const onAcceptTop = jest.fn();
+    const { result } = renderHook(() =>
+      useQuickAcceptState({
+        triggerWord: 'popcorn',
+        armingDelayMs: 1000,
+        query: '',
+        onAcceptTop,
+      })
+    );
+
+    let output = 'not-empty';
+    act(() => {
+      result.current.handleTextChange('milk');
+      jest.advanceTimersByTime(1000);
+      result.current.handleTextChange('milk pop');
+      output = result.current.handleTextChange('milk popcorn');
+    });
+
+    expect(onAcceptTop).toHaveBeenCalledTimes(1);
+    expect(output).toBe('');
+  });
+
+  it('disarms after prefix when non-prefix text follows', () => {
+    const onAcceptTop = jest.fn();
+    const { result } = renderHook(() =>
+      useQuickAcceptState({
+        triggerWord: 'popcorn',
+        armingDelayMs: 1000,
+        query: '',
+        onAcceptTop,
+      })
+    );
+
+    act(() => {
+      result.current.handleTextChange('milk');
+      jest.advanceTimersByTime(1000);
+      result.current.handleTextChange('milk pop');
+    });
+
+    expect(result.current.isArmed).toBe(true);
+
+    act(() => {
+      result.current.handleTextChange('milk popular');
+    });
+
+    expect(result.current.isArmed).toBe(false);
+    expect(onAcceptTop).not.toHaveBeenCalled();
+  });
+
+  it('handles leading newlines in streaming dictation', () => {
+    const onAcceptTop = jest.fn();
+    const { result } = renderHook(() =>
+      useQuickAcceptState({
+        triggerWord: 'popcorn',
+        armingDelayMs: 1000,
+        query: '',
+        onAcceptTop,
+      })
+    );
+
+    act(() => {
+      result.current.handleTextChange('milk');
+      jest.advanceTimersByTime(1000);
+      result.current.handleTextChange('milk \npopcorn');
+    });
+
+    expect(onAcceptTop).toHaveBeenCalledTimes(1);
+  });
+
+  it('prefix check is case-insensitive', () => {
+    const onAcceptTop = jest.fn();
+    const { result } = renderHook(() =>
+      useQuickAcceptState({
+        triggerWord: 'Popcorn',
+        armingDelayMs: 1000,
+        query: '',
+        onAcceptTop,
+      })
+    );
+
+    act(() => {
+      result.current.handleTextChange('milk');
+      jest.advanceTimersByTime(1000);
+      result.current.handleTextChange('milk Pop');
+    });
+
+    expect(result.current.isArmed).toBe(true);
+
+    act(() => {
+      result.current.handleTextChange('milk POPCORN');
+    });
+
+    expect(onAcceptTop).toHaveBeenCalledTimes(1);
+  });
+
+  it('single-character prefix keeps armed', () => {
+    const onAcceptTop = jest.fn();
+    const { result } = renderHook(() =>
+      useQuickAcceptState({
+        triggerWord: 'done',
+        armingDelayMs: 1000,
+        query: '',
+        onAcceptTop,
+      })
+    );
+
+    act(() => {
+      result.current.handleTextChange('milk');
+      jest.advanceTimersByTime(1000);
+      result.current.handleTextChange('milk d');
+    });
+
+    expect(result.current.isArmed).toBe(true);
+    expect(onAcceptTop).not.toHaveBeenCalled();
+  });
+
+  it('does not stay armed for prefix when not already armed', () => {
+    const onAcceptTop = jest.fn();
+    const { result } = renderHook(() =>
+      useQuickAcceptState({
+        triggerWord: 'popcorn',
+        armingDelayMs: 1000,
+        query: '',
+        onAcceptTop,
+      })
+    );
+
+    act(() => {
+      result.current.handleTextChange('milk pop');
+    });
+
+    expect(result.current.isArmed).toBe(false);
+    expect(onAcceptTop).not.toHaveBeenCalled();
+  });
+
   it('empty text does not start timer', () => {
     const { result } = renderHook(() =>
       useQuickAcceptState({

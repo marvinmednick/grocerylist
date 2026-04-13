@@ -23,7 +23,7 @@ CREATE TABLE profiles (
       "non_preferred": "badge_only",
       "non_standard_qty": "badge_only"
     }',
-    quick_accept_settings JSONB DEFAULT '{"trigger_word": "enter", "arming_delay_ms": 1500}',
+    quick_accept_settings JSONB DEFAULT '{"trigger_word": "done", "arming_delay_ms": 1500}',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX profiles_household_idx ON profiles(household_id);

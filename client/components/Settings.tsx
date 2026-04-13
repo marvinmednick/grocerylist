@@ -205,6 +205,9 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose }) => {
         {!triggerWordValid && triggerWord.length > 0 ? (
           <Text style={styles.colorWarning}>Must be a single word (letters only)</Text>
         ) : null}
+        <Text style={styles.helperText}>
+          Avoid "enter", "tab", "delete" - Android voice may interpret these as key actions.
+        </Text>
 
         <Text style={styles.label}>Arming Delay (ms)</Text>
         <TextInput
@@ -394,6 +397,12 @@ const styles = StyleSheet.create({
     color: '#991b1b',
     fontSize: 13,
     fontWeight: '600',
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+    marginBottom: 8,
   },
   saveButton: {
     marginTop: 14,
