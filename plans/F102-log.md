@@ -11,3 +11,7 @@
 - **Result:** Passed — no blocking issues
 - **Tests:** 570/570 passed
 - **Non-blocking:** none
+
+## 2026-04-14 — Shipped
+- **Commit:** `feat: F102 optimistic toggle for shopping list checkboxes`
+- **Closed:** #102
