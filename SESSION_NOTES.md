@@ -352,3 +352,18 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: none
 - **Design review**: not triggered — bug fix, no new patterns
 - **Next**: F101 (voice input mode) when ready. SESSION_NOTES at 346 lines but all entries within 90 days — no archive needed.
+
+---
+### 2026-04-13 14:00 — /spec F102 Optimistic Toggle
+- **Completed**: Wrote spec for F102 — optimistic cache update on shopping list checkbox toggles. Created issue #102. Registered in PLAN.md as Specced. Created feature log.
+- **Findings**: Current useTogglePurchased awaits server response + refetch before UI updates (~500ms+ perceived lag). Fix: onMutate optimistic cache update + drop unnecessary .select().single() from mutation.
+- **Design decisions**: Use standard React Query onMutate/onError/onSettled pattern. onSettled replaces onSuccess to invalidate on both success and error. No changes to index.tsx or undo — they call the same mutation and benefit automatically.
+- **Next**: Implement F102, review, ship.
+
+---
+### 2026-04-14 13:24 — /review-impl F102
+- **Completed**: Reviewed F102 optimistic toggle implementation. Progress file Complete, no issues. Files match spec (`client/api/list.ts` + new `list-toggle-optimistic-test.tsx`). All 570 tests pass.
+- **Findings**: Clean implementation — onMutate/onError/onSettled pattern matches spec exactly; `.select().single()` removed; `incrementLocalMutation`/`decrementLocalMutation` still wrapped in try/finally; no `as any`, no platform or styling concerns (scope is api-only).
+- **Design decisions**: none
+- **Design review**: not triggered — patterns followed
+- **Next**: Ship via /complete F102.

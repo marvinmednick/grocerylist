@@ -107,24 +107,46 @@ export const useTogglePurchased = () => {
     mutationFn: async ({ id, is_purchased, purchased_by_override }: { id: string; is_purchased: boolean; purchased_by_override?: string | null }) => {
       incrementLocalMutation();
       try {
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('list_items')
           .update({
             is_purchased,
             purchased_at: is_purchased ? new Date().toISOString() : null,
             purchased_by: is_purchased ? (purchased_by_override !== undefined ? purchased_by_override : userId) : null,
           })
-          .eq('id', id)
-          .select()
-          .single();
+          .eq('id', id);
 
         if (error) throw error;
-        return data;
       } finally {
         decrementLocalMutation();
       }
     },
-    onSuccess: () => {
+    onMutate: async ({ id, is_purchased, purchased_by_override }) => {
+      await queryClient.cancelQueries({ queryKey: ['shopping_list'] });
+
+      const previous = queryClient.getQueryData<ListItem[]>(['shopping_list']);
+
+      queryClient.setQueryData<ListItem[]>(['shopping_list'], (old) =>
+        old?.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                is_purchased,
+                purchased_at: is_purchased ? new Date().toISOString() : null,
+                purchased_by: is_purchased ? (purchased_by_override !== undefined ? purchased_by_override : userId) : null,
+              }
+            : item
+        )
+      );
+
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['shopping_list'], context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
     },
   });

@@ -178,7 +178,37 @@ pushAction({
 2. Does the mutation overwrite any field that undo needs to restore? → capture it before the mutation
 3. Are multiple fields being overwritten? → snapshot the entire relevant portion of the row
 
-### 4. React Query Invalidation
+### 4. Optimistic Updates
+
+Use optimistic cache updates for mutations where the user watches the target element for immediate feedback — toggles, inline edits, drag-to-reorder. Skip them when UI transitions mask the latency (modal closes, input clears, undo animation plays).
+
+The full pattern: snapshot previous cache in `onMutate`, update the cache optimistically, roll back in `onError`, and invalidate in `onSettled` (not `onSuccess`) to resync with server truth regardless of outcome.
+
+```typescript
+useMutation({
+  mutationFn: async (vars) => {
+    // server call — no .select().single() needed when cache is already updated
+  },
+  onMutate: async (vars) => {
+    await queryClient.cancelQueries({ queryKey: ['shopping_list'] });
+    const previous = queryClient.getQueryData<ListItem[]>(['shopping_list']);
+    queryClient.setQueryData<ListItem[]>(['shopping_list'], (old) =>
+      old?.map((item) => item.id === vars.id ? { ...item, ...changes } : item)
+    );
+    return { previous };
+  },
+  onError: (_err, _vars, context) => {
+    if (context?.previous) {
+      queryClient.setQueryData(['shopping_list'], context.previous);
+    }
+  },
+  onSettled: () => {
+    queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
+  },
+});
+```
+
+### 5. React Query Invalidation
 
 After any mutation, invalidate the relevant query keys:
 
@@ -189,7 +219,7 @@ After any mutation, invalidate the relevant query keys:
 | `items` + list     | `['items']`, `['all_items']`, `['shopping_list']` |
 | `metadata`         | rarely changes — `staleTime: 1hr`        |
 
-### 5. Platform-Specific Dialogs
+### 6. Platform-Specific Dialogs
 
 `Alert.alert` does not work on web. Always check platform before showing native alerts:
 
@@ -206,7 +236,7 @@ if (Platform.OS === 'web') {
 }
 ```
 
-### 6. Styling
+### 7. Styling
 
 Use `StyleSheet.create()` only. Do not use NativeWind `className` props.
 
@@ -223,7 +253,7 @@ const styles = StyleSheet.create({
 <View className="flex-1 bg-white" />
 ```
 
-### 7. Modal / Full-Screen View Requirements
+### 8. Modal / Full-Screen View Requirements
 
 Every modal and full-screen view **must** follow these rules:
 
