@@ -16,10 +16,15 @@ ls docs/design/F[N]-*.md 2>/dev/null    # if F-number known
 # or check the design doc link in PLAN.md
 ```
 
+If a doc is found, read its header comment (`<!-- ID: F[N] | Status: ... -->`) to determine whether it's a draft or finalized design:
+
 | State | Mode |
 |-------|------|
 | No design doc found | **Fresh mode** |
-| Design doc exists | **Update mode** |
+| Design doc exists, `Status: Draft` | **Draft resumption** |
+| Design doc exists, `Status: Designed` or later | **Update mode** |
+
+**Draft status:** A doc marked `Status: Draft` is a work-in-progress design the user paused before it was considered final. PLAN.md will show the feature as `Backlog` with a `(draft)` annotation in the link column. Resume by reading the doc, identifying open questions and sections still needing resolution, and continuing the design conversation from there — do **not** run the full Update-mode staleness check unless the user asks for it.
 
 ---
 
@@ -95,9 +100,11 @@ Continue until all significant questions in both passes are resolved.
 
 Write `docs/design/F[N]-[slug].md` with this structure:
 
+If the user has indicated they want to review the doc before considering it final (common when open questions remain or a dependency blocks the feature), set the header to `Status: Draft` instead of `Status: Designed`. Draft docs keep the feature at `Backlog` in PLAN.md with a `(draft)` annotation in the link column. Otherwise use `Status: Designed`.
+
 ```markdown
 # Design: [Feature Name]
-<!-- ID: F[N] | Status: Designed -->
+<!-- ID: F[N] | Status: Designed -->  <!-- or: Status: Draft if user wants to review later -->
 
 ## Overview
 [What this feature does and why — 2–4 sentences]
@@ -124,8 +131,10 @@ Write `docs/design/F[N]-[slug].md` with this structure:
 ### Step 6 — Update PLAN.md and UI Guidelines
 
 **PLAN.md:**
-- If the feature was not in PLAN.md: the row was added in Step 1; update status to `Designed` and add design doc link
-- If already in PLAN.md as `Backlog`: update status to `Designed` and add the design doc link
+- If the design doc was written with `Status: Draft`: leave the feature at `Backlog` and note the doc link with a `(draft)` annotation, e.g. `[docs/design/F[N]-*.md](...) (draft)`
+- If the design doc was written with `Status: Designed`: update status to `Designed` and add the design doc link
+  - If the feature was not in PLAN.md: the row was added in Step 1
+  - If already in PLAN.md as `Backlog`: update status to `Designed`
 
 ```
 | F[N] | [Feature Name] | Designed | [docs/design/F[N]-[slug].md](docs/design/F[N]-[slug].md) | — |

@@ -11,7 +11,7 @@
 | F2 | Multi-User Trip Management | Done | [specs/F2-multi-user-trips.md](specs/F2-multi-user-trips.md) · [design](docs/design/F2-multi-user-trips.md) | [#4](https://github.com/marvinmednick/grocerylist/issues/4) |
 | F76 | Recipes & Bundles | Backlog | — | [#76](https://github.com/marvinmednick/grocerylist/issues/76) |
 | F77 | Fuzzy Matching in Smart Add | Done | [specs/F77-fuzzy-matching.md](specs/F77-fuzzy-matching.md) · [design](docs/design/F77-fuzzy-matching.md) | [#77](https://github.com/marvinmednick/grocerylist/issues/77) |
-| F78 | Duplicate Entry Handling | Backlog | — | [#78](https://github.com/marvinmednick/grocerylist/issues/78) |
+| F78 | Duplicate Entry Handling | Backlog | [docs/design/F78-duplicate-entry-handling.md](docs/design/F78-duplicate-entry-handling.md) (draft) · blocked on F103 | [#78](https://github.com/marvinmednick/grocerylist/issues/78) |
 | F79 | Quantity Units System | Done | [specs/F79-quantity-units-system.md](specs/F79-quantity-units-system.md) · [design](docs/design/F79-quantity-units-system.md) | [#79](https://github.com/marvinmednick/grocerylist/issues/79) |
 | F7 | Settings Screen | Done | [specs/F7-settings.md](specs/F7-settings.md) · [design](docs/design/F7-settings.md) | [#9](https://github.com/marvinmednick/grocerylist/issues/9) |
 | F83 | Vocabulary Definition Flow | Backlog | — | [#83](https://github.com/marvinmednick/grocerylist/issues/83) |
@@ -42,6 +42,7 @@
 | F100 | Voice Trigger Android Streaming Fix | Done | [specs/F100-voice-trigger-android-fix.md](specs/F100-voice-trigger-android-fix.md) | [#100](https://github.com/marvinmednick/grocerylist/issues/100) |
 | F101 | Voice Input Mode (Speech Recognition API) | Backlog | — | [#101](https://github.com/marvinmednick/grocerylist/issues/101) |
 | F102 | Optimistic Toggle for Checkboxes | Done | [specs/F102-optimistic-toggle.md](specs/F102-optimistic-toggle.md) | [#102](https://github.com/marvinmednick/grocerylist/issues/102) |
+| F103 | List Item / Quantity Model Refactor | Backlog | — | [#103](https://github.com/marvinmednick/grocerylist/issues/103) |
 
 **Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `Needs Fixes` → `In Review` → `Done`
 (`Designed` is optional — features with clear requirements can go `Backlog` → `Specced` directly)

@@ -367,3 +367,11 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: none
 - **Design review**: not triggered — patterns followed
 - **Next**: Ship via /complete F102.
+
+---
+### 2026-04-15 21:26 — /design F78 Duplicate Entry Handling
+- **Completed**: Ran fresh-mode design on F78. Wrote `docs/design/F78-duplicate-entry-handling.md`. Created issue #103 for the list-item/quantity model refactor that blocks F78. Added F103 row to PLAN.md (Backlog). Updated F78 to Designed status with blocked-on-F103 note.
+- **Findings**: Design conversation surfaced a data-model question bigger than F78 itself. Proposed "one logical list_items row per (item_id, store_id), with N quantity entries" as the right model because (a) duplicates are semantically "one item, multiple instances," (b) dragging a duplicate group to a new store should move the group not split it, (c) today's model denormalizes item-level fields (warnings, category, store_id) across duplicate rows creating update-in-sync hazards. Split this into F103 (refactor, no user-visible change) + F78 (duplicate UI on top). Merge-vs-Duplicate becomes edit-existing-entry vs append-new-entry under the same parent; multi-pack ("2 × 1.5 lb") is first-class in QuantityParsed (count + sizeQty + sizeUnit), not a display hack; unit conversion + fuzzy one-off matching are out of V1 scope; grouped-checkbox UI explicitly deferred.
+- **Design decisions**: See F78 design doc "Design Decisions" section. Key calls: detection checks both active and purchased-but-unarchived with different actions by state; purchased-entry case offers only add-fresh/cancel (no un-purchase-and-merge); cross-store gets a third merge-there/move/duplicate-here choice; all add paths trigger detection; passive dropdown indicator is minimal (glyph TBD); Pass 2 UI (dialog style, button wording, indicator styling) deferred until post-F103 at /spec time.
+- **Design review**: not triggered — new feature, no existing-pattern drift.
+- **Next**: F103 needs its own /design pass (JSONB vs child table for quantity entries, migration strategy, realtime adaptation). F78 implementation paused until F103 ships.
