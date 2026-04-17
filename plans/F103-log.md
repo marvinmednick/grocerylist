@@ -29,3 +29,7 @@
 - **Result:** Passed — no blocking issues
 - **Tests:** 589/596 passed (7 pre-existing skips from helper module)
 - **Non-blocking:** none new (Review 1 NB item already in BACKLOG)
+
+## 2026-04-17 — Shipped
+- **Commit:** `feat: F103 list item / quantity model refactor (#103)`
+- **Closed:** #103

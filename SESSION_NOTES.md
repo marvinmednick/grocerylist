@@ -407,3 +407,10 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: none
 - **Design review**: not triggered
 - **Next**: `/complete F103` to ship. Then resume F78 Pass 2 UI and `/spec F78`.
+
+---
+### 2026-04-17 — /complete F103
+- **Completed**: F103 shipped. Committed feat + chore. Issue #103 closed. PLAN.md → Done. Updated DESIGN.md and CLAUDE.md to reflect new `list_item_quantities` child table, dual realtime subscriptions, and parent archival bookkeeping. F103 backlog item (handleDelete undo for multi-entry) stays — to be addressed in F78 spec. IDEAS.md empty. SESSION_NOTES at 409 lines but all entries within 90 days — no archive needed.
+- **Design decisions**: none
+- **Design review**: Updated DESIGN.md `list_items` schema to show parent/child split. Updated CLAUDE.md Item Lifecycle, Realtime Toast Suppression, and Data Model Summary sections.
+- **Next**: Resume F78 Pass 2 UI and `/spec F78`.

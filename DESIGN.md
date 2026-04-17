@@ -34,19 +34,25 @@ To support both the MVP and the Future Features (Recipes, Trips), we use the fol
 *   **`item_store_preferences`** (Many-to-Many, household-scoped): `item_id`, `store_id`, `status` (`preferred` | `avoided` | `unavailable` | `neutral`), `comment`, `household_id`. Replaces the former `item_stores` table. Drives warning badges on list items when the active store doesn't match preferences.
 
 ### The Shopping List (Active Data)
-*   **`list_items`**
+*   **`list_items`** (parent — per-item fields)
     *   `id` (UUID)
     *   `item_id` (FK -> items, nullable — `null` means one-off item not in master dictionary)
     *   `store_id` (FK -> stores, nullable)
-    *   `name`, `quantity` (Snapshots)
-    *   `is_purchased` (Boolean)
-    *   `purchased_at` (Timestamp - set when checked)
-    *   `archived_at` (Timestamp - set when Trip Ends)
-    *   `trip_id` (FK -> shopping_trips)
-    *   `household_id` (FK -> households)
-    *   `added_by` (UUID -> auth.users.id)
-    *   `purchased_by` (UUID -> auth.users.id, set when checked off — enables per-user trip management)
+    *   `name` (Snapshot)
+    *   `category_id` (FK -> categories, nullable)
     *   `warnings` (JSONB array — computed from `item_store_preferences` at add time; drives `WarningBadge` display)
+    *   `match_metadata` (JSONB — parser match info from Smart Add)
+    *   `added_at`, `added_by` (UUID -> auth.users.id)
+    *   `archived_at` (Timestamp — set when last child entry is archived)
+    *   `household_id` (FK -> households)
+*   **`list_item_quantities`** (child — per-quantity-entry fields, FK to `list_items` ON DELETE CASCADE)
+    *   `id` (UUID)
+    *   `list_item_id` (FK -> list_items)
+    *   `quantity` (Text), `quantity_parsed` (JSONB)
+    *   `is_purchased` (Boolean)
+    *   `purchased_at`, `purchased_by` (UUID -> auth.users.id)
+    *   `archived_at` (Timestamp — set when Trip Ends)
+    *   `trip_id` (FK -> shopping_trips)
 *   **`shopping_trips`**: `id`, `started_at`, `ended_at`, `primary_store_id`, `status`, `household_id`.
 
 ## 3. Core System Patterns

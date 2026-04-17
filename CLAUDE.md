@@ -147,14 +147,15 @@ npm test -- --testPathPattern=SmartAddItem  # single test file
 
 **Undo/Redo:** Every mutation (add, delete, toggle, edit, drag-to-reorder, end trip) registers an `UndoableAction` with `undo()` and `redo()` async functions via `pushAction()` from `useUndo()`. The stack is capped at 100 actions and lives in `UndoProvider` at the root.
 
-**Realtime Toast Suppression:** `api/list.ts` maintains a module-level `localMutationCount` counter. It increments before each mutation and decrements (with a 500ms delay) after. The Supabase realtime callback only triggers the `onRemoteChange` toast when `localMutationCount === 0`, preventing self-triggered notifications.
+**Realtime Toast Suppression:** `api/list.ts` maintains a module-level `localMutationCount` counter. It increments before each mutation and decrements (with a 500ms delay) after. Dual realtime subscriptions (one for `list_items`, one for `list_item_quantities`) only trigger the `onRemoteChange` toast when `localMutationCount === 0`, preventing self-triggered notifications. The `list_item_quantities` channel uses client-side cache lookup (`getQueryData`) to resolve the parent item name for the toast.
 
 **Flat List + Drag-and-Drop:** The shopping list is rendered as a single `DraggableFlatList` with a mixed array of `{ type: 'header' }` and `{ type: 'item' }` rows. On `onDragEnd`, the code walks upward through the data array to find the nearest header to determine the target store.
 
-**Item Lifecycle:** `list_items` rows go through three states:
+**Item Lifecycle:** Each `list_items` parent has one or more `list_item_quantities` entries. Entries go through three states:
 1. Active: `is_purchased = false`, `archived_at = null`
 2. Purchased: `is_purchased = true`, `archived_at = null` — visible with strikethrough
 3. Archived: `archived_at IS NOT NULL` — hidden; linked to a `shopping_trips` row
+The parent's `archived_at` is set when its last entry is archived (preserves trip-history queries).
 
 **Master vs. One-Off Items:** `list_items.item_id` is nullable. When `null`, the row is a "one-off" item (not saved to the master `items` dictionary). `SmartAddItem` handles both paths: quick-add and save-to-master-then-add.
 
@@ -167,7 +168,7 @@ npm test -- --testPathPattern=SmartAddItem  # single test file
 ### Data Model Summary
 
 Global (shared across households): `categories`, `units`, `households`
-Household-scoped: `stores`, `items`, `item_store_preferences`, `list_items`, `shopping_trips`
+Household-scoped: `stores`, `items`, `item_store_preferences`, `list_items`, `list_item_quantities`, `shopping_trips`
 User-scoped: `profiles` (one per `auth.users` row, holds `household_id`)
 
 The `items` table has a unique constraint on `(name, household_id)`. Item search (`useSearchItems`) uses prefix matching (`.ilike('name', `${query}%`)`) with a minimum query length of 2.
