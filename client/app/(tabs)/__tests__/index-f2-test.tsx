@@ -9,7 +9,8 @@ import {
   useRevertArchival,
   useShoppingList,
   useTogglePurchased,
-  useUpdateListItem,
+  useUpdateListItemFields,
+  useUpdateQuantityEntry,
 } from '@/api/list';
 import { useUndo } from '@/api/undoContext';
 import { useMetadata } from '@/api/metadata';
@@ -21,6 +22,7 @@ import { UndoProvider } from '@/api/undoContext';
 import { HouseholdProvider } from '@/lib/household';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useVocabulary } from '@/api/vocabulary';
+import { makeListItem, makeQuantityEntry } from '@/api/__tests__/_helpers/listItemMock';
 
 jest.mock('@/api/list');
 jest.mock('@/api/profile');
@@ -40,7 +42,8 @@ jest.mock('@/lib/household', () => ({
 
 const mockUseShoppingList = useShoppingList as jest.Mock;
 const mockUseTogglePurchased = useTogglePurchased as jest.Mock;
-const mockUseUpdateListItem = useUpdateListItem as jest.Mock;
+const mockUseUpdateListItemFields = useUpdateListItemFields as jest.Mock;
+const mockUseUpdateQuantityEntry = useUpdateQuantityEntry as jest.Mock;
 const mockUseAddToList = useAddToList as jest.Mock;
 const mockUseDeleteListItem = useDeleteListItem as jest.Mock;
 const mockUseEndTrip = useEndTrip as jest.Mock;
@@ -57,15 +60,24 @@ const safeAreaMetrics = {
 };
 
 const buildItem = (overrides: Record<string, any> = {}) => ({
-  id: 'item-1',
-  name: 'Milk',
-  quantity: '1L',
-  is_purchased: true,
-  purchased_by: null,
-  archived_at: null,
-  store_id: 'store-1',
-  store: { name: 'Grocery Store' },
-  category: { name: 'Dairy' },
+  ...makeListItem({
+    id: overrides.id ?? 'item-1',
+    name: overrides.name ?? 'Milk',
+    archived_at: null,
+    store_id: overrides.store_id ?? 'store-1',
+    store: overrides.store ?? { name: 'Grocery Store', color_code: '#000000' },
+    category: overrides.category ?? { name: 'Dairy', sort_order: 1 },
+    quantities: [
+      makeQuantityEntry({
+        id: overrides.entry_id ?? `${overrides.id ?? 'item-1'}-entry`,
+        list_item_id: overrides.id ?? 'item-1',
+        quantity: overrides.quantity ?? '1L',
+        is_purchased: overrides.is_purchased ?? true,
+        purchased_by: overrides.purchased_by ?? null,
+        archived_at: overrides.entry_archived_at ?? null,
+      }),
+    ],
+  }),
   ...overrides,
 });
 
@@ -98,7 +110,8 @@ describe('ShoppingListScreen F2 behaviors', () => {
 
     mockUseShoppingList.mockReturnValue({ data: [buildItem()], isLoading: false });
     mockUseTogglePurchased.mockReturnValue({ mutateAsync: mockToggle });
-    mockUseUpdateListItem.mockReturnValue({ mutateAsync: jest.fn() });
+    mockUseUpdateListItemFields.mockReturnValue({ mutateAsync: jest.fn() });
+    mockUseUpdateQuantityEntry.mockReturnValue({ mutateAsync: jest.fn() });
     mockUseAddToList.mockReturnValue({ mutateAsync: jest.fn() });
     mockUseDeleteListItem.mockReturnValue({ mutateAsync: jest.fn() });
     mockUseEndTrip.mockReturnValue({ mutateAsync: mockEndTrip });
@@ -149,7 +162,7 @@ describe('ShoppingListScreen F2 behaviors', () => {
 
     render(<ShoppingListScreen />, { wrapper });
 
-    expect(screen.getByTestId('other-user-checkbox-item-1')).toHaveStyle({ backgroundColor: '#dc2626' });
+    expect(screen.getByTestId('other-user-checkbox-item-1-entry')).toHaveStyle({ backgroundColor: '#dc2626' });
   });
 
   it('unchecked checkbox renders gray circle', () => {

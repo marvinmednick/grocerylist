@@ -51,6 +51,13 @@ jest.mock('expo-router', () => ({
   },
 }));
 
+// Make React Query state notifications synchronous so they always land inside
+// the current act() boundary. Without this, notifyManager's default setTimeout
+// scheduler can fire after the test's act() ends, causing spurious
+// "not wrapped in act()" console.error failures.
+const { notifyManager } = require('@tanstack/query-core');
+notifyManager.setScheduler(cb => cb());
+
 // Fail tests on unexpected console.warn or console.error output.
 // Known third-party noise is explicitly allowed below; everything else throws so
 // it shows up as a test failure rather than silent output.

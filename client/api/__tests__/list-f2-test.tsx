@@ -15,6 +15,7 @@ jest.mock('@/lib/supabase', () => ({
       getUser: jest.fn(),
     },
     from: jest.fn(),
+    rpc: jest.fn(),
   },
 }));
 
@@ -27,6 +28,7 @@ jest.mock('@tanstack/react-query', () => ({
 const mockUseHousehold = useHousehold as jest.Mock;
 const mockGetUser = supabase.auth.getUser as jest.Mock;
 const mockFrom = supabase.from as jest.Mock;
+const mockRpc = supabase.rpc as jest.Mock;
 
 describe('F2 list hooks', () => {
   beforeEach(() => {
@@ -36,6 +38,7 @@ describe('F2 list hooks', () => {
       (global as any).setTimeout = () => 0 as unknown as ReturnType<typeof setTimeout>;
     }
     mockUseHousehold.mockReturnValue({ householdId: 'household-1', userId: 'user-123' });
+    mockRpc.mockResolvedValue({ error: null });
     mockUseMutation.mockImplementation((options: any) => ({
       mutateAsync: async (args: any) => {
         const result = await options.mutationFn(args);
@@ -45,6 +48,10 @@ describe('F2 list hooks', () => {
         return result;
       },
     }));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('useTogglePurchased sets purchased_by to current user when checking', async () => {
@@ -117,94 +124,73 @@ describe('F2 list hooks', () => {
     expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 500);
   });
 
-  it('useEndTrip adds purchased_by filter only when user_id is provided', async () => {
-    mockGetUser.mockResolvedValue({ data: { user: { id: 'auth-user' } } });
-
+  const setupEndTripSupabaseMocks = ({ parentIds = [{ id: 'parent-1' }] }: { parentIds?: Array<{ id: string }> } = {}) => {
     const shoppingTripsSingle = jest.fn().mockResolvedValue({ data: { id: 'trip-1' }, error: null });
     const shoppingTripsSelect = jest.fn().mockReturnValue({ single: shoppingTripsSingle });
     const shoppingTripsInsert = jest.fn().mockReturnValue({ select: shoppingTripsSelect });
 
-    const listItemsQuery = {
+    const parentIdsEq = jest.fn();
+    const parentIdsIs = jest.fn();
+    const parentIdsSelect = jest.fn().mockReturnValue({ is: parentIdsIs });
+    const parentIdsQuery = {
+      eq: parentIdsEq,
+      is: parentIdsIs,
+      then: (resolve: (value: { data: Array<{ id: string }>; error: null }) => unknown) =>
+        resolve({ data: parentIds, error: null }),
+    };
+    parentIdsEq.mockReturnValue(parentIdsQuery);
+    parentIdsIs.mockReturnValue(parentIdsQuery);
+
+    const quantitiesQuery = {
       eq: jest.fn(),
       is: jest.fn(),
+      in: jest.fn(),
       select: jest.fn().mockResolvedValue({ data: [], error: null }),
     };
-    listItemsQuery.eq.mockReturnValue(listItemsQuery);
-    listItemsQuery.is.mockReturnValue(listItemsQuery);
-    const listItemsUpdate = jest.fn().mockReturnValue(listItemsQuery);
+    quantitiesQuery.eq.mockReturnValue(quantitiesQuery);
+    quantitiesQuery.is.mockReturnValue(quantitiesQuery);
+    quantitiesQuery.in.mockReturnValue(quantitiesQuery);
+    const quantitiesUpdate = jest.fn().mockReturnValue(quantitiesQuery);
 
     mockFrom.mockImplementation((table: string) => {
       if (table === 'shopping_trips') {
         return { insert: shoppingTripsInsert };
       }
       if (table === 'list_items') {
-        return { update: listItemsUpdate };
+        return { select: parentIdsSelect, eq: parentIdsEq, is: parentIdsIs };
+      }
+      if (table === 'list_item_quantities') {
+        return { update: quantitiesUpdate };
       }
       return {};
     });
+
+    return { shoppingTripsInsert, quantitiesQuery, parentIdsEq };
+  };
+
+  it('useEndTrip adds purchased_by filter only when user_id is provided', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'auth-user' } } });
+    const { quantitiesQuery } = setupEndTripSupabaseMocks();
 
     const mutation = useEndTrip();
     await mutation.mutateAsync({ store_id: 'store-1', user_id: 'user-2' });
 
-    expect(listItemsQuery.eq).toHaveBeenCalledWith('purchased_by', 'user-2');
+    expect(quantitiesQuery.eq).toHaveBeenCalledWith('purchased_by', 'user-2');
   });
 
   it('useEndTrip omits purchased_by filter when user_id is omitted', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'auth-user' } } });
-
-    const shoppingTripsSingle = jest.fn().mockResolvedValue({ data: { id: 'trip-1' }, error: null });
-    const shoppingTripsSelect = jest.fn().mockReturnValue({ single: shoppingTripsSingle });
-    const shoppingTripsInsert = jest.fn().mockReturnValue({ select: shoppingTripsSelect });
-
-    const listItemsQuery = {
-      eq: jest.fn(),
-      is: jest.fn(),
-      select: jest.fn().mockResolvedValue({ data: [], error: null }),
-    };
-    listItemsQuery.eq.mockReturnValue(listItemsQuery);
-    listItemsQuery.is.mockReturnValue(listItemsQuery);
-    const listItemsUpdate = jest.fn().mockReturnValue(listItemsQuery);
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'shopping_trips') {
-        return { insert: shoppingTripsInsert };
-      }
-      if (table === 'list_items') {
-        return { update: listItemsUpdate };
-      }
-      return {};
-    });
+    const { quantitiesQuery } = setupEndTripSupabaseMocks();
 
     const mutation = useEndTrip();
     await mutation.mutateAsync({ store_id: 'store-1' });
 
-    expect(listItemsQuery.eq).not.toHaveBeenCalledWith('purchased_by', expect.anything());
+    expect(quantitiesQuery.eq).not.toHaveBeenCalledWith('purchased_by', expect.anything());
   });
 
   it('shopping_trips insert uses provided user_id', async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: 'auth-user' } } });
-
-    const shoppingTripsSingle = jest.fn().mockResolvedValue({ data: { id: 'trip-1' }, error: null });
-    const shoppingTripsSelect = jest.fn().mockReturnValue({ single: shoppingTripsSingle });
-    const shoppingTripsInsert = jest.fn().mockReturnValue({ select: shoppingTripsSelect });
-
-    const listItemsQuery = {
-      eq: jest.fn(),
-      is: jest.fn(),
-      select: jest.fn().mockResolvedValue({ data: [], error: null }),
-    };
-    listItemsQuery.eq.mockReturnValue(listItemsQuery);
-    listItemsQuery.is.mockReturnValue(listItemsQuery);
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === 'shopping_trips') {
-        return { insert: shoppingTripsInsert };
-      }
-      if (table === 'list_items') {
-        return { update: jest.fn().mockReturnValue(listItemsQuery) };
-      }
-      return {};
-    });
+    const { shoppingTripsInsert } = setupEndTripSupabaseMocks();
 
     const mutation = useEndTrip();
     await mutation.mutateAsync({ user_id: 'target-user' });
@@ -222,5 +208,15 @@ describe('F2 list hooks', () => {
     const mutation = useEndTrip();
 
     await expect(mutation.mutateAsync({})).rejects.toThrow('No household ID found');
+  });
+
+  it('calls archive_empty_list_items rpc during end trip', async () => {
+    mockGetUser.mockResolvedValue({ data: { user: { id: 'auth-user' } } });
+    setupEndTripSupabaseMocks();
+
+    const mutation = useEndTrip();
+    await mutation.mutateAsync({ store_id: 'store-1' });
+
+    expect(mockRpc).toHaveBeenCalledWith('archive_empty_list_items');
   });
 });

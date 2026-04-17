@@ -11,7 +11,8 @@ import {
   useRevertArchival,
   useShoppingList,
   useTogglePurchased,
-  useUpdateListItem,
+  useUpdateListItemFields,
+  useUpdateQuantityEntry,
 } from '@/api/list';
 import { useUndo } from '@/api/undoContext';
 import { useMetadata } from '@/api/metadata';
@@ -19,6 +20,7 @@ import { useHouseholdMembers } from '@/api/profile';
 import { HouseholdProvider, useHousehold } from '@/lib/household';
 import { UndoProvider } from '@/api/undoContext';
 import { useVocabulary } from '@/api/vocabulary';
+import { makeListItem, makeQuantityEntry } from '@/api/__tests__/_helpers/listItemMock';
 
 jest.mock('@/api/list');
 jest.mock('@/api/undoContext', () => {
@@ -41,7 +43,8 @@ jest.mock('@/components/WarningBadge', () => ({
 
 const mockUseShoppingList = useShoppingList as jest.Mock;
 const mockUseTogglePurchased = useTogglePurchased as jest.Mock;
-const mockUseUpdateListItem = useUpdateListItem as jest.Mock;
+const mockUseUpdateListItemFields = useUpdateListItemFields as jest.Mock;
+const mockUseUpdateQuantityEntry = useUpdateQuantityEntry as jest.Mock;
 const mockUseAddToList = useAddToList as jest.Mock;
 const mockUseDeleteListItem = useDeleteListItem as jest.Mock;
 const mockUseEndTrip = useEndTrip as jest.Mock;
@@ -77,7 +80,8 @@ describe('ShoppingListScreen display density', () => {
 
     jest.clearAllMocks();
     mockUseTogglePurchased.mockReturnValue({ mutateAsync: jest.fn() });
-    mockUseUpdateListItem.mockReturnValue({ mutateAsync: jest.fn() });
+    mockUseUpdateListItemFields.mockReturnValue({ mutateAsync: jest.fn() });
+    mockUseUpdateQuantityEntry.mockReturnValue({ mutateAsync: jest.fn() });
     mockUseAddToList.mockReturnValue({ mutateAsync: jest.fn() });
     mockUseDeleteListItem.mockReturnValue({ mutateAsync: jest.fn() });
     mockUseEndTrip.mockReturnValue({ mutateAsync: jest.fn() });
@@ -101,21 +105,22 @@ describe('ShoppingListScreen display density', () => {
     queryClient.clear();
   });
 
+  const buildItem = (overrides: Record<string, unknown> = {}) =>
+    makeListItem({
+      id: '1',
+      name: 'Milk',
+      store_id: 's1',
+      category_id: 'c1',
+      store: { name: 'Corner Shop', color_code: '#000000' },
+      category: { name: 'Dairy', sort_order: 1 },
+      quantities: [makeQuantityEntry({ id: 'entry-1', list_item_id: '1', quantity: '2L', is_purchased: false, purchased_by: null })],
+      ...overrides,
+    });
+
   it('renders item name on line 1 and qty/category/store on line 2', () => {
     mockUseShoppingList.mockReturnValue({
       data: [
-        {
-          id: '1',
-          name: 'Milk',
-          quantity: '2L',
-          is_purchased: false,
-          store_id: 's1',
-          category_id: 'c1',
-          item_id: null,
-          purchased_by: null,
-          store: { name: 'Corner Shop', color_code: '#000000' },
-          category: { name: 'Dairy', sort_order: 1 },
-        },
+        buildItem(),
       ],
       isLoading: false,
     });
@@ -129,19 +134,14 @@ describe('ShoppingListScreen display density', () => {
   it('uses short_name when master_item.short_name is set', () => {
     mockUseShoppingList.mockReturnValue({
       data: [
-        {
-          id: '1',
+        buildItem({
           name: 'Peanut Butter',
-          quantity: '16oz',
-          is_purchased: false,
-          store_id: 's1',
-          category_id: 'c1',
           item_id: 'm1',
-          purchased_by: null,
           master_item: { short_name: 'PB' },
           store: { name: 'Market', color_code: '#000000' },
           category: { name: 'Pantry', sort_order: 1 },
-        },
+          quantities: [makeQuantityEntry({ id: 'entry-1', list_item_id: '1', quantity: '16oz', is_purchased: false, purchased_by: null })],
+        }),
       ],
       isLoading: false,
     });
@@ -155,19 +155,14 @@ describe('ShoppingListScreen display density', () => {
   it('falls back to name when short_name is null', () => {
     mockUseShoppingList.mockReturnValue({
       data: [
-        {
-          id: '1',
+        buildItem({
           name: 'Peanut Butter',
-          quantity: '16oz',
-          is_purchased: false,
-          store_id: 's1',
-          category_id: 'c1',
           item_id: 'm1',
-          purchased_by: null,
           master_item: { short_name: null },
           store: { name: 'Market', color_code: '#000000' },
           category: { name: 'Pantry', sort_order: 1 },
-        },
+          quantities: [makeQuantityEntry({ id: 'entry-1', list_item_id: '1', quantity: '16oz', is_purchased: false, purchased_by: null })],
+        }),
       ],
       isLoading: false,
     });
@@ -179,19 +174,13 @@ describe('ShoppingListScreen display density', () => {
   it('shows warning badges when warnings array is non-empty', () => {
     mockUseShoppingList.mockReturnValue({
       data: [
-        {
-          id: '1',
-          name: 'Milk',
-          quantity: '1L',
-          is_purchased: false,
-          store_id: 's1',
-          category_id: 'c1',
+        buildItem({
           item_id: 'm1',
-          purchased_by: null,
           warnings: [{ type: 'avoided' }],
           store: { name: 'Market', color_code: '#000000' },
           category: { name: 'Dairy', sort_order: 1 },
-        },
+          quantities: [makeQuantityEntry({ id: 'entry-1', list_item_id: '1', quantity: '1L', is_purchased: false, purchased_by: null })],
+        }),
       ],
       isLoading: false,
     });
@@ -203,18 +192,11 @@ describe('ShoppingListScreen display density', () => {
   it('does not render pencil icon column', () => {
     mockUseShoppingList.mockReturnValue({
       data: [
-        {
-          id: '1',
-          name: 'Milk',
-          quantity: '1L',
-          is_purchased: false,
-          store_id: 's1',
-          category_id: 'c1',
-          item_id: null,
-          purchased_by: null,
+        buildItem({
           store: { name: 'Market', color_code: '#000000' },
           category: { name: 'Dairy', sort_order: 1 },
-        },
+          quantities: [makeQuantityEntry({ id: 'entry-1', list_item_id: '1', quantity: '1L', is_purchased: false, purchased_by: null })],
+        }),
       ],
       isLoading: false,
     });
@@ -226,18 +208,11 @@ describe('ShoppingListScreen display density', () => {
   it('applies strikethrough to purchased items', () => {
     mockUseShoppingList.mockReturnValue({
       data: [
-        {
-          id: '1',
-          name: 'Milk',
-          quantity: '1L',
-          is_purchased: true,
-          store_id: 's1',
-          category_id: 'c1',
-          item_id: null,
-          purchased_by: 'u1',
+        buildItem({
           store: { name: 'Market', color_code: '#000000' },
           category: { name: 'Dairy', sort_order: 1 },
-        },
+          quantities: [makeQuantityEntry({ id: 'entry-1', list_item_id: '1', quantity: '1L', is_purchased: true, purchased_by: 'u1' })],
+        }),
       ],
       isLoading: false,
     });

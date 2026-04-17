@@ -48,7 +48,7 @@ describe('MultiTripModal', () => {
     jest.useRealTimers();
   });
 
-  it('renders all users with names and item counts', () => {
+  it('renders all users with names and entry counts', () => {
     renderModal();
 
     expect(screen.getByText('Alice')).toBeTruthy();

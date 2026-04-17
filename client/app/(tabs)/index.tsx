@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Modal, Tex
 import { CheckCircle2, Circle, Archive, RotateCcw, RotateCw, Trash2, GripVertical, ShoppingCart, Pencil, Check, X, ChevronDown } from 'lucide-react-native';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { SmartAddItem } from '@/components/SmartAddItem';
-import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, useEndTrip, useDeleteListItem, useRevertArchival, ListItem } from '@/api/list';
+import { useShoppingList, useTogglePurchased, useUpdateListItemFields, useUpdateQuantityEntry, useAddToList, useEndTrip, useDeleteListItem, useRevertArchival, ListItem, QuantityEntry } from '@/api/list';
 import { computeWarnings, useItemById } from '@/api/items';
 import { useUndo } from '@/api/undoContext';
 import { useMetadata } from '@/api/metadata';
@@ -19,8 +19,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MultiTripModal, TripUser } from '@/components/MultiTripModal';
 
 type FlatListItem =
-  | { type: 'header'; id: string; title: string; storeId: string; items: ListItem[] }
-  | { type: 'item'; id: string; data: ListItem };
+  | { type: 'header'; id: string; title: string; storeId: string; parents: ListItem[] }
+  | { type: 'item'; id: string; data: { parent: ListItem; entry: QuantityEntry } };
 
 interface MultiTripContextState {
   storeId?: string;
@@ -56,7 +56,8 @@ export default function ShoppingListScreen() {
 
   const { data: listItems, isLoading } = useShoppingList(handleRemoteChange);
   const { mutateAsync: togglePurchased } = useTogglePurchased();
-  const { mutateAsync: updateListItem } = useUpdateListItem();
+  const { mutateAsync: updateListItemFields } = useUpdateListItemFields();
+  const { mutateAsync: updateQuantityEntry } = useUpdateQuantityEntry();
   const { mutateAsync: addItem } = useAddToList();
   const { mutateAsync: endTrip } = useEndTrip();
   const { mutateAsync: deleteItem } = useDeleteListItem();
@@ -67,13 +68,14 @@ export default function ShoppingListScreen() {
 
   const [lastTripId, setLastTripId] = useState<string | null>(null);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
-  const [editingItem, setEditingItem] = useState<ListItem | null>(null);
+  const [editingParent, setEditingParent] = useState<ListItem | null>(null);
+  const [editingEntry, setEditingEntry] = useState<QuantityEntry | null>(null);
   const [editName, setEditName] = useState('');
   const [editQty, setEditQty] = useState('');
   const [editQtyChips, setEditQtyChips] = useState<string[]>([]);
   const [editStoreId, setEditStoreId] = useState('');
   const [editStoreDropdownOpen, setEditStoreDropdownOpen] = useState(false);
-  const editMasterItemId = isEditModalVisible && editingItem?.item_id ? editingItem.item_id : null;
+  const editMasterItemId = isEditModalVisible && editingParent?.item_id ? editingParent.item_id : null;
   const { data: editMasterItem } = useItemById(editMasterItemId);
   const editWarnings = editMasterItem
     ? computeWarnings(
@@ -132,17 +134,25 @@ export default function ShoppingListScreen() {
 
   const flatData = useMemo(() => {
     if (!listItems) return [];
-    const groups: Record<string, { id: string; items: ListItem[] }> = {};
-    listItems.forEach(item => {
-      const storeName = item.store?.name || 'Other';
-      const storeId = item.store_id || 'other';
-      if (!groups[storeName]) groups[storeName] = { id: storeId, items: [] };
-      groups[storeName].items.push(item);
+    const groups: Record<string, { id: string; parents: ListItem[] }> = {};
+    listItems.forEach((parent) => {
+      const storeName = parent.store?.name || 'Other';
+      const storeId = parent.store_id || 'other';
+      if (!groups[storeName]) groups[storeName] = { id: storeId, parents: [] };
+      groups[storeName].parents.push(parent);
     });
     const result: FlatListItem[] = [];
-    Object.entries(groups).forEach(([title, { id, items }]) => {
-      result.push({ type: 'header', id: `header-${id}`, title, storeId: id, items });
-      items.forEach(item => result.push({ type: 'item', id: item.id, data: item }));
+    Object.entries(groups).forEach(([title, { id, parents }]) => {
+      result.push({ type: 'header', id: `header-${id}`, title, storeId: id, parents });
+      parents.forEach((parent) => {
+        parent.quantities.forEach((entry) => {
+          result.push({
+            type: 'item',
+            id: entry.id,
+            data: { parent, entry },
+          });
+        });
+      });
     });
     return result;
   }, [listItems]);
@@ -158,85 +168,147 @@ export default function ShoppingListScreen() {
     setLocalFlatData(flatData);
   }
 
-  const handleToggle = async (item: ListItem) => {
-    const newStatus = !item.is_purchased;
-    const originalPurchasedBy = item.purchased_by;
-    await togglePurchased({ id: item.id, is_purchased: newStatus });
+  const handleToggle = async (parent: ListItem, entry: QuantityEntry) => {
+    const newStatus = !entry.is_purchased;
+    const originalPurchasedBy = entry.purchased_by;
+    await togglePurchased({ id: entry.id, is_purchased: newStatus });
     pushAction({
-      label: `${newStatus ? 'Checked' : 'Unchecked'} ${item.name}`,
+      label: `${newStatus ? 'Checked' : 'Unchecked'} ${parent.name}`,
       undo: async () => {
         await togglePurchased({
-          id: item.id,
+          id: entry.id,
           is_purchased: !newStatus,
-          purchased_by_override: !newStatus ? originalPurchasedBy : undefined,
+          purchased_by_override: originalPurchasedBy,
         });
       },
-      redo: async () => { await togglePurchased({ id: item.id, is_purchased: newStatus }); }
+      redo: async () => { await togglePurchased({ id: entry.id, is_purchased: newStatus }); }
     });
   };
 
-  const openEditModal = (item: ListItem) => {
-    const masterDefaultQty = item.master_item?.default_qty ?? null;
-    const masterAltQtys = item.master_item?.alternate_qtys ?? [];
+  const openEditModal = (parent: ListItem, entry: QuantityEntry) => {
+    const masterDefaultQty = parent.master_item?.default_qty ?? null;
+    const masterAltQtys = parent.master_item?.alternate_qtys ?? [];
     const chips = masterDefaultQty
       ? [masterDefaultQty, ...masterAltQtys]
       : masterAltQtys;
-    setEditingItem(item);
-    setEditName(item.name);
-    setEditQty(item.quantity || '');
+    setEditingParent(parent);
+    setEditingEntry(entry);
+    setEditName(parent.name);
+    setEditQty(entry.quantity || '');
     setEditQtyChips(chips);
-    setEditStoreId(item.store_id || '');
+    setEditStoreId(parent.store_id || '');
     setEditStoreDropdownOpen(false);
     setIsEditModalVisible(true);
   };
 
   const handleSaveEdit = async () => {
-    if (!editingItem) return;
-    const previousState = { name: editingItem.name, quantity: editingItem.quantity, store_id: editingItem.store_id };
-    const updates = { name: editName, quantity: editQty, store_id: editStoreId };
-    await updateListItem({ id: editingItem.id, ...updates });
+    if (!editingParent || !editingEntry) return;
+    const parentSnapshot = {
+      name: editingParent.name,
+      store_id: editingParent.store_id,
+      category_id: editingParent.category_id,
+    };
+    const parentUpdates = {
+      name: editName,
+      store_id: editStoreId || null,
+      category_id: editingParent.category_id,
+    };
+    const quantitySnapshot = {
+      quantity: editingEntry.quantity,
+    };
+    const quantityUpdates = {
+      quantity: editQty || null,
+    };
+    const parentChanged =
+      parentSnapshot.name !== parentUpdates.name ||
+      parentSnapshot.store_id !== parentUpdates.store_id;
+    const quantityChanged = quantitySnapshot.quantity !== quantityUpdates.quantity;
+
+    if (!parentChanged && !quantityChanged) {
+      setIsEditModalVisible(false);
+      setEditingParent(null);
+      setEditingEntry(null);
+      return;
+    }
+
+    if (parentChanged) {
+      await updateListItemFields({ id: editingParent.id, ...parentUpdates });
+    }
+    if (quantityChanged) {
+      await updateQuantityEntry({ id: editingEntry.id, ...quantityUpdates });
+    }
+
     pushAction({
-      label: `Edited ${editName}`,
-      undo: async () => { await updateListItem({ id: editingItem.id, ...previousState }); },
-      redo: async () => { await updateListItem({ id: editingItem.id, ...updates }); }
+      label: `Edited ${editingParent.name}`,
+      undo: async () => {
+        if (parentChanged) {
+          await updateListItemFields({ id: editingParent.id, ...parentSnapshot });
+        }
+        if (quantityChanged) {
+          await updateQuantityEntry({ id: editingEntry.id, ...quantitySnapshot });
+        }
+      },
+      redo: async () => {
+        if (parentChanged) {
+          await updateListItemFields({ id: editingParent.id, ...parentUpdates });
+        }
+        if (quantityChanged) {
+          await updateQuantityEntry({ id: editingEntry.id, ...quantityUpdates });
+        }
+      }
     });
     setIsEditModalVisible(false);
-    setEditingItem(null);
+    setEditingParent(null);
+    setEditingEntry(null);
   };
 
   const handleDelete = async () => {
-    if (!editingItem) return;
-    const itemToDelete = { ...editingItem };
-    await deleteItem(itemToDelete.id);
-    const tracker = { currentId: itemToDelete.id };
+    if (!editingParent || !editingEntry) return;
+    const parentToDelete = { ...editingParent };
+    const entryToDelete = { ...editingEntry };
+    const deleteResult = await deleteItem({ entryId: entryToDelete.id });
+    const tracker = {
+      currentEntryId: deleteResult.entryId,
+      currentListItemId: deleteResult.listItemId,
+      parentDeleted: deleteResult.parentDeleted,
+    };
     pushAction({
-      label: `Deleted ${itemToDelete.name}`,
+      label: `Deleted ${parentToDelete.name}`,
       undo: async () => {
         const result = await addItem({
-          name: itemToDelete.name,
-          quantity: itemToDelete.quantity,
-          store_id: itemToDelete.store_id,
-          category_id: itemToDelete.category_id,
-          item_id: itemToDelete.item_id,
+          name: parentToDelete.name,
+          quantity: entryToDelete.quantity ?? undefined,
+          store_id: parentToDelete.store_id,
+          category_id: parentToDelete.category_id,
+          item_id: parentToDelete.item_id,
+          warnings: parentToDelete.warnings,
+          match_metadata: parentToDelete.match_metadata,
         });
-        tracker.currentId = result.id;
+        tracker.currentEntryId = result.entry.id;
+        tracker.currentListItemId = result.parent.id;
       },
-      redo: async () => { await deleteItem(tracker.currentId); }
+      redo: async () => {
+        const deleted = await deleteItem({ entryId: tracker.currentEntryId });
+        tracker.currentEntryId = deleted.entryId;
+        tracker.currentListItemId = deleted.listItemId;
+        tracker.parentDeleted = deleted.parentDeleted;
+      }
     });
     setIsEditModalVisible(false);
-    setEditingItem(null);
+    setEditingParent(null);
+    setEditingEntry(null);
   };
 
-  const renderCheckbox = (item: ListItem) => {
-    if (!item.is_purchased) {
+  const renderCheckbox = (entry: QuantityEntry) => {
+    if (!entry.is_purchased) {
       return <Circle size={24} color="#d1d5db" />;
     }
 
-    if (item.purchased_by && item.purchased_by !== userId) {
-      const purchaser = memberMap.get(item.purchased_by);
+    if (entry.purchased_by && entry.purchased_by !== userId) {
+      const purchaser = memberMap.get(entry.purchased_by);
       return (
         <View
-          testID={`other-user-checkbox-${item.id}`}
+          testID={`other-user-checkbox-${entry.id}`}
           style={[styles.otherUserPurchasedBadge, { backgroundColor: purchaser?.color ?? '#6b7280' }]}
         >
           <Check size={14} color="white" />
@@ -249,21 +321,25 @@ export default function ShoppingListScreen() {
 
   const handleEndTrip = (storeId?: string, storeName?: string) => {
     const title = storeName ? `End Trip at ${storeName}?` : 'End All Shopping Trips?';
-    const scopedPurchasedItems = (listItems ?? []).filter((item) => {
-      if (!item.is_purchased || item.archived_at) return false;
-      if (!storeId) return true;
-      if (storeId === 'other') return !item.store_id;
-      return item.store_id === storeId;
-    });
+    const scopedPurchasedItems = (listItems ?? []).flatMap((parent) =>
+      parent.quantities
+        .filter((entry) => {
+          if (!entry.is_purchased || entry.archived_at) return false;
+          if (!storeId) return true;
+          if (storeId === 'other') return !parent.store_id;
+          return parent.store_id === storeId;
+        })
+        .map((entry) => ({ parent, entry }))
+    );
 
     const purchaserCounts = new Map<string, number>();
     let hasNullPurchaser = false;
-    scopedPurchasedItems.forEach((item) => {
-      if (!item.purchased_by) {
+    scopedPurchasedItems.forEach(({ entry }) => {
+      if (!entry.purchased_by) {
         hasNullPurchaser = true;
         return;
       }
-      purchaserCounts.set(item.purchased_by, (purchaserCounts.get(item.purchased_by) ?? 0) + 1);
+      purchaserCounts.set(entry.purchased_by, (purchaserCounts.get(entry.purchased_by) ?? 0) + 1);
     });
 
     if (purchaserCounts.size === 0 && !hasNullPurchaser) {
@@ -385,22 +461,23 @@ export default function ShoppingListScreen() {
         break;
       }
     }
-    if (newStoreId && newStoreId !== draggedItem.data.store_id) {
-      const originalStoreId = draggedItem.data.store_id;
-      const itemId = draggedItem.id;
-      const itemName = draggedItem.data.name;
-      await updateListItem({ id: itemId, store_id: newStoreId === 'other' ? null : newStoreId });
+    const draggedParent = draggedItem.data.parent;
+    if (newStoreId && newStoreId !== (draggedParent.store_id ?? 'other')) {
+      const originalStoreId = draggedParent.store_id;
+      const parentId = draggedParent.id;
+      const itemName = draggedParent.name;
+      await updateListItemFields({ id: parentId, store_id: newStoreId === 'other' ? null : newStoreId });
       pushAction({
         label: `Moved ${itemName} to ${newStoreName}`,
-        undo: async () => { await updateListItem({ id: itemId, store_id: originalStoreId }); },
-        redo: async () => { await updateListItem({ id: itemId, store_id: newStoreId === 'other' ? null : newStoreId }); }
+        undo: async () => { await updateListItemFields({ id: parentId, store_id: originalStoreId }); },
+        redo: async () => { await updateListItemFields({ id: parentId, store_id: newStoreId === 'other' ? null : newStoreId }); }
       });
     }
   };
 
   const renderItem = ({ item, drag, isActive }: RenderItemParams<FlatListItem>) => {
     if (item.type === 'header') {
-      const hasPurchased = item.items.some(i => i.is_purchased);
+      const hasPurchased = item.parents.some((parent) => parent.quantities.some((entry) => entry.is_purchased));
       return (
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionHeaderText}>{item.title}</Text>
@@ -417,14 +494,15 @@ export default function ShoppingListScreen() {
         </View>
       );
     }
-    const listItem = item.data;
+    const parent = item.data.parent;
+    const entry = item.data.entry;
     const secondaryParts = [
-      listItem.quantity,
-      listItem.category?.name,
-      listItem.store?.name,
+      entry.quantity,
+      parent.category?.name,
+      parent.store?.name,
     ].filter(Boolean);
     const secondaryText = secondaryParts.join(' · ');
-    const displayName = listItem.master_item?.short_name || listItem.name;
+    const displayName = parent.master_item?.short_name || parent.name;
 
     if (interactionMode === 'shopping') {
       return (
@@ -432,19 +510,19 @@ export default function ShoppingListScreen() {
           <View style={[styles.itemRow, isActive && styles.itemRowActive]}>
             <TouchableOpacity
               style={styles.colCheckbox}
-              onPress={() => handleToggle(listItem)}
-              testID={`checkbox-${listItem.id}`}
+              onPress={() => handleToggle(parent, entry)}
+              testID={`checkbox-${entry.id}`}
             >
-              {renderCheckbox(listItem)}
+              {renderCheckbox(entry)}
             </TouchableOpacity>
             <Pressable
               style={styles.shoppingPressable}
-              onPress={() => handleToggle(listItem)}
-              onLongPress={() => openEditModal(listItem)}
-              testID={`item-pressable-${listItem.id}`}
+              onPress={() => handleToggle(parent, entry)}
+              onLongPress={() => openEditModal(parent, entry)}
+              testID={`item-pressable-${entry.id}`}
             >
               <View style={styles.textContent}>
-                <Text style={[styles.nameText, listItem.is_purchased && styles.strikethrough]} numberOfLines={1}>
+                <Text style={[styles.nameText, entry.is_purchased && styles.strikethrough]} numberOfLines={1}>
                   {displayName}
                 </Text>
                 {secondaryText ? (
@@ -454,8 +532,8 @@ export default function ShoppingListScreen() {
                 ) : null}
               </View>
             </Pressable>
-            {listItem.warnings?.length ? (
-              <WarningBadge warnings={listItem.warnings} />
+            {parent.warnings?.length ? (
+              <WarningBadge warnings={parent.warnings} />
             ) : null}
             <TouchableOpacity onLongPress={drag} delayLongPress={50} style={styles.dragHandle}>
               <GripVertical size={20} color="#d1d5db" />
@@ -470,18 +548,18 @@ export default function ShoppingListScreen() {
         <View style={[styles.itemRow, isActive && styles.itemRowActive]}>
           <TouchableOpacity
             style={styles.colCheckbox}
-            onPress={() => handleToggle(listItem)}
-            testID={`checkbox-${listItem.id}`}
+            onPress={() => handleToggle(parent, entry)}
+            testID={`checkbox-${entry.id}`}
           >
-            {renderCheckbox(listItem)}
+            {renderCheckbox(entry)}
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.planningTextPressable}
-            onPress={() => openEditModal(listItem)}
-            testID={`name-${listItem.id}`}
+            onPress={() => openEditModal(parent, entry)}
+            testID={`name-${entry.id}`}
           >
             <View style={styles.textContent}>
-              <Text style={[styles.nameText, listItem.is_purchased && styles.strikethrough]} numberOfLines={1}>
+              <Text style={[styles.nameText, entry.is_purchased && styles.strikethrough]} numberOfLines={1}>
                 {displayName}
               </Text>
               {secondaryText ? (
@@ -491,8 +569,8 @@ export default function ShoppingListScreen() {
               ) : null}
             </View>
           </TouchableOpacity>
-          {listItem.warnings?.length ? (
-            <WarningBadge warnings={listItem.warnings} />
+          {parent.warnings?.length ? (
+            <WarningBadge warnings={parent.warnings} />
           ) : null}
           <TouchableOpacity onLongPress={drag} delayLongPress={50} style={styles.dragHandle}>
             <GripVertical size={20} color="#d1d5db" />
@@ -557,7 +635,7 @@ export default function ShoppingListScreen() {
             contentContainerStyle={styles.listContent}
             ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>Your list is empty.</Text></View>}
             ListFooterComponent={() => {
-              const hasAnyPurchased = listItems?.some(item => item.is_purchased);
+              const hasAnyPurchased = listItems?.some((parent) => parent.quantities.some((entry) => entry.is_purchased));
               if (!hasAnyPurchased) return null;
               return (
                 <TouchableOpacity 
@@ -577,11 +655,11 @@ export default function ShoppingListScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { paddingTop: insets.top }]}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={handleDelete} style={styles.deleteBtn}><Trash2 size={20} color="#ef4444" /></TouchableOpacity>
+              <TouchableOpacity testID="modal-delete-button" onPress={handleDelete} style={styles.deleteBtn}><Trash2 size={20} color="#ef4444" /></TouchableOpacity>
               <Text style={styles.modalTitle}>Edit Item</Text>
               <TouchableOpacity onPress={() => setIsEditModalVisible(false)} style={styles.modalCloseBtn}><X size={20} color="#6b7280" /></TouchableOpacity>
             </View>
-            {editingItem?.item_id ? (
+            {editingParent?.item_id ? (
               <WarningCallout warnings={editWarnings} />
             ) : null}
             <ScrollView keyboardShouldPersistTaps="handled">

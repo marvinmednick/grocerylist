@@ -33,6 +33,12 @@ Do not make the following changes without an explicit spec section covering them
 - **No changes to the undo/redo system** — `api/undoContext.tsx` is off-limits unless the spec lists it in Files to Modify
 - **No changes to `api/list.ts` patterns** — mutation tracking, query keys, and undo registration patterns are established; don't restructure them
 
+## Test Rules
+
+1. **No `it.skip` or `describe.skip` in delivered code.** Every spec-defined test must pass. If a test is hard to write, that's a signal to fix the approach — not skip the test. If you genuinely cannot make a test pass, report it as a blocker in `plans/F[N]-progress.md` Issues section rather than skipping it.
+2. **No hardcoded sleeps to work around timing.** If a test needs `setTimeout` delays to pass, the underlying issue is leaked state or missing cleanup — fix that instead.
+3. **Timer cleanup is mandatory.** Any test that calls `jest.useFakeTimers()` must have a corresponding `jest.useRealTimers()` in `afterEach` (not just inline at the end of the test). If the test throws before inline cleanup, fake timers leak to subsequent tests.
+
 ## Workflow
 
 1. Read the full spec before writing any code. Specs begin with a `<!-- Tracking metadata -->` HTML

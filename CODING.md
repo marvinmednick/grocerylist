@@ -400,6 +400,22 @@ describe('MyComponent', () => {
 
 If you see `"worker process has failed to exit gracefully"` after a test run, the most common cause is a React Query GC timer left open. Ensure all test `QueryClient` instances use `gcTime: Infinity` (prevents GC timers from being scheduled). Run with `--runInBand --detectOpenHandles` to pinpoint other leak sources.
 
+### Timer Hygiene
+
+Tests that use `jest.useFakeTimers()` must follow these rules to prevent cross-test leaks:
+
+1. **Always call `jest.useRealTimers()` in `afterEach`** — not just inline at the end of the test. If the test throws before inline cleanup, fake timers leak to all subsequent tests.
+
+```typescript
+afterEach(() => {
+  jest.useRealTimers();
+});
+```
+
+2. **Module-level `setTimeout` state (`localMutationCount`)** — `api/list.ts` uses `setTimeout(500ms)` in `decrementLocalMutation()`. Tests that call real mutation functions (not mocked ones) increment this counter, and the decrement only fires 500ms later. If subsequent tests check `localMutationCount === 0` before the timer fires, they see stale state. Use `__resetLocalMutationCount()` (exported from `api/list.ts`) in `beforeEach` when testing realtime behavior that depends on the counter being zero.
+
+3. **Never use `it.skip` or hardcoded sleeps as workarounds.** If a test needs a delay to pass, the root cause is leaked state — fix the leak.
+
 ### What to Test
 
 **For every feature, test:**

@@ -64,6 +64,21 @@ Evaluate each of the following and report pass / fail / not-applicable with a br
 - Is there a test verifying pushAction is called with the correct label (for any new list mutations)?
 - Do tests use the full three-provider wrapper (QueryClientProvider + UndoProvider + HouseholdProvider)?
 - Do all tests pass? (Run `./check-tests --show-known` from project root)
+- Are there zero skipped tests? (`it.skip` and `describe.skip` are not acceptable in delivered code — each is an untested requirement. If `check-tests` reports skips, this is blocking.)
+
+**Timer Hygiene** (flake prevention)
+- Does every test that calls `jest.useFakeTimers()` have a matching `jest.useRealTimers()` in `afterEach` (not just inline at the end of the test)?
+- Do any tests use hardcoded `setTimeout` sleeps as workarounds? (These mask leaked state — flag as blocking.)
+- Do tests that check realtime toast behavior (`localMutationCount === 0`) call `__resetLocalMutationCount()` in `beforeEach`?
+
+**When a test fails then passes on re-run:**
+Do not dismiss it. A test that fails once and passes once is evidence of a real problem. Follow this procedure:
+1. **Log it** — append an entry to `docs/flaky-test-log.md` with the date, test name, error message, and whether it was investigated or deferred.
+2. **Categorize** — is the failure environmental (SIGSEGV, worker crash, network timeout) or code-related (act() warning, assertion intermittently wrong, state leak)?
+3. **Investigate code-related flakes immediately** — these are blocking. Common root causes: fake timer leaks, module-level state (`localMutationCount`), missing `await` on async operations, React Query `notifyManager` scheduling.
+4. **Note environmental flakes but don't block on them** — log the occurrence for pattern tracking. If the same environmental failure recurs across multiple reviews, escalate to investigate the environment.
+
+The goal is to build a history: a test that fails environmentally once is noise, but three times across different sessions is a signal.
 
 **Summary**
 Provide an overall assessment and a prioritized list of issues to fix, separated into:

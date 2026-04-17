@@ -10,7 +10,7 @@ export interface TripSummary {
   user_id: string | null;
   store: { name: string } | null;
   owner: { display_name_short: string | null; display_name: string } | null;
-  list_items: { id: string }[];
+  list_item_quantities: { id: string }[];
 }
 
 export interface TripItem {
@@ -37,7 +37,7 @@ export const useTripHistory = () => {
           user_id,
           store:stores!primary_store_id(name),
           owner:profiles!user_id(display_name_short, display_name),
-          list_items(id)
+          list_item_quantities(id)
         `)
         .not('ended_at', 'is', null)
         .order('ended_at', { ascending: false });
@@ -60,15 +60,37 @@ export const useTripItems = (tripId: string | null) => {
         .select(`
           id,
           name,
-          quantity,
           store_id,
-          store:stores!store_id(name)
+          store:stores!store_id(name),
+          quantities:list_item_quantities!list_item_id(*)
         `)
-        .eq('trip_id', tripId)
+        .not('archived_at', 'is', null)
+        .eq('quantities.trip_id', tripId)
         .order('name', { ascending: true });
 
       if (error) throw error;
-      return data as TripItem[];
+      const tripItems: TripItem[] = [];
+      for (const parent of data ?? []) {
+        const parentRecord = parent as {
+          id: string;
+          name: string;
+          store_id: string | null;
+          store: { name: string } | null;
+          quantities: Array<{ id: string; quantity: string | null; trip_id: string | null }>;
+        };
+        for (const entry of parentRecord.quantities ?? []) {
+          if (entry.trip_id !== tripId) continue;
+          tripItems.push({
+            id: entry.id,
+            name: parentRecord.name,
+            quantity: entry.quantity ?? '',
+            store_id: parentRecord.store_id,
+            store: parentRecord.store,
+          });
+        }
+      }
+
+      return tripItems;
     },
     enabled: !!tripId,
   });

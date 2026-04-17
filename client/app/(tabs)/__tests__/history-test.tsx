@@ -47,7 +47,7 @@ const makeTrip = (overrides: Partial<any> = {}) => ({
   user_id: currentUserId,
   store: { name: 'Safeway' },
   owner: { display_name_short: 'Sarah', display_name: 'sarah@test.com' },
-  list_items: [{ id: 'a' }, { id: 'b' }, { id: 'c' }],
+  list_item_quantities: [{ id: 'a' }, { id: 'b' }, { id: 'c' }],
   ...overrides,
 });
 
@@ -138,7 +138,7 @@ describe('HistoryScreen', () => {
 
   it('displays item count', async () => {
     mockUseTripHistory.mockReturnValue({
-      data: [makeTrip({ list_items: [{ id: '1' }, { id: '2' }, { id: '3' }], user_id: null })],
+      data: [makeTrip({ list_item_quantities: [{ id: '1' }, { id: '2' }, { id: '3' }], user_id: null })],
       isLoading: false,
     });
 
@@ -247,8 +247,8 @@ describe('HistoryScreen', () => {
     mockUseTripHistory.mockReturnValue({ data: [makeTrip()], isLoading: false });
     mockUseTripItems.mockReturnValue({
       data: [
-        { id: 'item-1', name: 'Milk', quantity: '1', store_id: 'store-1', store: { name: 'Safeway' } },
-        { id: 'item-2', name: 'Eggs', quantity: '12', store_id: 'store-2', store: { name: 'Costco' } },
+        { id: 'entry-1', name: 'Milk', quantity: '1', store_id: 'store-1', store: { name: 'Safeway' } },
+        { id: 'entry-2', name: 'Eggs', quantity: '12', store_id: 'store-2', store: { name: 'Costco' } },
       ],
       isLoading: false,
     });
@@ -266,8 +266,8 @@ describe('HistoryScreen', () => {
     mockUseTripHistory.mockReturnValue({ data: [makeTrip()], isLoading: false });
     mockUseTripItems.mockReturnValue({
       data: [
-        { id: 'item-1', name: 'Milk', quantity: '1', store_id: 'store-1', store: { name: 'Safeway' } },
-        { id: 'item-2', name: 'Eggs', quantity: '12', store_id: 'store-2', store: { name: 'Costco' } },
+        { id: 'entry-1', name: 'Milk', quantity: '1', store_id: 'store-1', store: { name: 'Safeway' } },
+        { id: 'entry-2', name: 'Eggs', quantity: '12', store_id: 'store-2', store: { name: 'Costco' } },
       ],
       isLoading: false,
     });

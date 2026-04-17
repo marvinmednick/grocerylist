@@ -134,14 +134,9 @@ CREATE TABLE list_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     item_id UUID REFERENCES items(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
-    quantity TEXT,
-    quantity_parsed JSONB NULL,
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     store_id UUID REFERENCES stores(id) ON DELETE SET NULL,
-    trip_id UUID REFERENCES shopping_trips(id) ON DELETE SET NULL,
-    is_purchased BOOLEAN DEFAULT FALSE,
     added_at TIMESTAMPTZ DEFAULT NOW(),
-    purchased_at TIMESTAMPTZ,
     archived_at TIMESTAMPTZ,
     warnings JSONB DEFAULT '[]',
     match_metadata JSONB,
@@ -151,7 +146,27 @@ CREATE TABLE list_items (
 );
 CREATE INDEX list_items_household_idx ON list_items(household_id);
 
--- 11. ITEM_STORE_PREFERENCES
+-- 11. LIST ITEM QUANTITIES
+CREATE TABLE list_item_quantities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    list_item_id UUID NOT NULL REFERENCES list_items(id) ON DELETE CASCADE,
+    quantity TEXT,
+    quantity_parsed JSONB NULL,
+    is_purchased BOOLEAN DEFAULT FALSE,
+    purchased_at TIMESTAMPTZ,
+    purchased_by UUID,
+    trip_id UUID REFERENCES shopping_trips(id) ON DELETE SET NULL,
+    archived_at TIMESTAMPTZ,
+    added_at TIMESTAMPTZ DEFAULT NOW(),
+    added_by UUID,
+    household_id UUID NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX list_item_quantities_list_item_idx ON list_item_quantities(list_item_id);
+CREATE INDEX list_item_quantities_household_idx ON list_item_quantities(household_id);
+CREATE INDEX list_item_quantities_active_idx ON list_item_quantities(archived_at) WHERE archived_at IS NULL;
+
+-- 12. ITEM_STORE_PREFERENCES
 CREATE TABLE item_store_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     item_id UUID NOT NULL REFERENCES items(id) ON DELETE CASCADE,
@@ -185,6 +200,7 @@ ALTER TABLE word_aliases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE abbreviation_suggestions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE list_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE list_item_quantities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE shopping_trips ENABLE ROW LEVEL SECURITY;
 ALTER TABLE item_store_preferences ENABLE ROW LEVEL SECURITY;
 
@@ -257,6 +273,11 @@ CREATE POLICY "Household members can manage list_items" ON list_items
     USING (household_id = get_my_household_id())
     WITH CHECK (household_id = get_my_household_id());
 
+CREATE POLICY "Household members can manage list_item_quantities" ON list_item_quantities
+    FOR ALL TO authenticated
+    USING (household_id = get_my_household_id())
+    WITH CHECK (household_id = get_my_household_id());
+
 -- Shopping_trips: household-scoped
 CREATE POLICY "Household members can manage trips" ON shopping_trips
     FOR ALL TO authenticated
@@ -267,6 +288,23 @@ CREATE POLICY "Household members can manage trips" ON shopping_trips
 -- Realtime
 -- ============================================================
 ALTER PUBLICATION supabase_realtime ADD TABLE list_items;
+ALTER PUBLICATION supabase_realtime ADD TABLE list_item_quantities;
+
+CREATE OR REPLACE FUNCTION archive_empty_list_items() RETURNS void
+    LANGUAGE sql
+    SECURITY DEFINER
+    SET search_path = public
+    AS $$
+    UPDATE list_items
+    SET archived_at = NOW()
+    WHERE archived_at IS NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM list_item_quantities q
+        WHERE q.list_item_id = list_items.id
+          AND q.archived_at IS NULL
+      );
+$$;
 
 -- ============================================================
 -- Seed Data

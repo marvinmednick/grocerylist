@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import ShoppingListScreen from '../index';
-import { useShoppingList, useTogglePurchased, useUpdateListItem, useAddToList, useDeleteListItem, useEndTrip, useRevertArchival } from '@/api/list';
+import { useShoppingList, useTogglePurchased, useUpdateListItemFields, useUpdateQuantityEntry, useAddToList, useDeleteListItem, useEndTrip, useRevertArchival } from '@/api/list';
 import { useItemById } from '@/api/items';
 import { useUndo } from '@/api/undoContext';
 import { useMetadata } from '@/api/metadata';
@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UndoProvider } from '@/api/undoContext';
 import { HouseholdProvider } from '@/lib/household';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { makeListItem, makeQuantityEntry } from '@/api/__tests__/_helpers/listItemMock';
 
 // Mock all the hooks
 jest.mock('@/api/list');
@@ -49,7 +50,8 @@ jest.mock('@/lib/supabase', () => ({
 
 const mockUseShoppingList = useShoppingList as jest.Mock;
 const mockUseTogglePurchased = useTogglePurchased as jest.Mock;
-const mockUseUpdateListItem = useUpdateListItem as jest.Mock;
+const mockUseUpdateListItemFields = useUpdateListItemFields as jest.Mock;
+const mockUseUpdateQuantityEntry = useUpdateQuantityEntry as jest.Mock;
 const mockUseAddToList = useAddToList as jest.Mock;
 const mockUseDeleteListItem = useDeleteListItem as jest.Mock;
 const mockUseEndTrip = useEndTrip as jest.Mock;
@@ -76,16 +78,34 @@ describe('ShoppingListScreen Interactions', () => {
   );
 
   const mockItems = [
-    {
+    makeListItem({
       id: '1',
       name: 'Milk',
-      quantity: '1L',
-      is_purchased: false,
       store_id: 'store1',
-      store: { name: 'Grocery Store' },
-      category: { name: 'Dairy' },
-    },
+      store: { name: 'Grocery Store', color_code: '#000000' },
+      category: { name: 'Dairy', sort_order: 1 },
+      quantities: [makeQuantityEntry({ id: 'entry-1', list_item_id: '1', quantity: '1L', is_purchased: false })],
+    }),
   ];
+  const buildItem = (overrides: Record<string, any> = {}) =>
+    makeListItem({
+      id: overrides.id ?? '1',
+      item_id: overrides.item_id ?? null,
+      name: overrides.name ?? 'Milk',
+      store_id: overrides.store_id ?? 'store1',
+      store: overrides.store ?? { name: 'Grocery Store', color_code: '#000000' },
+      category: overrides.category ?? { name: 'Dairy', sort_order: 1 },
+      master_item: overrides.master_item ?? null,
+      quantities: [
+        makeQuantityEntry({
+          id: overrides.entry_id ?? 'entry-1',
+          list_item_id: overrides.id ?? '1',
+          quantity: overrides.quantity ?? '1L',
+          is_purchased: overrides.is_purchased ?? false,
+          purchased_by: overrides.purchased_by ?? null,
+        }),
+      ],
+    });
 
   const mockMutateAsync = jest.fn();
 
@@ -96,7 +116,8 @@ describe('ShoppingListScreen Interactions', () => {
     jest.clearAllMocks();
     mockUseShoppingList.mockReturnValue({ data: mockItems, isLoading: false });
     mockUseTogglePurchased.mockReturnValue({ mutateAsync: mockMutateAsync });
-    mockUseUpdateListItem.mockReturnValue({ mutateAsync: jest.fn() });
+    mockUseUpdateListItemFields.mockReturnValue({ mutateAsync: jest.fn() });
+    mockUseUpdateQuantityEntry.mockReturnValue({ mutateAsync: jest.fn() });
     mockUseAddToList.mockReturnValue({ mutateAsync: jest.fn() });
     mockUseDeleteListItem.mockReturnValue({ mutateAsync: jest.fn() });
     mockUseEndTrip.mockReturnValue({ mutateAsync: jest.fn() });
@@ -124,6 +145,7 @@ describe('ShoppingListScreen Interactions', () => {
 
   afterEach(() => {
     queryClient.clear();
+    jest.useRealTimers();
   });
 
   it('defaults to shopping mode on mount', () => {
@@ -141,12 +163,15 @@ describe('ShoppingListScreen Interactions', () => {
 
   it('shopping mode: single tap on item row calls togglePurchased', () => {
     render(<ShoppingListScreen />, { wrapper });
-    fireEvent.press(screen.getByTestId('item-pressable-1'));
-    expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ id: '1', is_purchased: true }));
+    fireEvent.press(screen.getByTestId('item-pressable-entry-1'));
+    expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ id: 'entry-1', is_purchased: true }));
   });
 
   it('undo of uncheck restores original purchased_by', async () => {
-    const itemWithPurchasedBy = { ...mockItems[0], is_purchased: true, purchased_by: 'user-B' };
+    const itemWithPurchasedBy = makeListItem({
+      ...mockItems[0],
+      quantities: [makeQuantityEntry({ id: 'entry-1', list_item_id: '1', quantity: '1L', is_purchased: true, purchased_by: 'user-B' })],
+    });
     mockUseShoppingList.mockReturnValue({ data: [itemWithPurchasedBy], isLoading: false });
     const mockPushAction = jest.fn();
     mockUseUndo.mockReturnValue({
@@ -160,7 +185,7 @@ describe('ShoppingListScreen Interactions', () => {
     });
 
     render(<ShoppingListScreen />, { wrapper });
-    fireEvent.press(screen.getByTestId('item-pressable-1')); // uncheck (newStatus=false)
+    fireEvent.press(screen.getByTestId('item-pressable-entry-1')); // uncheck (newStatus=false)
 
     await waitFor(() => expect(mockPushAction).toHaveBeenCalledTimes(1));
     const { undo } = mockPushAction.mock.calls[0][0];
@@ -168,51 +193,44 @@ describe('ShoppingListScreen Interactions', () => {
 
     // Undo of an uncheck should re-check with the original purchaser, not the current user
     expect(mockMutateAsync).toHaveBeenLastCalledWith(
-      expect.objectContaining({ id: '1', is_purchased: true, purchased_by_override: 'user-B' })
+      expect.objectContaining({ id: 'entry-1', is_purchased: true, purchased_by_override: 'user-B' })
     );
   });
 
   it('shopping mode: long press on item row opens edit modal', () => {
     render(<ShoppingListScreen />, { wrapper });
-    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+    fireEvent(screen.getByTestId('item-pressable-entry-1'), 'onLongPress');
     expect(screen.getByText('Edit Item')).toBeTruthy();
   });
 
   it('planning mode: tap on item name opens edit modal', () => {
     render(<ShoppingListScreen />, { wrapper });
     fireEvent.press(screen.getByTestId('mode-toggle')); // Switch to planning
-    fireEvent.press(screen.getByTestId('name-1'));
+    fireEvent.press(screen.getByTestId('name-entry-1'));
     expect(screen.getByText('Edit Item')).toBeTruthy();
   });
 
   it('planning mode: checkbox tap calls togglePurchased', () => {
     render(<ShoppingListScreen />, { wrapper });
     fireEvent.press(screen.getByTestId('mode-toggle')); // Switch to planning
-    fireEvent.press(screen.getByTestId('checkbox-1'));
-    expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ id: '1', is_purchased: true }));
+    fireEvent.press(screen.getByTestId('checkbox-entry-1'));
+    expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ id: 'entry-1', is_purchased: true }));
   });
 
   it('shows usual quantity chips for master-backed items and chip tap updates edit quantity', async () => {
     jest.useFakeTimers();
     mockUseShoppingList.mockReturnValue({
       data: [
-        {
-          id: '1',
+        buildItem({
           item_id: 'master-1',
-          name: 'Milk',
-          quantity: '1L',
-          is_purchased: false,
-          store_id: 'store1',
-          store: { name: 'Grocery Store' },
-          category: { name: 'Dairy' },
           master_item: { short_name: null, default_qty: '1 gal', alternate_qtys: ['2 gal'] },
-        },
+        }),
       ],
       isLoading: false,
     });
 
     render(<ShoppingListScreen />, { wrapper });
-    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+    fireEvent(screen.getByTestId('item-pressable-entry-1'), 'onLongPress');
 
     expect(await screen.findByText('Usual Quantities')).toBeTruthy();
     expect(screen.getByText('1 gal')).toBeTruthy();
@@ -224,29 +242,23 @@ describe('ShoppingListScreen Interactions', () => {
     act(() => {
       jest.runOnlyPendingTimers();
     });
-    jest.useRealTimers();
   });
 
   it('does not show usual quantity chips for one-off list items', async () => {
     mockUseShoppingList.mockReturnValue({
       data: [
-        {
-          id: '1',
+        buildItem({
           item_id: null,
           name: 'One-off Milk',
           quantity: '1',
-          is_purchased: false,
-          store_id: 'store1',
-          store: { name: 'Grocery Store' },
-          category: { name: 'Dairy' },
           master_item: null,
-        },
+        }),
       ],
       isLoading: false,
     });
 
     render(<ShoppingListScreen />, { wrapper });
-    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+    fireEvent(screen.getByTestId('item-pressable-entry-1'), 'onLongPress');
 
     await waitFor(() => {
       expect(screen.getByText('Edit Item')).toBeTruthy();
@@ -257,17 +269,10 @@ describe('ShoppingListScreen Interactions', () => {
   it('shows warning callout in List Edit modal for master-linked item warnings', async () => {
     mockUseShoppingList.mockReturnValue({
       data: [
-        {
-          id: '1',
+        buildItem({
           item_id: 'master-1',
-          name: 'Milk',
-          quantity: '1L',
-          is_purchased: false,
-          store_id: 'store1',
-          store: { name: 'Grocery Store' },
-          category: { name: 'Dairy' },
           master_item: { short_name: null, default_qty: '1L', alternate_qtys: ['2L'] },
-        },
+        }),
       ],
       isLoading: false,
     });
@@ -288,7 +293,7 @@ describe('ShoppingListScreen Interactions', () => {
     });
 
     render(<ShoppingListScreen />, { wrapper });
-    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+    fireEvent(screen.getByTestId('item-pressable-entry-1'), 'onLongPress');
 
     expect(await screen.findByText('Avoided at Grocery Store')).toBeTruthy();
   });
@@ -296,23 +301,18 @@ describe('ShoppingListScreen Interactions', () => {
   it('does not show warning callout in List Edit modal for one-off list items', async () => {
     mockUseShoppingList.mockReturnValue({
       data: [
-        {
-          id: '1',
+        buildItem({
           item_id: null,
           name: 'One-off Milk',
           quantity: '1',
-          is_purchased: false,
-          store_id: 'store1',
-          store: { name: 'Grocery Store' },
-          category: { name: 'Dairy' },
           master_item: null,
-        },
+        }),
       ],
       isLoading: false,
     });
 
     render(<ShoppingListScreen />, { wrapper });
-    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+    fireEvent(screen.getByTestId('item-pressable-entry-1'), 'onLongPress');
 
     await waitFor(() => {
       expect(screen.getByText('Edit Item')).toBeTruthy();
@@ -332,7 +332,7 @@ describe('ShoppingListScreen Interactions', () => {
     });
 
     render(<ShoppingListScreen />, { wrapper });
-    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+    fireEvent(screen.getByTestId('item-pressable-entry-1'), 'onLongPress');
 
     expect(await screen.findByTestId('edit-store-dropdown-trigger')).toBeTruthy();
   });
@@ -349,7 +349,7 @@ describe('ShoppingListScreen Interactions', () => {
     });
 
     render(<ShoppingListScreen />, { wrapper });
-    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+    fireEvent(screen.getByTestId('item-pressable-entry-1'), 'onLongPress');
     fireEvent.press(await screen.findByTestId('edit-store-dropdown-trigger'));
 
     expect(screen.getByTestId('edit-store-option-none')).toBeTruthy();
@@ -369,7 +369,7 @@ describe('ShoppingListScreen Interactions', () => {
     });
 
     render(<ShoppingListScreen />, { wrapper });
-    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+    fireEvent(screen.getByTestId('item-pressable-entry-1'), 'onLongPress');
     fireEvent.press(await screen.findByTestId('edit-store-dropdown-trigger'));
     fireEvent.press(screen.getByTestId('edit-store-store2'));
 
@@ -391,7 +391,7 @@ describe('ShoppingListScreen Interactions', () => {
     });
 
     render(<ShoppingListScreen />, { wrapper });
-    fireEvent(screen.getByTestId('item-pressable-1'), 'onLongPress');
+    fireEvent(screen.getByTestId('item-pressable-entry-1'), 'onLongPress');
     fireEvent.press(await screen.findByTestId('edit-store-dropdown-trigger'));
     fireEvent.press(screen.getByTestId('edit-store-option-none'));
 

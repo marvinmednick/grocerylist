@@ -375,3 +375,35 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: See F78 design doc "Design Decisions" section. Key calls: detection checks both active and purchased-but-unarchived with different actions by state; purchased-entry case offers only add-fresh/cancel (no un-purchase-and-merge); cross-store gets a third merge-there/move/duplicate-here choice; all add paths trigger detection; passive dropdown indicator is minimal (glyph TBD); Pass 2 UI (dialog style, button wording, indicator styling) deferred until post-F103 at /spec time.
 - **Design review**: not triggered — new feature, no existing-pattern drift.
 - **Next**: F103 needs its own /design pass (JSONB vs child table for quantity entries, migration strategy, realtime adaptation). F78 implementation paused until F103 ships.
+
+---
+### 2026-04-15 22:10 — /design F103 List Item / Quantity Model Refactor
+- **Completed**: Ran fresh-mode design on F103. Wrote `docs/design/F103-list-item-quantity-refactor.md`. Updated PLAN.md (F103 → Designed with doc link).
+- **Findings**: Central decision was storage shape for the per-quantity split. Chose child table (`list_item_quantities`) over JSONB column on `list_items`. Key reasons: (a) concurrency — Supabase JS read-modify-write on a shared JSONB array can drop independent per-entry toggles; child rows turn independent actions back into independent row writes that Postgres row-locks cleanly. (b) trip archival — individual entries archive into individual trips; row-level UPDATE on the child maps naturally; JSONB would need per-entry archived_at/trip_id fields inside the array and `jsonb_array_elements` unnesting on every query. (c) realtime granularity — per-entry events vs full-row replacement. User noted multi-entry items will be rare but agreed rarity doesn't excuse the hazards. Storage growth is ~2× row count (parent + child for single-entry items) but narrower rows, total bytes ~same. DESIGN.md §5 already covers the asymptotic fine.
+- **Design decisions**: (1) Child table for quantities; parent keeps per-item fields. (2) Parent `archived_at` updated when last entry archives — preserves F9 trip-history queries. (3) Unique index on `(item_id, store_id, household_id)` deferred to F78 (adding it in F103 creates a regression window with no dialog to handle unique-violation errors). F103 migration does a one-time dedup sweep of existing duplicates. (4) Query shape: from `list_items` with embedded `quantities` (Option B) — logical item is the primary entity for grouping/sorting/drag/warnings; entry is accessed via `.quantities[i]` for toggle/qty edit. (5a) Full column split documented. (5b) Realtime: two subscriptions (both tables); toast uses client-side cache lookup (Option Z) to get parent name from `getQueryData(['shopping_list'])` rather than denormalizing `name` onto entries — denormalization would work against F103's grouping principle for a single toast-text use case. (5c) Single atomic migration: create child + RLS + realtime pub, dedup sweep, split, drop old columns. (5d) Parent archival bookkeeping in `useEndTrip`/`useDeleteListItem`/`useRevertArchival` via `NOT EXISTS` check. (5e) Rewrite scope: api/list.ts mutations, index.tsx rendering + handlers, undo actions, ~570 tests (mostly mock-shape changes).
+- **Design review**: not triggered — refactor is explicitly no-visible-change; no UI patterns introduced.
+- **Next**: `/spec F103` to produce implementation spec. After F103 ships, resume F78 Pass 2 UI and `/spec F78`.
+
+---
+### 2026-04-15 22:40 — /spec F103
+- **Completed**: Wrote `specs/F103-list-item-quantity-refactor.md`. Updated PLAN.md (F103 → Specced with both spec + design links). Created `plans/F103-log.md` with Designed + Specced entries. GitHub issue #103 already existed from /design session — not re-created.
+- **Findings**: Spec is Full review level (multi-file, new table, new pattern). Big rewrites across `api/list.ts` (most mutations), `app/(tabs)/index.tsx` (flatData/handlers/drag), and `api/trips.ts` + `app/(tabs)/history.tsx` (archived queries now need to join entries for trip_id/is_purchased/purchased_by/quantity — historical data lives on the child table post-migration). Included a SECURITY DEFINER SQL function `archive_empty_list_items()` to handle the "archive parents whose entries are all archived" sweep in one statement with a NOT EXISTS predicate — cleaner than fetching-then-updating from the client. Listed 7+ existing test files that need mock-shape updates; recommended a `makeListItem` helper to reduce churn. No composition scenario tests needed — F103 doesn't touch parser/alias pipeline.
+- **Design decisions**: none beyond the design doc. Spec applied design verbatim. One pattern clarification: when edit modal changes both parent fields and entry quantity, push a single combined undo action rather than two — keeps UX consistent with pre-refactor single-save semantics.
+- **Design review**: not triggered — spec applied existing patterns (CODING.md §1–4) directly plus the F103 design doc. No new UI, no novel interaction.
+- **Next**: `./implement F103 --plan` to produce the implementor's plan; then `/review-plan F103` before implementation.
+
+---
+### 2026-04-16 — /review-impl F103 (Review 1)
+- **Completed**: Full implementation review of F103 against spec. 17/17 files delivered. 585 tests pass; 4 F103 tests skipped.
+- **Findings**: Core implementation is architecturally sound — types, query shapes, mutation hooks, optimistic updates, undo registration, realtime subscriptions, and migration SQL all match spec. Found 1 runtime bug: `useTripHistory` still embeds `list_items(id)` in the trip summary query, but the `list_items.trip_id` FK was dropped by the migration. PostgREST can't resolve the implicit join anymore — history screen item count will break. Fix: change to `list_item_quantities(id)`.
+- **Design decisions**: none
+- **Design review**: not triggered — patterns followed correctly, no new patterns
+- **Next**: Implementor fixes 3 blocking items: (1) `useTripHistory` broken FK → change to `list_item_quantities(id)` + update `TripSummary` interface + history.tsx, (2) unskip 4 F103 tests, (3) apply migration to remote. Then re-review.
+
+---
+### 2026-04-16 — /review-impl F103 (Review 2)
+- **Completed**: Re-review after implementor fixes. All 3 Review 1 blocking issues resolved: `useTripHistory` FK fixed to `list_item_quantities(id)`, all 4 skipped tests unskipped and passing (589 total), migration applied to remote. Full checklist pass.
+- **Findings**: Clean pass. No new issues found.
+- **Design decisions**: none
+- **Design review**: not triggered
+- **Next**: `/complete F103` to ship. Then resume F78 Pass 2 UI and `/spec F78`.

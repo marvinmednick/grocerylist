@@ -60,6 +60,9 @@ _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assig
 - [ ] `components/Abbreviations.tsx` edit dialog — add dirty-state Save per §7f. Apply when this component is next modified.
 - [ ] `components/VocabularyManagement.tsx` edit dialogs (units, packages, sizes) — add dirty-state Save per §7f. Apply when this component is next modified.
 
+### From F103
+- [ ] `handleDelete` undo creates a new parent via `addItem()` even when `parentDeleted` is false — works now (single-entry only) but will create duplicate parents when F78 multi-entry arrives. Revisit undo for partial-entry delete in F78 spec. (found in F103 review)
+
 ### From F94
 - [ ] "a dozen" → "1 dozen" normalization — the word "a" is too ambiguous to normalize globally. (deferred from F94)
 - [ ] Quoted-region awareness in `normalizeVoiceInput` — currently "at" inside quotes is also transformed. Not a practical issue for voice input. (deferred from F94)

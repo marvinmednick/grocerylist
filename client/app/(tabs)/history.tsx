@@ -40,7 +40,7 @@ export default function HistoryScreen() {
 
   const renderTripRow = ({ item }: { item: TripSummary }) => {
     const isOwnTrip = item.user_id === currentUserId || item.user_id === null;
-    const itemCountText = `${item.list_items.length} items`;
+    const itemCountText = `${item.list_item_quantities.length} items`;
     const detailsText = isOwnTrip ? itemCountText : `· ${getOwnerName(item)} · ${itemCountText}`;
 
     return (
@@ -60,12 +60,13 @@ export default function HistoryScreen() {
 
   const renderTripItem = ({ item }: { item: TripItem }) => {
     const showStore = selectedTrip && item.store_id !== selectedTrip.primary_store_id && item.store?.name;
+    const quantityText = item.quantity ?? '';
 
     return (
       <View style={styles.itemRow}>
         <Text style={styles.itemText}>{item.name}</Text>
         <Text style={styles.itemText}>
-          {item.quantity}
+          {quantityText}
           {showStore ? ` (${item.store?.name})` : ''}
         </Text>
       </View>

@@ -164,9 +164,19 @@ TOTAL_KNOWN=${#KNOWN_SEEN[@]}
 PASS_COUNT=$(grep -E '^Tests:' "$RAW_OUTPUT" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' || true)
 [[ -z "$PASS_COUNT" ]] && PASS_COUNT="?"
 
+# Extract skip count (e.g. "Tests:  7 skipped, 589 passed, 596 total")
+SKIP_COUNT=$(grep -E '^Tests:' "$RAW_OUTPUT" | grep -oE '[0-9]+ skipped' | grep -oE '[0-9]+' || true)
+[[ -z "$SKIP_COUNT" ]] && SKIP_COUNT=0
+
 EXIT_CODE=0
 if [[ $TOTAL_FAILURES -eq 0 ]]; then
-  echo "✓ All tests passed. ($PASS_COUNT passed)"
+  if [[ "$SKIP_COUNT" -gt 0 ]]; then
+    echo "⚠ $SKIP_COUNT test(s) skipped. ($PASS_COUNT passed, $SKIP_COUNT skipped)"
+    echo "  Skipped tests are untested requirements — find and remove it.skip/describe.skip."
+    EXIT_CODE=1
+  else
+    echo "✓ All tests passed. ($PASS_COUNT passed)"
+  fi
 elif [[ $TOTAL_UNEXPECTED -eq 0 ]]; then
   echo "✓ No unexpected failures. ($PASS_COUNT passed, $TOTAL_KNOWN known failure(s) in baseline)"
 else

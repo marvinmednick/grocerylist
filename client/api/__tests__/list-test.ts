@@ -15,6 +15,7 @@ jest.mock('@/lib/supabase', () => ({
       getUser: jest.fn(),
     },
     from: jest.fn(),
+    rpc: jest.fn(),
   },
 }));
 
@@ -27,20 +28,33 @@ jest.mock('@tanstack/react-query', () => ({
 const mockUseHousehold = useHousehold as jest.Mock;
 const mockGetUser = supabase.auth.getUser as jest.Mock;
 const mockFrom = supabase.from as jest.Mock;
+const mockRpc = supabase.rpc as jest.Mock;
 
 const setupSupabaseMocks = () => {
   const shoppingTripsSingle = jest.fn().mockResolvedValue({ data: { id: 'trip-1' }, error: null });
   const shoppingTripsSelect = jest.fn().mockReturnValue({ single: shoppingTripsSingle });
   const shoppingTripsInsert = jest.fn().mockReturnValue({ select: shoppingTripsSelect });
 
-  const listItemsQuery = {
+  const parentIdsQuery = {
     eq: jest.fn(),
     is: jest.fn(),
+    then: (resolve: (value: { data: Array<{ id: string }>; error: null }) => unknown) =>
+      resolve({ data: [{ id: 'parent-1' }], error: null }),
+  };
+  parentIdsQuery.eq.mockReturnValue(parentIdsQuery);
+  parentIdsQuery.is.mockReturnValue(parentIdsQuery);
+  const listItemsSelect = jest.fn().mockReturnValue(parentIdsQuery);
+
+  const quantitiesQuery = {
+    eq: jest.fn(),
+    is: jest.fn(),
+    in: jest.fn(),
     select: jest.fn().mockResolvedValue({ data: [], error: null }),
   };
-  listItemsQuery.eq.mockReturnValue(listItemsQuery);
-  listItemsQuery.is.mockReturnValue(listItemsQuery);
-  const listItemsUpdate = jest.fn().mockReturnValue(listItemsQuery);
+  quantitiesQuery.eq.mockReturnValue(quantitiesQuery);
+  quantitiesQuery.is.mockReturnValue(quantitiesQuery);
+  quantitiesQuery.in.mockReturnValue(quantitiesQuery);
+  const quantitiesUpdate = jest.fn().mockReturnValue(quantitiesQuery);
 
   mockFrom.mockImplementation((table: string) => {
     if (table === 'shopping_trips') {
@@ -48,11 +62,17 @@ const setupSupabaseMocks = () => {
     }
 
     if (table === 'list_items') {
-      return { update: listItemsUpdate };
+      return { select: listItemsSelect };
+    }
+
+    if (table === 'list_item_quantities') {
+      return { update: quantitiesUpdate };
     }
 
     return {};
   });
+
+  mockRpc.mockResolvedValue({ error: null });
 
   return {
     shoppingTripsInsert,

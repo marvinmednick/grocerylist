@@ -1,6 +1,7 @@
 import { useTogglePurchased, type ListItem } from '../list';
 import { useHousehold } from '@/lib/household';
 import { supabase } from '@/lib/supabase';
+import { makeListItem, makeQuantityEntry } from './_helpers/listItemMock';
 
 const mockUseMutation = jest.fn();
 
@@ -51,7 +52,7 @@ type ToggleMutationOptions = {
 
 describe('useTogglePurchased optimistic updates', () => {
   let latestMutationOptions: ToggleMutationOptions;
-  type CacheListItem = ListItem & { purchased_at?: string | null };
+  type CacheListItem = ListItem;
 
   const setShoppingListCache = (items: CacheListItem[]) => {
     queryCache.set(queryKeyToString(['shopping_list']), items);
@@ -90,100 +91,103 @@ describe('useTogglePurchased optimistic updates', () => {
     useTogglePurchased();
 
     setShoppingListCache([
-      {
+      makeListItem({
         id: 'item-1',
-        name: 'Milk',
-        quantity: '1',
-        is_purchased: false,
-        purchased_by: null,
-        category_id: null,
-        store_id: null,
-        item_id: null,
-      },
+        quantities: [
+          makeQuantityEntry({
+            id: 'entry-1',
+            list_item_id: 'item-1',
+            is_purchased: false,
+            purchased_by: null,
+            purchased_at: null,
+          }),
+        ],
+      }),
     ]);
 
-    await latestMutationOptions.onMutate({ id: 'item-1', is_purchased: true });
+    await latestMutationOptions.onMutate({ id: 'entry-1', is_purchased: true });
 
-    const updatedItem = getShoppingListCache()?.[0];
-    expect(updatedItem?.is_purchased).toBe(true);
-    expect(updatedItem?.purchased_by).toBe('user-123');
-    expect(updatedItem?.purchased_at).toEqual(expect.any(String));
-    expect(new Date(updatedItem?.purchased_at as string).toString()).not.toBe('Invalid Date');
+    const updatedEntry = getShoppingListCache()?.[0].quantities[0];
+    expect(updatedEntry?.is_purchased).toBe(true);
+    expect(updatedEntry?.purchased_by).toBe('user-123');
+    expect(updatedEntry?.purchased_at).toEqual(expect.any(String));
+    expect(new Date(updatedEntry?.purchased_at as string).toString()).not.toBe('Invalid Date');
   });
 
   it('optimistically clears purchased fields when unchecking an item', async () => {
     useTogglePurchased();
 
     setShoppingListCache([
-      {
+      makeListItem({
         id: 'item-1',
-        name: 'Milk',
-        quantity: '1',
-        is_purchased: true,
-        purchased_by: 'user-123',
-        purchased_at: '2026-04-13T10:00:00.000Z',
-        category_id: null,
-        store_id: null,
-        item_id: null,
-      },
+        quantities: [
+          makeQuantityEntry({
+            id: 'entry-1',
+            list_item_id: 'item-1',
+            is_purchased: true,
+            purchased_by: 'user-123',
+            purchased_at: '2026-04-13T10:00:00.000Z',
+          }),
+        ],
+      }),
     ]);
 
-    await latestMutationOptions.onMutate({ id: 'item-1', is_purchased: false });
+    await latestMutationOptions.onMutate({ id: 'entry-1', is_purchased: false });
 
-    const updatedItem = getShoppingListCache()?.[0];
-    expect(updatedItem?.is_purchased).toBe(false);
-    expect(updatedItem?.purchased_at).toBeNull();
-    expect(updatedItem?.purchased_by).toBeNull();
+    const updatedEntry = getShoppingListCache()?.[0].quantities[0];
+    expect(updatedEntry?.is_purchased).toBe(false);
+    expect(updatedEntry?.purchased_at).toBeNull();
+    expect(updatedEntry?.purchased_by).toBeNull();
   });
 
   it('uses purchased_by_override in optimistic cache when provided', async () => {
     useTogglePurchased();
 
     setShoppingListCache([
-      {
+      makeListItem({
         id: 'item-1',
-        name: 'Milk',
-        quantity: '1',
-        is_purchased: false,
-        purchased_by: null,
-        category_id: null,
-        store_id: null,
-        item_id: null,
-      },
+        quantities: [
+          makeQuantityEntry({
+            id: 'entry-1',
+            list_item_id: 'item-1',
+            is_purchased: false,
+            purchased_by: null,
+          }),
+        ],
+      }),
     ]);
 
     await latestMutationOptions.onMutate({
-      id: 'item-1',
+      id: 'entry-1',
       is_purchased: true,
       purchased_by_override: 'user-B',
     });
 
-    const updatedItem = getShoppingListCache()?.[0];
-    expect(updatedItem?.purchased_by).toBe('user-B');
+    const updatedEntry = getShoppingListCache()?.[0].quantities[0];
+    expect(updatedEntry?.purchased_by).toBe('user-B');
   });
 
   it('restores previous snapshot on error after optimistic update', async () => {
     useTogglePurchased();
 
-    const initialState: CacheListItem[] = [
-      {
-        id: 'item-1',
-        name: 'Milk',
-        quantity: '1',
-        is_purchased: false,
-        purchased_by: null,
-        purchased_at: null,
-        category_id: null,
-        store_id: null,
-        item_id: null,
-      },
-    ];
+    const initialState: CacheListItem[] = [makeListItem({
+      id: 'item-1',
+      quantities: [
+        makeQuantityEntry({
+          id: 'entry-1',
+          list_item_id: 'item-1',
+          is_purchased: false,
+          purchased_by: null,
+          purchased_at: null,
+        }),
+      ],
+    })];
     setShoppingListCache(initialState);
 
-    const context = await latestMutationOptions.onMutate({ id: 'item-1', is_purchased: true });
-    expect(getShoppingListCache()?.[0].is_purchased).toBe(true);
+    const context = await latestMutationOptions.onMutate({ id: 'entry-1', is_purchased: true });
+    expect(getShoppingListCache()?.[0].quantities[0].is_purchased).toBe(true);
 
-    latestMutationOptions.onError(new Error('boom'), { id: 'item-1', is_purchased: true }, context);
+    latestMutationOptions.onError(new Error('boom'), { id: 'entry-1', is_purchased: true }, context);
 
     expect(getShoppingListCache()).toEqual(initialState);
   });
@@ -191,8 +195,8 @@ describe('useTogglePurchased optimistic updates', () => {
   it('invalidates shopping_list on onSettled for success and error paths', () => {
     useTogglePurchased();
 
-    latestMutationOptions.onSettled(undefined, null, { id: 'item-1', is_purchased: true }, undefined);
-    latestMutationOptions.onSettled(undefined, new Error('boom'), { id: 'item-1', is_purchased: true }, undefined);
+    latestMutationOptions.onSettled(undefined, null, { id: 'entry-1', is_purchased: true }, undefined);
+    latestMutationOptions.onSettled(undefined, new Error('boom'), { id: 'entry-1', is_purchased: true }, undefined);
 
     expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['shopping_list'] });
     expect(mockInvalidateQueries).toHaveBeenCalledTimes(2);
@@ -208,10 +212,10 @@ describe('useTogglePurchased optimistic updates', () => {
 
     mockFrom.mockReturnValue({ update });
 
-    await latestMutationOptions.mutationFn({ id: 'item-1', is_purchased: true });
+    await latestMutationOptions.mutationFn({ id: 'entry-1', is_purchased: true });
 
-    expect(mockFrom).toHaveBeenCalledWith('list_items');
-    expect(eq).toHaveBeenCalledWith('id', 'item-1');
+    expect(mockFrom).toHaveBeenCalledWith('list_item_quantities');
+    expect(eq).toHaveBeenCalledWith('id', 'entry-1');
     expect(select).not.toHaveBeenCalled();
     expect(single).not.toHaveBeenCalled();
   });

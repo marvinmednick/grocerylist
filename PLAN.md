@@ -42,7 +42,7 @@
 | F100 | Voice Trigger Android Streaming Fix | Done | [specs/F100-voice-trigger-android-fix.md](specs/F100-voice-trigger-android-fix.md) | [#100](https://github.com/marvinmednick/grocerylist/issues/100) |
 | F101 | Voice Input Mode (Speech Recognition API) | Backlog | — | [#101](https://github.com/marvinmednick/grocerylist/issues/101) |
 | F102 | Optimistic Toggle for Checkboxes | Done | [specs/F102-optimistic-toggle.md](specs/F102-optimistic-toggle.md) | [#102](https://github.com/marvinmednick/grocerylist/issues/102) |
-| F103 | List Item / Quantity Model Refactor | Backlog | — | [#103](https://github.com/marvinmednick/grocerylist/issues/103) |
+| F103 | List Item / Quantity Model Refactor | In Review | [specs/F103-list-item-quantity-refactor.md](specs/F103-list-item-quantity-refactor.md) · [design](docs/design/F103-list-item-quantity-refactor.md) | [#103](https://github.com/marvinmednick/grocerylist/issues/103) |
 
 **Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `Needs Fixes` → `In Review` → `Done`
 (`Designed` is optional — features with clear requirements can go `Backlog` → `Specced` directly)
