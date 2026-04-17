@@ -165,10 +165,9 @@ The parent's `archived_at` is set when its last entry is archived (preserves tri
 
 **Warning System:** When a master item is added to the list, `item_store_preferences` rows for that item are checked against the active store. Warnings (`avoided`, `unavailable`, `non_preferred`) are computed and stored in `list_items.warnings` (JSONB). `WarningBadge` renders a per-type icon on the list row; tapping opens a modal with details. User visibility per warning type is controlled by `profiles.warning_preferences`.
 
-### Data Model Summary
+### Data Model
 
-Global (shared across households): `categories`, `units`, `households`
-Household-scoped: `stores`, `items`, `item_store_preferences`, `list_items`, `list_item_quantities`, `shopping_trips`
-User-scoped: `profiles` (one per `auth.users` row, holds `household_id`)
-
-The `items` table has a unique constraint on `(name, household_id)`. Item search (`useSearchItems`) uses prefix matching (`.ilike('name', `${query}%`)`) with a minimum query length of 2.
+See `supabase/full_schema.sql` for the full schema. Tables are scoped by:
+- **Global:** `categories`, `households`
+- **Household-scoped:** all user data (`stores`, `items`, `list_items`, etc.)
+- **User-scoped:** `profiles`
