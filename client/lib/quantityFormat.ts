@@ -12,6 +12,16 @@ export interface QuantityFields {
 
 export type QuantityParsed = Required<QuantityFields>;
 
+export interface CombineOption {
+  type: 'sum' | 'multipack';
+  result: QuantityParsed;
+  label: string;
+}
+
+export interface CombineOptions {
+  options: CombineOption[];
+}
+
 function formatCount(count: number): string {
   if (Number.isInteger(count)) {
     return String(count);
@@ -82,15 +92,191 @@ export function parseQuantityText(text: string, vocabulary: Vocabulary): Quantit
   return parsed;
 }
 
+function emptyQuantity(): QuantityParsed {
+  return {
+    count: null,
+    packageType: null,
+    packagePlural: null,
+    sizeQty: null,
+    sizeUnit: null,
+    sizeDescriptive: null,
+  };
+}
+
+function isEmptyQuantity(quantity: QuantityParsed): boolean {
+  return (
+    quantity.count === null &&
+    quantity.packageType === null &&
+    quantity.packagePlural === null &&
+    quantity.sizeQty === null &&
+    quantity.sizeUnit === null &&
+    quantity.sizeDescriptive === null
+  );
+}
+
+function isPureCount(quantity: QuantityParsed): boolean {
+  return (
+    quantity.count !== null &&
+    quantity.packageType === null &&
+    quantity.packagePlural === null &&
+    quantity.sizeQty === null &&
+    quantity.sizeUnit === null &&
+    quantity.sizeDescriptive === null
+  );
+}
+
+function sameNumber(left: number | null, right: number | null): boolean {
+  if (left === null || right === null) {
+    return left === right;
+  }
+  return Math.abs(left - right) < 0.001;
+}
+
+export function formatCombineOption(option: CombineOption): string {
+  if (option.type === 'sum') {
+    if (
+      option.result.packageType === null &&
+      option.result.sizeQty !== null &&
+      option.result.sizeUnit &&
+      option.result.sizeDescriptive === null &&
+      option.result.count === null
+    ) {
+      return `${formatCount(option.result.sizeQty)} ${option.result.sizeUnit}`;
+    }
+    return formatQuantity(option.result);
+  }
+
+  if (option.result.count !== null && option.result.sizeQty !== null && option.result.sizeUnit) {
+    return `${formatCount(option.result.count)} × ${formatCount(option.result.sizeQty)} ${option.result.sizeUnit}`;
+  }
+
+  return formatQuantity(option.result);
+}
+
+export function combineQuantities(existing: QuantityParsed, incoming: QuantityParsed): CombineOptions | null {
+  const existingEmpty = isEmptyQuantity(existing);
+  const incomingEmpty = isEmptyQuantity(incoming);
+
+  if (existingEmpty && incomingEmpty) {
+    return null;
+  }
+
+  if (existingEmpty || incomingEmpty) {
+    const result = existingEmpty ? incoming : existing;
+    const option: CombineOption = {
+      type: 'sum',
+      result,
+      label: '',
+    };
+    option.label = formatCombineOption(option);
+    return { options: [option] };
+  }
+
+  if (isPureCount(existing) && isPureCount(incoming)) {
+    const option: CombineOption = {
+      type: 'sum',
+      result: { ...emptyQuantity(), count: (existing.count ?? 0) + (incoming.count ?? 0) },
+      label: '',
+    };
+    option.label = formatCombineOption(option);
+    return { options: [option] };
+  }
+
+  if (
+    existing.packageType === null &&
+    incoming.packageType === null &&
+    existing.sizeQty !== null &&
+    incoming.sizeQty !== null &&
+    existing.sizeUnit &&
+    incoming.sizeUnit &&
+    existing.sizeDescriptive === null &&
+    incoming.sizeDescriptive === null &&
+    existing.sizeUnit === incoming.sizeUnit
+  ) {
+    const sumOption: CombineOption = {
+      type: 'sum',
+      result: {
+        ...emptyQuantity(),
+        sizeQty: existing.sizeQty + incoming.sizeQty,
+        sizeUnit: existing.sizeUnit,
+      },
+      label: '',
+    };
+    sumOption.label = formatCombineOption(sumOption);
+
+    const options: CombineOption[] = [sumOption];
+    if (sameNumber(existing.sizeQty, incoming.sizeQty)) {
+      const multipack: CombineOption = {
+        type: 'multipack',
+        result: {
+          ...emptyQuantity(),
+          count: 2,
+          sizeQty: existing.sizeQty,
+          sizeUnit: existing.sizeUnit,
+        },
+        label: '',
+      };
+      multipack.label = formatCombineOption(multipack);
+      options.push(multipack);
+    }
+
+    return { options };
+  }
+
+  if (
+    existing.packageType &&
+    incoming.packageType &&
+    existing.packageType === incoming.packageType &&
+    existing.sizeDescriptive === null &&
+    incoming.sizeDescriptive === null
+  ) {
+    const existingCount = existing.count ?? 1;
+    const incomingCount = incoming.count ?? 1;
+    const hasSameSize = sameNumber(existing.sizeQty, incoming.sizeQty) && existing.sizeUnit === incoming.sizeUnit;
+
+    const sumOption: CombineOption = {
+      type: 'sum',
+      result: {
+        ...emptyQuantity(),
+        count: existingCount + incomingCount,
+        packageType: existing.packageType,
+        packagePlural: existing.packagePlural ?? incoming.packagePlural ?? `${existing.packageType}s`,
+        sizeQty: hasSameSize ? existing.sizeQty : null,
+        sizeUnit: hasSameSize ? existing.sizeUnit : null,
+      },
+      label: '',
+    };
+    sumOption.label = formatCombineOption(sumOption);
+
+    const options: CombineOption[] = [sumOption];
+    const canMultipack = hasSameSize && sameNumber(existing.count, incoming.count);
+    if (canMultipack) {
+      const multipack: CombineOption = {
+        type: 'multipack',
+        result: {
+          ...emptyQuantity(),
+          count: 2,
+          packageType: existing.packageType,
+          packagePlural: existing.packagePlural ?? incoming.packagePlural ?? `${existing.packageType}s`,
+          sizeQty: existing.sizeQty,
+          sizeUnit: existing.sizeUnit,
+        },
+        label: '',
+      };
+      multipack.label = formatCombineOption(multipack);
+      options.push(multipack);
+    }
+
+    return { options };
+  }
+
+  return null;
+}
+
 function toComparableQuantity(text: string, vocabulary: Vocabulary): QuantityParsed {
   return (
     parseQuantityText(text, vocabulary) ?? {
-      count: null,
-      packageType: null,
-      packagePlural: null,
-      sizeQty: null,
-      sizeUnit: null,
-      sizeDescriptive: null,
+      ...emptyQuantity(),
     }
   );
 }

@@ -66,7 +66,7 @@ describe('SmartAddItem quick accept integration', () => {
     jest.clearAllMocks();
     jest.useFakeTimers();
 
-    addItem.mockResolvedValue({ id: 'list-1' });
+    addItem.mockResolvedValue({ parent: { id: 'list-1' }, entry: { id: 'entry-1' } });
     createMasterItem.mockResolvedValue({ id: 'master-new' });
 
     setItems([

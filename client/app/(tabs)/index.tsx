@@ -617,6 +617,7 @@ export default function ShoppingListScreen() {
         <SmartAddItem
           disabled={isHouseholdLoading}
           activeStoreId={activeStoreId}
+          listItems={listItems ?? []}
           onWarningToast={(message) => {
             setToast({ visible: true, message, variant: 'warning' });
           }}

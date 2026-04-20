@@ -278,6 +278,53 @@ export const useAddToList = () => {
   });
 };
 
+export const useAddQuantityEntry = () => {
+  const queryClient = useQueryClient();
+  const { householdId } = useHousehold();
+
+  return useMutation({
+    mutationFn: async ({
+      listItemId,
+      quantity,
+      quantityParsed,
+    }: {
+      listItemId: string;
+      quantity: string | null;
+      quantityParsed: QuantityParsed | null;
+    }) => {
+      if (!householdId) throw new Error('No household ID found');
+
+      incrementLocalMutation();
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const addedBy = session?.user?.id ?? null;
+
+        const { data, error } = await supabase
+          .from('list_item_quantities')
+          .insert({
+            list_item_id: listItemId,
+            quantity,
+            quantity_parsed: quantityParsed,
+            added_by: addedBy,
+            household_id: householdId,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        return data;
+      } finally {
+        decrementLocalMutation();
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shopping_list'] });
+    },
+  });
+};
+
 // Update existing list item parent fields
 export const useUpdateListItemFields = () => {
   const queryClient = useQueryClient();

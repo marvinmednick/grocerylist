@@ -27,6 +27,7 @@ export const DEFAULT_QUICK_ACCEPT_SETTINGS: QuickAcceptSettings = {
 };
 
 interface MyProfile {
+  id: string;
   household_id: string;
   display_name: string | null;
   display_name_short: string | null;

@@ -2,7 +2,13 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { SmartAddItem } from '../SmartAddItem';
 import { useAllItems, useCreateMasterItem, useMasterItemNames } from '@/api/items';
-import { useAddToList, useDeleteListItem } from '@/api/list';
+import {
+  useAddQuantityEntry,
+  useAddToList,
+  useDeleteListItem,
+  useUpdateListItemFields,
+  useUpdateQuantityEntry,
+} from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 import { useWordAliases } from '@/api/aliases';
 import { useUndo } from '@/api/undoContext';
@@ -36,8 +42,11 @@ describe('SmartAddItem', () => {
   const mockUseMasterItemNames = useMasterItemNames as jest.Mock;
   const mockUseAllItems = useAllItems as jest.Mock;
   const mockUseCreateMasterItem = useCreateMasterItem as jest.Mock;
+  const mockUseAddQuantityEntry = useAddQuantityEntry as jest.Mock;
   const mockUseAddToList = useAddToList as jest.Mock;
   const mockUseDeleteListItem = useDeleteListItem as jest.Mock;
+  const mockUseUpdateQuantityEntry = useUpdateQuantityEntry as jest.Mock;
+  const mockUseUpdateListItemFields = useUpdateListItemFields as jest.Mock;
   const mockUseMetadata = useMetadata as jest.Mock;
   const mockUseWordAliases = useWordAliases as jest.Mock;
   const mockUseUndo = useUndo as jest.Mock;
@@ -46,6 +55,9 @@ describe('SmartAddItem', () => {
 
   const pushAction = jest.fn();
   const addItem = jest.fn();
+  const addQuantityEntry = jest.fn();
+  const updateQuantityEntry = jest.fn();
+  const updateListItemFields = jest.fn();
   const createMasterItem = jest.fn();
 
   const baseItem = {
@@ -55,6 +67,40 @@ describe('SmartAddItem', () => {
     default_category_id: 'cat-1',
     alternate_qtys: [],
     item_store_preferences: [],
+  };
+  const duplicateListItem = {
+    id: 'list-parent-1',
+    name: 'Milk',
+    item_id: 'master-1',
+    category_id: 'cat-1',
+    store_id: 'store-1',
+    added_at: '2026-01-01T00:00:00.000Z',
+    added_by: 'user-1',
+    archived_at: null,
+    store: { name: 'Market', color_code: '#2563eb' },
+    quantities: [
+      {
+        id: 'entry-existing-1',
+        list_item_id: 'list-parent-1',
+        quantity: '1 gal',
+        quantity_parsed: {
+          count: null,
+          packageType: null,
+          packagePlural: null,
+          sizeQty: 1,
+          sizeUnit: 'gal',
+          sizeDescriptive: null,
+        },
+        is_purchased: false,
+        purchased_at: null,
+        purchased_by: null,
+        trip_id: null,
+        archived_at: null,
+        added_at: '2026-01-01T00:00:00.000Z',
+        added_by: 'user-1',
+        household_id: 'household-1',
+      },
+    ],
   };
 
   const setItems = (items: any[]) => {
@@ -71,13 +117,19 @@ describe('SmartAddItem', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    addItem.mockResolvedValue({ id: 'list-1' });
+    addItem.mockResolvedValue({ parent: { id: 'list-1' }, entry: { id: 'entry-1' } });
+    addQuantityEntry.mockResolvedValue({ id: 'entry-new' });
+    updateQuantityEntry.mockResolvedValue({});
+    updateListItemFields.mockResolvedValue({});
     createMasterItem.mockResolvedValue({ id: 'master-2' });
 
     setItems([baseItem]);
     mockUseCreateMasterItem.mockReturnValue({ mutateAsync: createMasterItem });
+    mockUseAddQuantityEntry.mockReturnValue({ mutateAsync: addQuantityEntry });
     mockUseAddToList.mockReturnValue({ mutateAsync: addItem });
     mockUseDeleteListItem.mockReturnValue({ mutateAsync: jest.fn() });
+    mockUseUpdateQuantityEntry.mockReturnValue({ mutateAsync: updateQuantityEntry });
+    mockUseUpdateListItemFields.mockReturnValue({ mutateAsync: updateListItemFields });
     mockUseMetadata.mockReturnValue({
       data: {
         stores: [
@@ -91,6 +143,7 @@ describe('SmartAddItem', () => {
     mockUseUndo.mockReturnValue({ pushAction });
     mockUseMyProfile.mockReturnValue({
       data: {
+        id: 'user-1',
         warning_preferences: {
           avoided: 'toast_and_badge',
           unavailable: 'toast_and_badge',
@@ -103,7 +156,7 @@ describe('SmartAddItem', () => {
   });
 
   it('does not render store pills in dropdown rows', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
 
@@ -114,8 +167,141 @@ describe('SmartAddItem', () => {
     expect(screen.queryByText(/Store:/)).toBeNull();
   });
 
+  it('shows "on list" indicator for items already on the shopping list', async () => {
+    render(<SmartAddItem activeStoreId="store-1" listItems={[duplicateListItem as any]} />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
+
+    await waitFor(() => {
+      expect(screen.getByText('on list')).toBeTruthy();
+    });
+  });
+
+  it('does not show "on list" for items not on the list', async () => {
+    render(
+      <SmartAddItem
+        activeStoreId="store-1"
+        listItems={[{ ...duplicateListItem, item_id: 'other-item' } as any]}
+      />
+    );
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
+
+    await waitFor(() => {
+      expect(screen.getByText('Milk')).toBeTruthy();
+    });
+    expect(screen.queryByText('on list')).toBeNull();
+  });
+
+  it('shows duplicate dialog instead of adding when item is already on list', async () => {
+    render(<SmartAddItem activeStoreId="store-1" listItems={[duplicateListItem as any]} />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
+    fireEvent.press(await screen.findByText('Milk'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Duplicate Item')).toBeTruthy();
+    });
+    expect(addItem).not.toHaveBeenCalled();
+  });
+
+  it('registers undo after Combine action', async () => {
+    render(<SmartAddItem activeStoreId="store-1" listItems={[duplicateListItem as any]} />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
+    fireEvent.press(await screen.findByText('Milk'));
+    fireEvent.press(await screen.findByText('2 gal'));
+
+    await waitFor(() => {
+      expect(pushAction).toHaveBeenCalledWith(
+        expect.objectContaining({ label: expect.stringContaining('Combined Milk') })
+      );
+    });
+  });
+
+  it('registers undo after Add New action', async () => {
+    render(<SmartAddItem activeStoreId="store-1" listItems={[duplicateListItem as any]} />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
+    fireEvent.press(await screen.findByText('Milk'));
+    fireEvent.press(await screen.findByText('Add New'));
+
+    await waitFor(() => {
+      expect(pushAction).toHaveBeenCalledWith(
+        expect.objectContaining({ label: expect.stringContaining('Added Milk') })
+      );
+    });
+  });
+
+  it('restores the typed query when duplicate dialog Cancel is tapped', async () => {
+    render(<SmartAddItem activeStoreId="store-1" listItems={[duplicateListItem as any]} />);
+
+    const input = screen.getByPlaceholderText('Add item...');
+    fireEvent.changeText(input, 'milk');
+    fireEvent.press(await screen.findByText('Milk'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Duplicate Item')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('duplicate-cancel'));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Duplicate Item')).toBeNull();
+    });
+    expect(screen.getByPlaceholderText('Add item...').props.value).toBe('milk');
+  });
+
+  it('restores the typed query when duplicate dialog close button is tapped', async () => {
+    render(<SmartAddItem activeStoreId="store-1" listItems={[duplicateListItem as any]} />);
+
+    const input = screen.getByPlaceholderText('Add item...');
+    fireEvent.changeText(input, 'milk');
+    fireEvent.press(await screen.findByText('Milk'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Duplicate Item')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByTestId('duplicate-dialog-close'));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Duplicate Item')).toBeNull();
+    });
+    expect(screen.getByPlaceholderText('Add item...').props.value).toBe('milk');
+  });
+
+  it('cross-store Add New creates a new parent at the incoming store', async () => {
+    render(<SmartAddItem activeStoreId="store-2" listItems={[duplicateListItem as any]} />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
+    fireEvent.press(await screen.findByText('Milk'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Duplicate Item')).toBeTruthy();
+      expect(screen.getByText('2 gal at Market')).toBeTruthy();
+      expect(screen.getByText('2 gal at Alt Market')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText('Add New'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Milk',
+          item_id: 'master-1',
+          store_id: 'store-2',
+        })
+      );
+    });
+    expect(addQuantityEntry).not.toHaveBeenCalled();
+    expect(pushAction).toHaveBeenCalledWith(
+      expect.objectContaining({ label: expect.stringContaining('Added Milk') })
+    );
+  });
+
   it('uses activeStoreId for quick-add store_id', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByText('Milk'));
@@ -130,7 +316,7 @@ describe('SmartAddItem', () => {
   });
 
   it('passes quantity_parsed with packagePlural on quick-add', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), '2 cans milk');
     fireEvent.press(await screen.findByText('Milk'));
@@ -152,7 +338,7 @@ describe('SmartAddItem', () => {
   });
 
   it('normalizes quantity to formatQuantity output on quick-add when parsed', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), '2 Cans milk');
     fireEvent.press(await screen.findByText('Milk'));
@@ -172,7 +358,7 @@ describe('SmartAddItem', () => {
   });
 
   it('passes null quantity_parsed when interpretation has no quantity fields', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByText('Milk'));
@@ -187,7 +373,7 @@ describe('SmartAddItem', () => {
   });
 
   it('passes raw quantity text when quantity_parsed is null', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByText('Milk'));
@@ -204,7 +390,7 @@ describe('SmartAddItem', () => {
 
   it('uses activeStoreId for one-off add store_id', async () => {
     setItems([]);
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
     fireEvent.press(screen.getByText('Add "Dragonfruit" (One-time)'));
@@ -220,7 +406,7 @@ describe('SmartAddItem', () => {
 
   it('passes quantity_parsed on one-off add when qty is parseable', async () => {
     setItems([]);
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
     fireEvent.press(screen.getByTestId('one-off-qty-chip-other'));
@@ -245,7 +431,7 @@ describe('SmartAddItem', () => {
   });
 
   it('defaults edit modal store to activeStoreId', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('edit-add-master-1'));
@@ -255,7 +441,7 @@ describe('SmartAddItem', () => {
   });
 
   it('renders store dropdown trigger instead of store pills in the Add Detail modal', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('edit-add-master-1'));
@@ -265,7 +451,7 @@ describe('SmartAddItem', () => {
   });
 
   it('opens the store dropdown when trigger is tapped', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('edit-add-master-1'));
@@ -277,7 +463,7 @@ describe('SmartAddItem', () => {
   });
 
   it('selects a store and closes dropdown on option tap', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('edit-add-master-1'));
@@ -291,7 +477,7 @@ describe('SmartAddItem', () => {
   });
 
   it('clears store and closes dropdown when "No store" is tapped', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('edit-add-master-1'));
@@ -305,7 +491,7 @@ describe('SmartAddItem', () => {
   });
 
   it('toggles dropdown closed when trigger is tapped again', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('edit-add-master-1'));
@@ -317,7 +503,7 @@ describe('SmartAddItem', () => {
   });
 
   it('renders a Cancel button in the master-item Add Detail modal action row', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('edit-add-master-1'));
@@ -326,7 +512,7 @@ describe('SmartAddItem', () => {
   });
 
   it('Cancel button dismisses the Add Detail modal and resets form state', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('edit-add-master-1'));
@@ -358,7 +544,7 @@ describe('SmartAddItem', () => {
       },
     ]);
 
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByText('Milk'));
@@ -389,7 +575,7 @@ describe('SmartAddItem', () => {
       },
     ]);
 
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByText('Milk'));
@@ -406,7 +592,7 @@ describe('SmartAddItem', () => {
   });
 
   it('generates non_standard_qty warning', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('edit-add-master-1'));
@@ -440,7 +626,7 @@ describe('SmartAddItem', () => {
       },
     ]);
 
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('edit-add-master-1'));
 
@@ -450,7 +636,7 @@ describe('SmartAddItem', () => {
   it('does not show warning callout in Add Detail modal for one-off item', async () => {
     setItems([]);
 
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
     fireEvent.press(screen.getByTestId('edit-add-one-off'));
 
@@ -476,7 +662,7 @@ describe('SmartAddItem', () => {
       },
     ]);
 
-    render(<SmartAddItem activeStoreId="store-1" onWarningToast={onWarningToast} />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} onWarningToast={onWarningToast} />);
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByText('Milk'));
 
@@ -511,7 +697,7 @@ describe('SmartAddItem', () => {
       },
     ]);
 
-    render(<SmartAddItem activeStoreId="store-1" onWarningToast={onWarningToast} />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} onWarningToast={onWarningToast} />);
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByText('Milk'));
 
@@ -547,7 +733,7 @@ describe('SmartAddItem', () => {
       },
     ]);
 
-    render(<SmartAddItem activeStoreId="store-1" onWarningToast={onWarningToast} />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} onWarningToast={onWarningToast} />);
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByText('Milk'));
 
@@ -573,7 +759,7 @@ describe('SmartAddItem', () => {
       },
     ]);
 
-    render(<SmartAddItem activeStoreId="store-1" onWarningToast={onWarningToast} />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} onWarningToast={onWarningToast} />);
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('edit-add-master-1'));
     fireEvent.press(await screen.findByText('Add to List'));
@@ -585,7 +771,7 @@ describe('SmartAddItem', () => {
 
   it('generates no warnings for one-off items', async () => {
     setItems([]);
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
     fireEvent.press(screen.getByText('Add "Dragonfruit" (One-time)'));
@@ -600,7 +786,7 @@ describe('SmartAddItem', () => {
   });
 
   it('renders scoped "Other" chips for both result and one-off rows', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
 
@@ -613,7 +799,7 @@ describe('SmartAddItem', () => {
   });
 
   it('opens the freeform qty input when "Other" chip is tapped', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('result-qty-chip-other-master-1'));
@@ -622,7 +808,7 @@ describe('SmartAddItem', () => {
   });
 
   it('confirms freeform qty via Return and adds with that qty', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('result-qty-chip-other-master-1'));
@@ -641,7 +827,7 @@ describe('SmartAddItem', () => {
   });
 
   it('shows the typed custom value as the active "Other" chip label after confirm', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('result-qty-chip-other-master-1'));
@@ -653,7 +839,7 @@ describe('SmartAddItem', () => {
   });
 
   it('does nothing when Return is pressed on empty "Other" input', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('result-qty-chip-other-master-1'));
@@ -672,7 +858,7 @@ describe('SmartAddItem', () => {
   });
 
   it('resets "Other" chip label when a predefined chip is selected after custom qty', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByTestId('result-qty-chip-other-master-1'));
@@ -688,7 +874,7 @@ describe('SmartAddItem', () => {
   });
 
   it('shows two actions in one-off edit modal and one for master edit modal', async () => {
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
     fireEvent.press(screen.getByTestId('edit-add-one-off'));
@@ -707,7 +893,7 @@ describe('SmartAddItem', () => {
 
   it('one-off edit Add to List uses null item_id and does not create master item', async () => {
     setItems([]);
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
     fireEvent.press(screen.getByTestId('edit-add-one-off'));
@@ -727,7 +913,7 @@ describe('SmartAddItem', () => {
 
   it('one-off edit Save & Add creates master item then adds with non-null item_id', async () => {
     setItems([]);
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
     fireEvent.press(screen.getByTestId('edit-add-one-off'));
@@ -747,9 +933,103 @@ describe('SmartAddItem', () => {
     );
   });
 
+  it('one-off edit Save & Add waits to create the master item until duplicate resolution is confirmed', async () => {
+    setItems([]);
+    render(
+      <SmartAddItem
+        activeStoreId="store-1"
+        listItems={[
+          {
+            ...duplicateListItem,
+            id: 'list-parent-dragonfruit',
+            name: 'Dragonfruit',
+            item_id: null,
+            quantities: [
+              {
+                ...duplicateListItem.quantities[0],
+                id: 'entry-dragonfruit-1',
+                list_item_id: 'list-parent-dragonfruit',
+                quantity: '1',
+                quantity_parsed: null,
+              },
+            ],
+          } as any,
+        ]}
+      />
+    );
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
+    fireEvent.press(screen.getByTestId('edit-add-one-off'));
+    fireEvent.press(await screen.findByText('Save & Add'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Duplicate Item')).toBeTruthy();
+    });
+    expect(createMasterItem).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId('duplicate-cancel'));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Duplicate Item')).toBeNull();
+    });
+    expect(createMasterItem).not.toHaveBeenCalled();
+    expect(addItem).not.toHaveBeenCalled();
+    expect(addQuantityEntry).not.toHaveBeenCalled();
+  });
+
+  it('one-off edit Save & Add creates the master item after duplicate Add New is confirmed', async () => {
+    setItems([]);
+    render(
+      <SmartAddItem
+        activeStoreId="store-1"
+        listItems={[
+          {
+            ...duplicateListItem,
+            id: 'list-parent-dragonfruit',
+            name: 'Dragonfruit',
+            item_id: null,
+            quantities: [
+              {
+                ...duplicateListItem.quantities[0],
+                id: 'entry-dragonfruit-1',
+                list_item_id: 'list-parent-dragonfruit',
+                quantity: '1',
+                quantity_parsed: null,
+              },
+            ],
+          } as any,
+        ]}
+      />
+    );
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
+    fireEvent.press(screen.getByTestId('edit-add-one-off'));
+    fireEvent.press(await screen.findByText('Save & Add'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Duplicate Item')).toBeTruthy();
+    });
+    expect(createMasterItem).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByText('Add New'));
+
+    await waitFor(() => {
+      expect(createMasterItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Dragonfruit',
+        })
+      );
+      expect(addQuantityEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          listItemId: 'list-parent-dragonfruit',
+        })
+      );
+    });
+  });
+
   it('shows one-off qty chips and quick add defaults to quantity 1 with null category', async () => {
     setItems([]);
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
 
@@ -770,7 +1050,7 @@ describe('SmartAddItem', () => {
 
   it('one-off qty other chip submit updates quick add quantity payload', async () => {
     setItems([]);
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
     fireEvent.press(screen.getByTestId('one-off-qty-chip-other'));
@@ -789,7 +1069,7 @@ describe('SmartAddItem', () => {
 
   it('one-off edit Add to List keeps category null when unset', async () => {
     setItems([]);
-    render(<SmartAddItem activeStoreId="store-1" />);
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'Dragonfruit');
     fireEvent.press(screen.getByTestId('edit-add-one-off'));

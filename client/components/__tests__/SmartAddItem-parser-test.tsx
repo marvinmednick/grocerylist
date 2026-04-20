@@ -51,7 +51,7 @@ describe('SmartAddItem parser integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    addItem.mockResolvedValue({ id: 'list-1' });
+    addItem.mockResolvedValue({ parent: { id: 'list-1' }, entry: { id: 'entry-1' } });
     createMasterItem.mockResolvedValue({ id: 'master-new' });
 
     mockUseMasterItemNames.mockReturnValue({
@@ -435,7 +435,7 @@ describe('SmartAddItem alias composition scenarios', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    addItem.mockResolvedValue({ id: 'list-1' });
+    addItem.mockResolvedValue({ parent: { id: 'list-1' }, entry: { id: 'entry-1' } });
 
     mockUseMasterItemNames.mockReturnValue({ data: ALIAS_SCENARIO_REFS });
     mockUseAllItems.mockReturnValue({ data: ALIAS_SCENARIO_ALL_ITEMS });
@@ -564,7 +564,7 @@ describe('SmartAddItem fuzzy composition scenarios', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    addItem.mockResolvedValue({ id: 'list-1' });
+    addItem.mockResolvedValue({ parent: { id: 'list-1' }, entry: { id: 'entry-1' } });
 
     mockUseMasterItemNames.mockReturnValue({ data: FUZZY_SCENARIO_REFS });
     mockUseAllItems.mockReturnValue({ data: FUZZY_SCENARIO_ALL_ITEMS });

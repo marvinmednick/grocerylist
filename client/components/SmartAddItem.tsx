@@ -22,11 +22,19 @@ import {
   type Warning,
 } from '@/api/items';
 import { useWordAliases } from '@/api/aliases';
-import { useAddToList, useDeleteListItem } from '@/api/list';
+import {
+  type ListItem,
+  useAddQuantityEntry,
+  useAddToList,
+  useDeleteListItem,
+  useUpdateListItemFields,
+  useUpdateQuantityEntry,
+} from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
 import { DEFAULT_QUICK_ACCEPT_SETTINGS, useMyProfile } from '@/api/profile';
 import { useVocabulary } from '@/api/vocabulary';
+import { DuplicateResolutionDialog } from '@/components/DuplicateResolutionDialog';
 import { WarningCallout } from '@/components/WarningCallout';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -41,12 +49,22 @@ import {
 } from '@/lib/parser';
 import { DEFAULT_VOCABULARY } from '@/lib/vocabulary';
 import { editDistanceThreshold, levenshteinDistance, normalizePlural } from '@/lib/fuzzyMatch';
-import { formatQuantity, isPartialMatch, parseQuantityText, quantityEquals, type QuantityParsed } from '@/lib/quantityFormat';
+import {
+  combineQuantities,
+  formatQuantity,
+  isPartialMatch,
+  parseQuantityText,
+  quantityEquals,
+  type CombineOption,
+  type QuantityParsed,
+} from '@/lib/quantityFormat';
+import { classifyDuplicateState, findDuplicate, type DuplicateState } from '@/lib/duplicateDetection';
 import { useQuickAcceptState } from '@/lib/useQuickAcceptState';
 
 interface SmartAddItemProps {
   disabled?: boolean;
   activeStoreId: string;
+  listItems: ListItem[];
   onWarningToast?: (message: string) => void;
 }
 
@@ -62,6 +80,19 @@ type AliasMatchMetadata = {
   canonicalName: string;
   matchedVia: 'alias';
 };
+
+interface PendingAddDetails {
+  itemId: string | null;
+  name: string;
+  quantity: string;
+  quantityParsed: QuantityParsed | null;
+  storeId: string | null;
+  categoryId: string | null;
+  warnings: Warning[];
+  matchMetadata?: AliasMatchMetadata;
+  prepare?: () => Promise<boolean>;
+  forwardAction: () => Promise<{ parent: { id: string }; entry: { id: string } }>;
+}
 
 const MAX_VISIBLE_QTY_PILLS = 7;
 const MAX_VISIBLE_STORE_PILLS = 3;
@@ -104,7 +135,7 @@ function normalizeQuantityText(rawQuantity: string, parsed: QuantityParsed | nul
   return formatQuantity(parsed);
 }
 
-export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }: SmartAddItemProps) {
+export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], onWarningToast }: SmartAddItemProps) {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -123,14 +154,29 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
   const [editStoreHint, setEditStoreHint] = useState<string | null>(null);
   const [editInterpretation, setEditInterpretation] = useState<ParsedInput | null>(null);
   const [editShowMoreStores, setEditShowMoreStores] = useState(false);
+  const [duplicateMatch, setDuplicateMatch] = useState<ListItem | null>(null);
+  const [pendingAdd, setPendingAdd] = useState<PendingAddDetails | null>(null);
+  const [savedQuery, setSavedQuery] = useState('');
+  const savedQueryRef = useRef('');
   const editQtyInputRef = useRef<TextInput>(null);
 
   const { data: masterItemNames = [] } = useMasterItemNames();
   const { data: loadedWordAliases } = useWordAliases();
   const { data: allItems = [] } = useAllItems();
   const { mutateAsync: addItem } = useAddToList();
+  const { mutateAsync: addQuantityEntry = async () => {
+    throw new Error('useAddQuantityEntry is unavailable');
+  } } = useAddQuantityEntry() ?? {};
   const { mutateAsync: createMasterItem } = useCreateMasterItem();
-  const { mutateAsync: deleteItem } = useDeleteListItem();
+  const { mutateAsync: deleteItem = async () => {
+    throw new Error('useDeleteListItem is unavailable');
+  } } = useDeleteListItem() ?? {};
+  const { mutateAsync: updateQuantityEntry = async () => {
+    throw new Error('useUpdateQuantityEntry is unavailable');
+  } } = useUpdateQuantityEntry() ?? {};
+  const { mutateAsync: updateListItemFields = async () => {
+    throw new Error('useUpdateListItemFields is unavailable');
+  } } = useUpdateListItemFields() ?? {};
   const { data: metadata } = useMetadata();
   const { data: vocabulary } = useVocabulary();
   const myProfileQuery = useMyProfile();
@@ -145,12 +191,27 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
   const masterNameById = useMemo(() => {
     return new Map(masterItemNames.map((item) => [item.id, item]));
   }, [masterItemNames]);
+  const onListItemIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const item of listItems) {
+      if (item.item_id) {
+        ids.add(item.item_id);
+      }
+    }
+    return ids;
+  }, [listItems]);
 
   const vocab = vocabulary ?? DEFAULT_VOCABULARY;
   const wordAliases = loadedWordAliases ?? new Map<string, string>();
   const storeNamesList = useMemo(() => {
     return (metadata?.stores || []).map((s) => s.name);
   }, [metadata?.stores]);
+  const storeNameById = useMemo(() => {
+    return new Map((metadata?.stores || []).map((store) => [store.id, store.name]));
+  }, [metadata?.stores]);
+  const isOnList = (itemId: string | null | undefined): boolean => {
+    return !!itemId && onListItemIds.has(itemId);
+  };
 
   const parseResult = useMemo(() => {
     const normalizedQuery = normalizeVoiceInput(query, storeNamesList);
@@ -340,6 +401,15 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     }));
   };
 
+  const emptyParsedQuantity: QuantityParsed = {
+    count: null,
+    packageType: null,
+    packagePlural: null,
+    sizeQty: null,
+    sizeUnit: null,
+    sizeDescriptive: null,
+  };
+
   const clearAndClose = () => {
     setQuery('');
     setIsEditing(false);
@@ -353,7 +423,38 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     setEditStoreHint(null);
     setEditInterpretation(null);
     setEditShowMoreStores(false);
+    setDuplicateMatch(null);
+    setPendingAdd(null);
+    setSavedQuery('');
+    savedQueryRef.current = '';
     Keyboard.dismiss();
+  };
+
+  const dismissDuplicateDialog = () => {
+    const restoredQuery = savedQueryRef.current || savedQuery;
+    setDuplicateMatch(null);
+    setPendingAdd(null);
+    setQuery(restoredQuery);
+  };
+
+  const maybeOpenDuplicateDialog = (itemId: string | null, name: string, pending: PendingAddDetails): boolean => {
+    const match = findDuplicate(itemId, name, listItems);
+    if (!match) {
+      return false;
+    }
+    savedQueryRef.current = query;
+    setSavedQuery(query);
+    setPendingAdd(pending);
+    setDuplicateMatch(match);
+    return true;
+  };
+
+  const getTargetEntry = (match: ListItem) => {
+    return (
+      match.quantities.find((entry) => !entry.archived_at && !entry.is_purchased) ??
+      match.quantities.find((entry) => !entry.archived_at) ??
+      null
+    );
   };
 
   const aliasMatchMetadata = (interpretation?: ParsedInput | null): AliasMatchMetadata | undefined => {
@@ -390,6 +491,195 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     }
   };
 
+  const duplicateState = useMemo<DuplicateState | null>(() => {
+    if (!duplicateMatch) {
+      return null;
+    }
+    return classifyDuplicateState(duplicateMatch, pendingAdd?.storeId ?? null, myProfile?.id ?? null);
+  }, [duplicateMatch, pendingAdd?.storeId, myProfile?.id]);
+
+  const duplicateCombineOptions = useMemo(() => {
+    if (!duplicateMatch || !pendingAdd || !duplicateState || duplicateState.startsWith('purchased-')) {
+      return null;
+    }
+
+    const targetEntry = getTargetEntry(duplicateMatch);
+    const existingParsed =
+      targetEntry?.quantity_parsed ??
+      parseQuantityText(targetEntry?.quantity ?? '', vocab) ??
+      emptyParsedQuantity;
+    const incomingParsed =
+      pendingAdd.quantityParsed ??
+      parseQuantityText(pendingAdd.quantity, vocab) ??
+      emptyParsedQuantity;
+    const combined = combineQuantities(existingParsed, incomingParsed);
+    if (!combined) {
+      return null;
+    }
+
+    if (duplicateState === 'active-different-store') {
+      return combined.options.filter((option) => option.type === 'sum');
+    }
+
+    return combined.options;
+  }, [duplicateMatch, pendingAdd, duplicateState, vocab]);
+
+  const handleDuplicateCombine = async (option: CombineOption, targetStoreId?: string) => {
+    if (!duplicateMatch || !pendingAdd) {
+      return;
+    }
+
+    if (pendingAdd.prepare && !(await pendingAdd.prepare())) {
+      return;
+    }
+
+    const targetEntry = getTargetEntry(duplicateMatch);
+    if (!targetEntry) {
+      return;
+    }
+
+    const previousQty = targetEntry.quantity;
+    const previousQtyParsed = targetEntry.quantity_parsed;
+    const previousStoreId = duplicateMatch.store_id;
+    const nextQty = formatQuantity(option.result);
+    const shouldMoveStore = !!targetStoreId && targetStoreId !== previousStoreId;
+
+    if (shouldMoveStore) {
+      await updateListItemFields({ id: duplicateMatch.id, store_id: targetStoreId });
+    }
+    await updateQuantityEntry({
+      id: targetEntry.id,
+      quantity: nextQty,
+      quantity_parsed: option.result,
+    });
+
+    pushAction({
+      label: `Combined ${duplicateMatch.name}`,
+      undo: async () => {
+        if (shouldMoveStore) {
+          await updateListItemFields({ id: duplicateMatch.id, store_id: previousStoreId });
+        }
+        await updateQuantityEntry({
+          id: targetEntry.id,
+          quantity: previousQty,
+          quantity_parsed: previousQtyParsed,
+        });
+      },
+      redo: async () => {
+        if (shouldMoveStore) {
+          await updateListItemFields({ id: duplicateMatch.id, store_id: targetStoreId });
+        }
+        await updateQuantityEntry({
+          id: targetEntry.id,
+          quantity: nextQty,
+          quantity_parsed: option.result,
+        });
+      },
+    });
+
+    clearAndClose();
+  };
+
+  const handleDuplicateAddNew = async () => {
+    if (!duplicateMatch || !pendingAdd || !duplicateState) {
+      return;
+    }
+
+    if (pendingAdd.prepare && !(await pendingAdd.prepare())) {
+      return;
+    }
+
+    if (duplicateState === 'active-different-store') {
+      const result = await pendingAdd.forwardAction();
+      const tracker = { currentEntryId: result.entry.id };
+
+      pushAction({
+        label: `Added ${pendingAdd.name}`,
+        undo: async () => {
+          await deleteItem({ entryId: tracker.currentEntryId });
+        },
+        redo: async () => {
+          const redone = await pendingAdd.forwardAction();
+          tracker.currentEntryId = redone.entry.id;
+        },
+      });
+
+      clearAndClose();
+      return;
+    }
+
+    const normalizedQty = normalizeQuantityText(pendingAdd.quantity, pendingAdd.quantityParsed);
+    const result = await addQuantityEntry({
+      listItemId: duplicateMatch.id,
+      quantity: normalizedQty,
+      quantityParsed: pendingAdd.quantityParsed,
+    });
+    const tracker = { currentEntryId: result.id as string };
+
+    pushAction({
+      label: `Added ${duplicateMatch.name} (${pendingAdd.quantity})`,
+      undo: async () => {
+        await deleteItem({ entryId: tracker.currentEntryId });
+      },
+      redo: async () => {
+        const redone = await addQuantityEntry({
+          listItemId: duplicateMatch.id,
+          quantity: normalizedQty,
+          quantityParsed: pendingAdd.quantityParsed,
+        });
+        tracker.currentEntryId = redone.id as string;
+      },
+    });
+
+    clearAndClose();
+  };
+
+  const handleDuplicateCustom = async (customQty: string) => {
+    if (!duplicateMatch || !pendingAdd) {
+      return;
+    }
+
+    if (pendingAdd.prepare && !(await pendingAdd.prepare())) {
+      return;
+    }
+
+    const targetEntry = getTargetEntry(duplicateMatch);
+    if (!targetEntry) {
+      return;
+    }
+
+    const previousQty = targetEntry.quantity;
+    const previousQtyParsed = targetEntry.quantity_parsed;
+    const parsedCustom = parseQuantityText(customQty, vocab);
+    const normalizedQty = normalizeQuantityText(customQty, parsedCustom);
+
+    await updateQuantityEntry({
+      id: targetEntry.id,
+      quantity: normalizedQty,
+      quantity_parsed: parsedCustom,
+    });
+
+    pushAction({
+      label: `Updated ${duplicateMatch.name}`,
+      undo: async () => {
+        await updateQuantityEntry({
+          id: targetEntry.id,
+          quantity: previousQty,
+          quantity_parsed: previousQtyParsed,
+        });
+      },
+      redo: async () => {
+        await updateQuantityEntry({
+          id: targetEntry.id,
+          quantity: normalizedQty,
+          quantity_parsed: parsedCustom,
+        });
+      },
+    });
+
+    clearAndClose();
+  };
+
   const onCommitAdd = async (item: MasterItem, interpretation: ParsedInput, rowKey: string) => {
     Keyboard.dismiss();
     const selection = getSelection(rowKey, interpretation);
@@ -401,33 +691,46 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
       item.default_qty,
       item.alternate_qtys
     );
-
-    const forwardAction = async () => {
-      const quantityParsed = extractQuantityParsed(interpretation);
-      const normalizedQty = normalizeQuantityText(selection.qty, quantityParsed);
-      return await addItem({
-        name: item.name,
-        item_id: item.id,
-        quantity: normalizedQty,
-        quantity_parsed: quantityParsed,
-        store_id: selection.storeId,
-        category_id: item.default_category_id,
-        warnings,
-        match_metadata: aliasMatchMetadata(interpretation),
-      });
+    const quantityParsed = extractQuantityParsed(interpretation);
+    const normalizedQty = normalizeQuantityText(selection.qty, quantityParsed);
+    const pendingDetails: PendingAddDetails = {
+      itemId: item.id,
+      name: item.name,
+      quantity: selection.qty,
+      quantityParsed,
+      storeId: selection.storeId,
+      categoryId: item.default_category_id,
+      warnings,
+      matchMetadata: aliasMatchMetadata(interpretation),
+      forwardAction: async () => {
+        return await addItem({
+          name: item.name,
+          item_id: item.id,
+          quantity: normalizedQty,
+          quantity_parsed: quantityParsed,
+          store_id: selection.storeId,
+          category_id: item.default_category_id,
+          warnings,
+          match_metadata: aliasMatchMetadata(interpretation),
+        });
+      },
     };
 
-    const result = await forwardAction();
-    const tracker = { currentId: result.id };
+    if (maybeOpenDuplicateDialog(item.id, item.name, pendingDetails)) {
+      return;
+    }
+
+    const result = await pendingDetails.forwardAction();
+    const tracker = { currentEntryId: result.entry.id };
 
     pushAction({
       label: `Added ${name} (${selection.qty})`,
       undo: async () => {
-        await deleteItem(tracker.currentId);
+        await deleteItem({ entryId: tracker.currentEntryId });
       },
       redo: async () => {
-        const redone = await forwardAction();
-        tracker.currentId = redone.id;
+        const redone = await pendingDetails.forwardAction();
+        tracker.currentEntryId = redone.entry.id;
       },
     });
 
@@ -437,31 +740,44 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
 
   const onOneOffAdd = async () => {
     const name = parseResult.rawInput;
-    const forwardAction = async () => {
-      const quantityParsed = parseQuantityText(oneOffQty, vocab);
-      const normalizedQty = normalizeQuantityText(oneOffQty, quantityParsed);
-      return await addItem({
-        name: parseResult.rawInput,
-        item_id: null,
-        quantity: normalizedQty,
-        quantity_parsed: quantityParsed,
-        store_id: activeStoreId || null,
-        category_id: null,
-        warnings: [],
-      });
+    const quantityParsed = parseQuantityText(oneOffQty, vocab);
+    const normalizedQty = normalizeQuantityText(oneOffQty, quantityParsed);
+    const pendingDetails: PendingAddDetails = {
+      itemId: null,
+      name,
+      quantity: oneOffQty,
+      quantityParsed,
+      storeId: activeStoreId || null,
+      categoryId: null,
+      warnings: [],
+      forwardAction: async () => {
+        return await addItem({
+          name: parseResult.rawInput,
+          item_id: null,
+          quantity: normalizedQty,
+          quantity_parsed: quantityParsed,
+          store_id: activeStoreId || null,
+          category_id: null,
+          warnings: [],
+        });
+      },
     };
 
-    const result = await forwardAction();
-    const tracker = { currentId: result.id };
+    if (maybeOpenDuplicateDialog(null, parseResult.rawInput, pendingDetails)) {
+      return;
+    }
+
+    const result = await pendingDetails.forwardAction();
+    const tracker = { currentEntryId: result.entry.id };
 
     pushAction({
       label: `Added ${name}`,
       undo: async () => {
-        await deleteItem(tracker.currentId);
+        await deleteItem({ entryId: tracker.currentEntryId });
       },
       redo: async () => {
-        const redone = await forwardAction();
-        tracker.currentId = redone.id;
+        const redone = await pendingDetails.forwardAction();
+        tracker.currentEntryId = redone.entry.id;
       },
     });
 
@@ -532,32 +848,46 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
 
   const onOneOffEditAdd = async () => {
     const itemName = selectedItem?.name || query;
-    const forwardAction = async () => {
-      const quantityParsed = parseQuantityText(editQty, vocab);
-      const normalizedQty = normalizeQuantityText(editQty, quantityParsed);
-      return await addItem({
-        name: itemName,
-        item_id: null,
-        quantity: normalizedQty,
-        quantity_parsed: quantityParsed,
-        store_id: editStoreId || null,
-        category_id: editCategoryId || null,
-        warnings: [],
-        match_metadata: aliasMatchMetadata(editInterpretation),
-      });
+    const quantityParsed = parseQuantityText(editQty, vocab);
+    const normalizedQty = normalizeQuantityText(editQty, quantityParsed);
+    const pendingDetails: PendingAddDetails = {
+      itemId: null,
+      name: itemName,
+      quantity: editQty,
+      quantityParsed,
+      storeId: editStoreId || null,
+      categoryId: editCategoryId || null,
+      warnings: [],
+      matchMetadata: aliasMatchMetadata(editInterpretation),
+      forwardAction: async () => {
+        return await addItem({
+          name: itemName,
+          item_id: null,
+          quantity: normalizedQty,
+          quantity_parsed: quantityParsed,
+          store_id: editStoreId || null,
+          category_id: editCategoryId || null,
+          warnings: [],
+          match_metadata: aliasMatchMetadata(editInterpretation),
+        });
+      },
     };
 
-    const result = await forwardAction();
-    const tracker = { currentId: result.id };
+    if (maybeOpenDuplicateDialog(null, itemName, pendingDetails)) {
+      return;
+    }
+
+    const result = await pendingDetails.forwardAction();
+    const tracker = { currentEntryId: result.entry.id };
 
     pushAction({
       label: `Added ${itemName}`,
       undo: async () => {
-        await deleteItem(tracker.currentId);
+        await deleteItem({ entryId: tracker.currentEntryId });
       },
       redo: async () => {
-        const redone = await forwardAction();
-        tracker.currentId = redone.id;
+        const redone = await pendingDetails.forwardAction();
+        tracker.currentEntryId = redone.entry.id;
       },
     });
 
@@ -569,22 +899,6 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
     let itemId = selectedItem?.id;
     const itemName = selectedItem?.name || query;
 
-    if (!itemId) {
-      try {
-        const defaultQtyParsed = parseQuantityText(editQty, vocab);
-        const newItem = await createMasterItem({
-          name: itemName,
-          default_qty: normalizeQuantityText(editQty, defaultQtyParsed),
-          default_qty_parsed: defaultQtyParsed,
-          default_category_id: editCategoryId || null,
-        });
-        itemId = newItem.id;
-      } catch (err) {
-        console.error('Failed to create master item:', err);
-        return;
-      }
-    }
-
     const warnings = selectedItem?.id
       ? computeWarnings(
           selectedItem.item_store_preferences,
@@ -595,32 +909,85 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
         )
       : [];
 
-    const forwardAction = async () => {
-      const quantityParsed = parseQuantityText(editQty, vocab);
-      const normalizedQty = normalizeQuantityText(editQty, quantityParsed);
-      return await addItem({
-        name: itemName,
-        item_id: itemId || null,
-        quantity: normalizedQty,
-        quantity_parsed: quantityParsed,
-        store_id: editStoreId || null,
-        category_id: editCategoryId || null,
-        warnings,
-        match_metadata: aliasMatchMetadata(editInterpretation),
-      });
+    const quantityParsed = parseQuantityText(editQty, vocab);
+    const normalizedQty = normalizeQuantityText(editQty, quantityParsed);
+    const defaultQtyParsed = parseQuantityText(editQty, vocab);
+    const normalizedDefaultQty = normalizeQuantityText(editQty, defaultQtyParsed);
+    const ensureMasterItem = async (): Promise<string | null> => {
+      if (itemId) {
+        return itemId;
+      }
+
+      try {
+        const newItem = await createMasterItem({
+          name: itemName,
+          default_qty: normalizedDefaultQty,
+          default_qty_parsed: defaultQtyParsed,
+          default_category_id: editCategoryId || null,
+        });
+        itemId = newItem.id;
+        return itemId;
+      } catch (err) {
+        console.error('Failed to create master item:', err);
+        return null;
+      }
+    };
+    const pendingDetails: PendingAddDetails = {
+      itemId: itemId || null,
+      name: itemName,
+      quantity: editQty,
+      quantityParsed,
+      storeId: editStoreId || null,
+      categoryId: editCategoryId || null,
+      warnings,
+      matchMetadata: aliasMatchMetadata(editInterpretation),
+      prepare: itemId
+        ? undefined
+        : async () => {
+            const preparedItemId = await ensureMasterItem();
+            return preparedItemId !== null;
+          },
+      forwardAction: async () => {
+        const resolvedItemId = itemId ?? (await ensureMasterItem());
+        if (!resolvedItemId) {
+          throw new Error('Failed to create master item');
+        }
+        return await addItem({
+          name: itemName,
+          item_id: resolvedItemId,
+          quantity: normalizedQty,
+          quantity_parsed: quantityParsed,
+          store_id: editStoreId || null,
+          category_id: editCategoryId || null,
+          warnings,
+          match_metadata: aliasMatchMetadata(editInterpretation),
+        });
+      },
     };
 
-    const result = await forwardAction();
-    const tracker = { currentId: result.id };
+    if (maybeOpenDuplicateDialog(itemId || null, itemName, pendingDetails)) {
+      return;
+    }
+
+    let result: Awaited<ReturnType<typeof pendingDetails.forwardAction>>;
+    try {
+      result = await pendingDetails.forwardAction();
+    } catch (error) {
+      if ((error as Error).message === 'Failed to create master item') {
+        return;
+      }
+      throw error;
+    }
+    const tracker = { currentEntryId: result.entry.id };
 
     pushAction({
       label: `Added ${itemName}`,
       undo: async () => {
-        await deleteItem(tracker.currentId);
+        await deleteItem({ entryId: tracker.currentEntryId });
       },
       redo: async () => {
-        const redone = await forwardAction();
-        tracker.currentId = redone.id;
+        const redone = await pendingDetails.forwardAction();
+        tracker.currentEntryId = redone.entry.id;
       },
     });
 
@@ -773,6 +1140,9 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
                       <Text style={styles.resultName}>{interpretation.name}</Text>
                       {interpretation.orphans.length > 0 ? (
                         <Text style={styles.orphanText}>{interpretation.orphans.join(' ')}</Text>
+                      ) : null}
+                      {isOnList(interpretation.matchedItemId) ? (
+                        <Text style={styles.onListIndicator}>on list</Text>
                       ) : null}
                     </View>
                   </TouchableOpacity>
@@ -1125,6 +1495,20 @@ export function SmartAddItem({ disabled = false, activeStoreId, onWarningToast }
           </View>
         </KeyboardAvoidingView>
       </Modal>
+      <DuplicateResolutionDialog
+        match={duplicateMatch}
+        incomingName={pendingAdd?.name ?? ''}
+        incomingQuantity={pendingAdd?.quantity ?? ''}
+        incomingStoreId={pendingAdd?.storeId ?? null}
+        combineOptions={duplicateCombineOptions}
+        duplicateState={duplicateState ?? 'active-same-store'}
+        storeName={duplicateMatch?.store?.name}
+        incomingStoreName={pendingAdd?.storeId ? storeNameById.get(pendingAdd.storeId) : undefined}
+        onCombine={handleDuplicateCombine}
+        onAddNew={handleDuplicateAddNew}
+        onCustom={handleDuplicateCustom}
+        onDismiss={dismissDuplicateDialog}
+      />
     </View>
   );
 }
@@ -1221,6 +1605,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#9ca3af',
     textDecorationLine: 'line-through',
+  },
+  onListIndicator: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginLeft: 8,
   },
   pillActiveBlue: {
     backgroundColor: '#2563eb',

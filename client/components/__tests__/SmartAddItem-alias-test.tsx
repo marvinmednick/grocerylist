@@ -64,7 +64,7 @@ describe('SmartAddItem alias behavior', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    addItem.mockResolvedValue({ id: 'list-1' });
+    addItem.mockResolvedValue({ parent: { id: 'list-1' }, entry: { id: 'entry-1' } });
 
     mockUseWordAliases.mockReturnValue({ data: new Map<string, string>() });
     mockUseMasterItemNames.mockReturnValue({

@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import {
+  useAddQuantityEntry,
   useAddToList,
   useDeleteListItem,
   useEndTrip,
@@ -197,6 +198,14 @@ describe('list F103 hooks', () => {
     mockUseHousehold.mockReturnValue({ householdId: null, userId: 'user-1' });
     const mutation = useAddToList();
     await expect(mutation.mutateAsync({ name: 'Milk' })).rejects.toThrow('No household ID found');
+  });
+
+  it('useAddQuantityEntry throws when householdId is null', async () => {
+    mockUseHousehold.mockReturnValue({ householdId: null, userId: 'user-1' });
+    const mutation = useAddQuantityEntry();
+    await expect(
+      mutation.mutateAsync({ listItemId: 'parent-1', quantity: '1', quantityParsed: null })
+    ).rejects.toThrow('No household ID found');
   });
 
   it('useDeleteListItem deletes the entry and leaves the parent when siblings remain', async () => {
