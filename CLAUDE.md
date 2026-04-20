@@ -135,11 +135,13 @@ npm test -- --testPathPattern=SmartAddItem  # single test file
   - `UserAvatar.tsx` — Header user identity indicator
   - `HeaderActions.tsx` — Shared header right-side actions (undo, redo, avatar)
   - `Toast.tsx` — Auto-dismissing remote-change notification
+  - `DuplicateResolutionDialog.tsx` — Bottom-anchored duplicate resolution modal (combine/add-new/custom/cancel); shown by SmartAddItem when a duplicate is detected
 - `lib/`
   - `supabase.ts` — Supabase client (platform-aware AsyncStorage/localStorage adapter)
   - `household.tsx` — `HouseholdProvider` + `useHousehold()` hook; fetches `household_id` once per session with `staleTime: Infinity`
   - `theme.tsx` — `AppThemeProvider` + `useAppTheme()` hook; dark/light toggle persisted to AsyncStorage (infrastructure for F81)
   - `activeStore.ts` — AsyncStorage helpers for persisting the selected store across sessions
+  - `duplicateDetection.ts` — Pure `findDuplicate` + `classifyDuplicateState` helpers; no React dependencies
 
 ### Key Patterns
 

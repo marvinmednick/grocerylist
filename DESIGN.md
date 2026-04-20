@@ -83,14 +83,17 @@ The shopping list uses a flattened data structure to enable moving items across 
 - **Sync:** The item's `store_id` is updated to match the header found.
 - **Undo:** The move registers an action in the `UndoStack` to revert the `store_id` change.
 
-### D. Duplicate Entry Handling
-To prevent accidental duplicates and manage list clutter, the "Add" workflow will perform a check against the active `list_items`.
-- **Match Criteria:** Same `item_id` (for master items) or exact name match (for one-offs).
-- **Conflict Resolution:** If a match is found, a prompt appears:
-    1.  **Merge:** Update the existing item's quantity (e.g., adding "1 lb" to "1 lb" results in "2 lbs" or "1 lb + 1 lb").
-    2.  **Duplicate:** Add a second distinct entry for the item (useful if buying different brands/types).
-    3.  **Cancel:** Abort the addition.
-- **Cross-Store Detection:** If the item exists in a *different* store, the system will highlight this to the user during the merge/duplicate choice.
+### D. Duplicate Entry Handling (F78)
+When any add path in `SmartAddItem` fires, `findDuplicate()` (`lib/duplicateDetection.ts`) checks the active list before the mutation.
+- **Match Criteria:** Same `item_id` for master items; case-insensitive trimmed name for one-offs (`item_id === null`). Archived entries are excluded.
+- **State classification:** `classifyDuplicateState()` returns `same-store-active`, `same-store-purchased`, `cross-store-active`, or `cross-store-purchased`, which drives the action set shown in the dialog.
+- **Resolution dialog:** `DuplicateResolutionDialog.tsx` — bottom-anchored modal presenting:
+  - **Combine** — sum or multipack options (computed by `combineQuantities()` in `lib/quantityFormat.ts`); calls `useAddQuantityEntry` to insert a new `list_item_quantities` row under the existing parent
+  - **Add New** — same-store: add entry under existing parent; cross-store: create a new parent via `useAddToList`
+  - **Custom** — inline text input replacing the Combine section; accepts any quantity string
+  - **Cancel** — dismisses dialog and restores the saved search query
+- **"on list" indicator:** SmartAddItem dropdown rows show muted gray "on list" text for items already on the active list (passive, single state regardless of active/purchased).
+- **Undo:** All resolution paths register a full undo action via `pushAction()`.
 
 ### E. Household-Scoped RLS
 All user-generated data (items, item_store_preferences, list_items, shopping_trips, stores) is scoped to the user's household via Row Level Security.

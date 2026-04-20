@@ -29,3 +29,7 @@
   - Cross-store Add New flow (creates a new parent via `useAddToList`) is covered only by classification unit tests — no end-to-end component test.
   - `formatCombineOption` sum output ("3lb") has no space between qty and unit, while the multipack output ("2 × 1.5 lb") does — inherited from existing `formatQuantity` but inconsistent within the dialog; worth a small formatter pass.
 - **Next:** Ship. Non-blocking items logged in BACKLOG.md.
+
+## 2026-04-20 — Shipped
+- **Commit:** `feat: duplicate entry handling with resolution dialog (#78)`
+- **Closed:** #78

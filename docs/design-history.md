@@ -67,3 +67,24 @@ Updated via `/design-review` at the end of each workflow step that produces a de
 2. `handleSave` must flush all pending sub-inputs (alias chips, tag editors, inline add fields) before building the payload. `onBlur` must not destructively clear uncommitted user input.
 
 **Codified in**: `docs/design/ui-guidelines.md` §7c checklist, §7d, §7e; `CODING.md` §7 points 5-6; Decision Log entries
+
+---
+
+## 2026-04-20 — Bottom-anchored dialog + uniform choice buttons + passive "on list" indicator (source: F78)
+
+**Changed**: Three new UI patterns established by `DuplicateResolutionDialog` and the SmartAddItem dropdown.
+
+**Pattern 1 — Bottom-anchored contextual dialog**: `DuplicateResolutionDialog` uses `justifyContent: 'flex-end'` instead of `'center'`. Card slides up from the bottom, keeping the list and search bar visible behind the dimmed backdrop so the user retains context while choosing.
+**Replaces**: Centered modal (still default for form/edit modals — bottom-anchored is specifically for quick-decision dialogs where surrounding context matters).
+**Generalized principle**: When the dialog requires the user to assess surrounding screen content to make a choice, anchor it to the bottom rather than center.
+
+**Pattern 2 — Uniform button styling for 4+ choice dialogs**: All resolution actions (Combine options, Add New, Custom) use identical gray-100 background / dark text buttons. Cancel is text-only. Position and grouping provide hierarchy; color does not.
+**Replaces**: Primary/secondary button distinction (filled primary + outlined secondary), which is appropriate when one action is objectively correct.
+**Generalized principle**: When the right choice depends on user intent rather than a clear "best" action, uniform button weight avoids misleading visual hierarchy.
+
+**Pattern 3 — Passive "on list" indicator**: SmartAddItem dropdown shows muted gray `#9ca3af` "on list" text on the right side of result rows for items already on the active list. Single state regardless of active vs. purchased.
+**Replaces**: No prior indicator — items already on list showed identically to items not on list.
+**Generalized principle**: Search results that can have list-state context should expose it passively (no badge, no color, minimal footprint) rather than blocking or re-routing the add flow.
+
+**Scope applied**: All three patterns applied in F78; centered modal remains the default for all other dialogs.
+**Codified in**: `docs/design/ui-guidelines.md` (3 new entries: bottom-anchored dialog modal, uniform button styling for choice dialogs, "on list" passive indicator)

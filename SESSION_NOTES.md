@@ -409,8 +409,63 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Next**: `/complete F103` to ship. Then resume F78 Pass 2 UI and `/spec F78`.
 
 ---
+### 2026-04-19 — /design F78 (Pass 2 UI — Draft Resumption)
+- **Completed**: Resumed F78 draft design. Resolved all 6 Pass 2 UI open questions. Updated design doc status Draft → Designed. Updated PLAN.md (Backlog → Designed). Added 3 novel patterns to ui-guidelines.md Decision Log.
+- **Findings**: F103 blocker cleared. Bottom-anchored modal position is novel for this app — justified by the contextual nature of the duplicate dialog (user benefits from seeing the list/search behind the dialog). Uniform button styling chosen over progressive visual weight because no action is objectively primary — the right choice depends on user intent.
+- **Design decisions**: (1) Bottom-anchored dialog modal (7a pattern with `justifyContent: 'flex-end'`). (2) Hybrid button layout: "Combine as:" section with compact buttons + always-present bottom row (Add New / Custom / Cancel on one line). (3) Uniform button styling (gray-100 bg, Cancel text-only). (4) Conversational summary line ("You already have 1.5 lb at Safeway"). (5) Cross-store: sum-only per store, one button per line, no multi-pack. (6) Custom → inline text input replacing Combine section; Cancel returns to main dialog. (7) Query restoration on dialog dismiss. (8) "on list" muted gray text as passive dropdown indicator, single state.
+- **Design review**: 3 novel patterns logged in ui-guidelines.md — bottom-anchored dialog modal, uniform button styling for choice dialogs, "on list" passive indicator.
+- **Next**: `/spec F78` when ready to write implementation spec.
+
+---
 ### 2026-04-17 — /complete F103
 - **Completed**: F103 shipped. Committed feat + chore. Issue #103 closed. PLAN.md → Done. Updated DESIGN.md and CLAUDE.md to reflect new `list_item_quantities` child table, dual realtime subscriptions, and parent archival bookkeeping. F103 backlog item (handleDelete undo for multi-entry) stays — to be addressed in F78 spec. IDEAS.md empty. SESSION_NOTES at 409 lines but all entries within 90 days — no archive needed.
 - **Design decisions**: none
 - **Design review**: Updated DESIGN.md `list_items` schema to show parent/child split. Updated CLAUDE.md Item Lifecycle, Realtime Toast Suppression, and Data Model Summary sections.
 - **Next**: Resume F78 Pass 2 UI and `/spec F78`.
+
+---
+### 2026-04-19 — /spec F78 (Duplicate Entry Handling)
+- **Completed**: Full implementation spec written. Created `specs/F78-duplicate-entry-handling.md`, `plans/F78-log.md`. Updated PLAN.md (Designed → Specced). Appended 3 deferred items to BACKLOG.md.
+- **Findings**: Consistency check passed — all design doc references (QuantityParsed, F103 data model, mutations, SmartAddItem structure, ui-guidelines entries) align with current codebase. No `useAddQuantityEntry` hook exists yet — spec adds it. Five add paths in SmartAddItem must be wrapped with duplicate detection (onCommitAdd, onOneOffAdd, onAcceptTop, onSaveEdited, onOneOffEditAdd). Cross-store Add New is a special case — needs new parent row (useAddToList), not a child entry under the existing parent.
+- **Design decisions**: none (all decisions were made in /design F78)
+- **Design review**: not triggered — spec applies established patterns + the 3 novel patterns already logged in ui-guidelines.md during /design
+- **Next**: Implementation via `./implement F78 --plan` (Full review level — plan first, then review, then implement)
+
+---
+### 2026-04-19 — /review-plan F78
+- **Completed**: Reviewed implementor's draft plan (`plans/F78-plan.md`) against spec. Two corrections applied; approved plan written to `plans/F78-plan-approved.md`.
+- **Findings**: (1) `CombineOptions` type was listed under `duplicateDetection.ts` new file description ("linkage") — confusing; it belongs in `quantityFormat.ts`. Removed from `duplicateDetection.ts` entry. (2) `classifyDuplicateState(match, incomingStoreId)` lacked a `currentUserId` parameter needed to distinguish `purchased-same-trip` from `purchased-other-user`. Added `currentUserId: string` as third param. SmartAddItem obtains it via `myProfile.id`. Required adding `id: string` to the `MyProfile` interface in `api/profile.ts` (query already fetches `*` so the field is present).
+- **Design decisions**: Use `MyProfile.id` (option A) rather than inline `supabase.auth.getSession()` (option B) for current user ID in duplicate classification.
+- **Next**: `./implement F78` (auto-detects approved plan file)
+
+---
+### 2026-04-19 — /review-impl F78 (Review 1)
+- **Completed**: Full code review of F78 implementation. All patterns pass (realtime tracking, household guard, undo, styling, types, query invalidation). Implementation code is clean.
+- **Findings**: 168 test failures, all test-related (not code bugs): (1) 7 existing test files that render SmartAddItem don't mock the new `useAddQuantityEntry` hook — 167 failures. (2) 3 SmartAddItem test files missing new `listItems` prop. (3) DuplicateResolutionDialog test asserts `onCombine(option, undefined)` but same-store combine calls `onCombine(option)` with 1 arg — 1 failure.
+- **Design decisions**: none
+- **Design review**: not triggered — patterns all followed correctly
+- **Next**: Implementor fixes test mocks, re-run tests, then `/review-impl F78` again
+
+---
+### 2026-04-20 11:00 — /review-impl F78 (Review 2)
+- **Completed**: Re-reviewed F78 after test fixups. `check-tests --show-known` → 629/629 passed across 54 suites. All checklist items pass: household guard on `useAddQuantityEntry`, realtime mutation tracking in try/finally, mutable `tracker.currentEntryId` used for Add-New redo (same-store and cross-store paths), pre-mutation snapshots for combine/custom undo, `['shopping_list']` invalidation, StyleSheet-only styling, `<Modal>` for the dialog, no migrations required.
+- **Findings**: Four non-blocking gaps logged to BACKLOG.md — (1) no direct hook-level test for `useAddQuantityEntry` household guard (parallel to existing `list-f103-test.tsx` coverage for `useAddToList`); (2) no component test for Cancel/✕ restoring `savedQuery`; (3) no end-to-end test for cross-store Add New (only classification unit test); (4) `formatCombineOption` sum ("3lb") omits a space while multipack ("2 × 1.5 lb") includes one — inherited from existing `formatQuantity` but visually inconsistent inside the dialog.
+- **Design decisions**: none
+- **Design review**: not triggered — patterns followed; no new patterns introduced
+- **Next**: Feature marked `In Review` in PLAN.md; ship via `/complete F78`
+
+---
+### 2026-04-20 — /complete F78 (Duplicate Entry Handling)
+- **Completed**: F78 shipped. 633/633 tests pass. All 4 non-blocking items from Review 2 verified fixed in code: `useAddQuantityEntry` guard test, Cancel/savedQuery restore test, cross-store Add New end-to-end test, `formatCombineOption` spacing fix. Commit `3b17dbb`. Issue #78 closed. PLAN.md → Done.
+- **Findings**: F78 BACKLOG items — 4 non-blocking fixes all confirmed done ([x]); 3 intentional deferrals remain open (unit conversion, fuzzy one-off matching, grouped-checkbox UI). All are correctly deferred per design decisions.
+- **Design decisions**: none new
+- **Design review**: Updated DESIGN.md §D (pre-spec placeholder replaced with accurate F78 implementation description). Added `DuplicateResolutionDialog` to CLAUDE.md component listing; added `duplicateDetection.ts` to lib listing. Logged 3 novel patterns in `docs/design-history.md` (bottom-anchored dialog, uniform choice buttons, passive "on list" indicator).
+- **Next**: F104 (Per-Entry Store ID) — `/review-plan F104` after implementor writes the plan
+
+---
+### 2026-04-20 — /spec F104 (Per-Entry Store ID)
+- **Completed**: Specced F104 — moves `store_id` from `list_items` to `list_item_quantities`. Originated from two usability bugs found after F78 shipped: (1) editing store in the edit modal changed store for all sibling entries (F104 — design miss); (2) only one duplicate shown in the dialog when multiple exist (F105 — enhancement). User chose per-entry store (Option B) for Issue 2, multi-target picker (Option A) for Issue 1.
+- **Findings**: Scope is F103-sized. Seven files modified. Highlights: `flatData` grouping flips from parent-level to entry-level (header `parents[]` → `entries[]`); `useEndTrip` simplifies from two-step parent-ID lookup to direct entry filter; `classifyDuplicateState` reads active entry's `store_id`; `handleDuplicateCombine` store move changes from `updateListItemFields` to `updateQuantityEntry`. `list_items.store_id` deprecated (nulled, not dropped). Warnings deferred (stay on parent for now).
+- **Design decisions**: Keep `list_items.store_id` column as always-NULL deprecated field (not dropped — avoids FK/RLS risk; future migration can drop). Warnings stay on parent for V1. F105 (multi-target picker) depends on F104 and is specced separately.
+- **Design review**: not triggered — all patterns are extensions of existing F103 patterns
+- **Next**: `/review-plan F104` after implementor writes the plan
