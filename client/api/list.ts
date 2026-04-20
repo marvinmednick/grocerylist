@@ -10,6 +10,7 @@ export interface QuantityEntry {
   list_item_id: string;
   quantity: string | null;
   quantity_parsed: QuantityParsed | null;
+  store_id: string | null;
   is_purchased: boolean;
   purchased_at: string | null;
   purchased_by: string | null;
@@ -18,6 +19,7 @@ export interface QuantityEntry {
   added_at: string;
   added_by: string | null;
   household_id: string;
+  store?: { name: string; color_code: string };
 }
 
 export interface ListItem {
@@ -25,7 +27,7 @@ export interface ListItem {
   name: string;
   item_id: string | null;
   category_id: string | null;
-  store_id: string | null;
+  store_id: string | null; // deprecated: store lives on quantity entries as of F104
   warnings?: Warning[];
   match_metadata?: {
     matchedName: string;
@@ -35,7 +37,6 @@ export interface ListItem {
   added_at: string;
   added_by: string | null;
   archived_at: string | null;
-  store?: { name: string; color_code: string };
   category?: { name: string; sort_order: number };
   master_item?: {
     short_name: string | null;
@@ -128,10 +129,9 @@ export const useShoppingList = (onRemoteChange?: (event: string, itemName?: stri
         .from('list_items')
         .select(`
           *,
-          store:stores!store_id(name, color_code),
           category:categories!category_id(name, sort_order),
           master_item:items!item_id(short_name, default_qty, alternate_qtys),
-          quantities:list_item_quantities!list_item_id(*)
+          quantities:list_item_quantities!list_item_id(*, store:stores!store_id(name, color_code))
         `)
         .is('archived_at', null)
         .order('added_at', { ascending: false });
@@ -238,7 +238,6 @@ export const useAddToList = () => {
           .insert({
             name: newItem.name,
             item_id: newItem.item_id ?? null,
-            store_id: newItem.store_id ?? null,
             category_id: newItem.category_id ?? null,
             warnings: newItem.warnings,
             match_metadata: newItem.match_metadata,
@@ -256,6 +255,7 @@ export const useAddToList = () => {
             list_item_id: parent.id,
             quantity: newItem.quantity ?? null,
             quantity_parsed: newItem.quantity_parsed ?? null,
+            store_id: newItem.store_id ?? null,
             added_by: addedBy,
             household_id: householdId,
           })
@@ -287,10 +287,12 @@ export const useAddQuantityEntry = () => {
       listItemId,
       quantity,
       quantityParsed,
+      storeId,
     }: {
       listItemId: string;
       quantity: string | null;
       quantityParsed: QuantityParsed | null;
+      storeId: string | null;
     }) => {
       if (!householdId) throw new Error('No household ID found');
 
@@ -307,6 +309,7 @@ export const useAddQuantityEntry = () => {
             list_item_id: listItemId,
             quantity,
             quantity_parsed: quantityParsed,
+            store_id: storeId,
             added_by: addedBy,
             household_id: householdId,
           })
@@ -336,7 +339,6 @@ export const useUpdateListItemFields = () => {
     }: {
       id: string;
       name?: string;
-      store_id?: string | null;
       category_id?: string | null;
     }) => {
       incrementLocalMutation();
@@ -372,6 +374,7 @@ export const useUpdateQuantityEntry = () => {
       id: string;
       quantity?: string | null;
       quantity_parsed?: QuantityParsed | null;
+      store_id?: string | null;
     }) => {
       incrementLocalMutation();
       try {
@@ -477,26 +480,14 @@ export const useEndTrip = () => {
 
         if (tripError) throw tripError;
 
-        let parentIdsQuery = supabase.from('list_items').select('id').is('archived_at', null);
-        if (store_id) {
-          parentIdsQuery = parentIdsQuery.eq('store_id', store_id);
-        }
-
-        const { data: parentIds, error: parentIdsError } = await parentIdsQuery;
-        if (parentIdsError) throw parentIdsError;
-
-        const parentIdList = (parentIds ?? []).map((parent) => parent.id);
-
         let entriesUpdate = supabase
           .from('list_item_quantities')
           .update({ archived_at: new Date().toISOString(), trip_id: trip.id })
           .eq('is_purchased', true)
           .is('archived_at', null);
 
-        if (parentIdList.length > 0) {
-          entriesUpdate = entriesUpdate.in('list_item_id', parentIdList);
-        } else if (store_id) {
-          return { trip, items: [] };
+        if (store_id) {
+          entriesUpdate = entriesUpdate.eq('store_id', store_id);
         }
 
         if (targetUserId) {

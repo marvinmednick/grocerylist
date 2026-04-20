@@ -77,7 +77,6 @@ describe('SmartAddItem', () => {
     added_at: '2026-01-01T00:00:00.000Z',
     added_by: 'user-1',
     archived_at: null,
-    store: { name: 'Market', color_code: '#2563eb' },
     quantities: [
       {
         id: 'entry-existing-1',
@@ -91,6 +90,8 @@ describe('SmartAddItem', () => {
           sizeUnit: 'gal',
           sizeDescriptive: null,
         },
+        store_id: 'store-1',
+        store: { name: 'Market', color_code: '#2563eb' },
         is_purchased: false,
         purchased_at: null,
         purchased_by: null,

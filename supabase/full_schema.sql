@@ -135,7 +135,7 @@ CREATE TABLE list_items (
     item_id UUID REFERENCES items(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    store_id UUID REFERENCES stores(id) ON DELETE SET NULL,
+    store_id UUID REFERENCES stores(id) ON DELETE SET NULL, -- deprecated: always NULL as of F104; store lives on list_item_quantities
     added_at TIMESTAMPTZ DEFAULT NOW(),
     archived_at TIMESTAMPTZ,
     warnings JSONB DEFAULT '[]',
@@ -152,6 +152,7 @@ CREATE TABLE list_item_quantities (
     list_item_id UUID NOT NULL REFERENCES list_items(id) ON DELETE CASCADE,
     quantity TEXT,
     quantity_parsed JSONB NULL,
+    store_id UUID REFERENCES stores(id) ON DELETE SET NULL,
     is_purchased BOOLEAN DEFAULT FALSE,
     purchased_at TIMESTAMPTZ,
     purchased_by UUID,

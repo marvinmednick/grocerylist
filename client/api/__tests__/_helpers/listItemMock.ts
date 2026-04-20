@@ -9,6 +9,7 @@ export const makeQuantityEntry = (overrides: Partial<QuantityEntry> = {}): Quant
   list_item_id: overrides.list_item_id ?? generateId('parent'),
   quantity: overrides.quantity ?? '1',
   quantity_parsed: overrides.quantity_parsed ?? null,
+  store_id: overrides.store_id ?? null,
   is_purchased: overrides.is_purchased ?? false,
   purchased_at: overrides.purchased_at ?? null,
   purchased_by: overrides.purchased_by ?? null,
@@ -17,12 +18,17 @@ export const makeQuantityEntry = (overrides: Partial<QuantityEntry> = {}): Quant
   added_at: overrides.added_at ?? new Date().toISOString(),
   added_by: overrides.added_by ?? null,
   household_id: overrides.household_id ?? 'household-1',
+  store: overrides.store,
 });
 
 export const makeListItem = (overrides: Partial<ListItem> = {}): ListItem => {
   const parentId = overrides.id ?? generateId('parent');
-  const quantities = overrides.quantities
-    ?? [makeQuantityEntry({ list_item_id: parentId })];
+  const legacyStore = (overrides as Partial<ListItem> & { store?: QuantityEntry['store'] }).store;
+  const quantities = (overrides.quantities ?? [makeQuantityEntry({ list_item_id: parentId })]).map((entry) => ({
+    ...entry,
+    store_id: entry.store_id ?? overrides.store_id ?? null,
+    store: entry.store ?? legacyStore,
+  }));
 
   return {
     id: parentId,
@@ -35,10 +41,8 @@ export const makeListItem = (overrides: Partial<ListItem> = {}): ListItem => {
     added_at: overrides.added_at ?? new Date().toISOString(),
     added_by: overrides.added_by ?? null,
     archived_at: overrides.archived_at ?? null,
-    store: overrides.store,
     category: overrides.category,
     master_item: overrides.master_item ?? null,
     quantities,
   };
 };
-

@@ -60,9 +60,7 @@ export const useTripItems = (tripId: string | null) => {
         .select(`
           id,
           name,
-          store_id,
-          store:stores!store_id(name),
-          quantities:list_item_quantities!list_item_id(*)
+          quantities:list_item_quantities!list_item_id(*, store:stores!store_id(name, color_code))
         `)
         .not('archived_at', 'is', null)
         .eq('quantities.trip_id', tripId)
@@ -74,9 +72,13 @@ export const useTripItems = (tripId: string | null) => {
         const parentRecord = parent as {
           id: string;
           name: string;
-          store_id: string | null;
-          store: { name: string } | null;
-          quantities: Array<{ id: string; quantity: string | null; trip_id: string | null }>;
+          quantities: Array<{
+            id: string;
+            quantity: string | null;
+            trip_id: string | null;
+            store_id: string | null;
+            store: { name: string } | null;
+          }>;
         };
         for (const entry of parentRecord.quantities ?? []) {
           if (entry.trip_id !== tripId) continue;
@@ -84,8 +86,8 @@ export const useTripItems = (tripId: string | null) => {
             id: entry.id,
             name: parentRecord.name,
             quantity: entry.quantity ?? '',
-            store_id: parentRecord.store_id,
-            store: parentRecord.store,
+            store_id: entry.store_id,
+            store: entry.store,
           });
         }
       }

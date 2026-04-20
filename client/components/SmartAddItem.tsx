@@ -27,7 +27,6 @@ import {
   useAddQuantityEntry,
   useAddToList,
   useDeleteListItem,
-  useUpdateListItemFields,
   useUpdateQuantityEntry,
 } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
@@ -174,9 +173,6 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
   const { mutateAsync: updateQuantityEntry = async () => {
     throw new Error('useUpdateQuantityEntry is unavailable');
   } } = useUpdateQuantityEntry() ?? {};
-  const { mutateAsync: updateListItemFields = async () => {
-    throw new Error('useUpdateListItemFields is unavailable');
-  } } = useUpdateListItemFields() ?? {};
   const { data: metadata } = useMetadata();
   const { data: vocabulary } = useVocabulary();
   const myProfileQuery = useMyProfile();
@@ -498,12 +494,16 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
     return classifyDuplicateState(duplicateMatch, pendingAdd?.storeId ?? null, myProfile?.id ?? null);
   }, [duplicateMatch, pendingAdd?.storeId, myProfile?.id]);
 
+  const targetEntryForDialog = useMemo(() => {
+    return duplicateMatch ? getTargetEntry(duplicateMatch) : null;
+  }, [duplicateMatch]);
+
   const duplicateCombineOptions = useMemo(() => {
     if (!duplicateMatch || !pendingAdd || !duplicateState || duplicateState.startsWith('purchased-')) {
       return null;
     }
 
-    const targetEntry = getTargetEntry(duplicateMatch);
+    const targetEntry = targetEntryForDialog;
     const existingParsed =
       targetEntry?.quantity_parsed ??
       parseQuantityText(targetEntry?.quantity ?? '', vocab) ??
@@ -522,7 +522,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
     }
 
     return combined.options;
-  }, [duplicateMatch, pendingAdd, duplicateState, vocab]);
+  }, [duplicateMatch, pendingAdd, duplicateState, targetEntryForDialog, vocab]);
 
   const handleDuplicateCombine = async (option: CombineOption, targetStoreId?: string) => {
     if (!duplicateMatch || !pendingAdd) {
@@ -540,12 +540,12 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
 
     const previousQty = targetEntry.quantity;
     const previousQtyParsed = targetEntry.quantity_parsed;
-    const previousStoreId = duplicateMatch.store_id;
+    const previousStoreId = targetEntry.store_id;
     const nextQty = formatQuantity(option.result);
     const shouldMoveStore = !!targetStoreId && targetStoreId !== previousStoreId;
 
     if (shouldMoveStore) {
-      await updateListItemFields({ id: duplicateMatch.id, store_id: targetStoreId });
+      await updateQuantityEntry({ id: targetEntry.id, store_id: targetStoreId });
     }
     await updateQuantityEntry({
       id: targetEntry.id,
@@ -557,7 +557,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
       label: `Combined ${duplicateMatch.name}`,
       undo: async () => {
         if (shouldMoveStore) {
-          await updateListItemFields({ id: duplicateMatch.id, store_id: previousStoreId });
+          await updateQuantityEntry({ id: targetEntry.id, store_id: previousStoreId });
         }
         await updateQuantityEntry({
           id: targetEntry.id,
@@ -567,7 +567,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
       },
       redo: async () => {
         if (shouldMoveStore) {
-          await updateListItemFields({ id: duplicateMatch.id, store_id: targetStoreId });
+          await updateQuantityEntry({ id: targetEntry.id, store_id: targetStoreId });
         }
         await updateQuantityEntry({
           id: targetEntry.id,
@@ -613,6 +613,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
       listItemId: duplicateMatch.id,
       quantity: normalizedQty,
       quantityParsed: pendingAdd.quantityParsed,
+      storeId: pendingAdd.storeId,
     });
     const tracker = { currentEntryId: result.id as string };
 
@@ -626,6 +627,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
           listItemId: duplicateMatch.id,
           quantity: normalizedQty,
           quantityParsed: pendingAdd.quantityParsed,
+          storeId: pendingAdd.storeId,
         });
         tracker.currentEntryId = redone.id as string;
       },
@@ -1502,7 +1504,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
         incomingStoreId={pendingAdd?.storeId ?? null}
         combineOptions={duplicateCombineOptions}
         duplicateState={duplicateState ?? 'active-same-store'}
-        storeName={duplicateMatch?.store?.name}
+        storeName={targetEntryForDialog?.store?.name}
         incomingStoreName={pendingAdd?.storeId ? storeNameById.get(pendingAdd.storeId) : undefined}
         onCombine={handleDuplicateCombine}
         onAddNew={handleDuplicateAddNew}

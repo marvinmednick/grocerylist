@@ -7,6 +7,7 @@ function makeEntry(overrides: Partial<QuantityEntry> = {}): QuantityEntry {
     list_item_id: 'parent-1',
     quantity: '1',
     quantity_parsed: null,
+    store_id: 'store-1',
     is_purchased: false,
     purchased_at: null,
     purchased_by: null,
@@ -71,13 +72,21 @@ describe('duplicateDetection', () => {
   });
 
   it('classifies active same-store correctly', () => {
-    const item = makeListItem({ store_id: 'store-1', quantities: [makeEntry({ is_purchased: false })] });
+    const item = makeListItem({ store_id: 'store-parent', quantities: [makeEntry({ is_purchased: false, store_id: 'store-1' })] });
     expect(classifyDuplicateState(item, 'store-1', 'user-1')).toBe('active-same-store');
   });
 
   it('classifies active different-store correctly', () => {
-    const item = makeListItem({ store_id: 'store-1', quantities: [makeEntry({ is_purchased: false })] });
+    const item = makeListItem({ store_id: 'store-parent', quantities: [makeEntry({ is_purchased: false, store_id: 'store-1' })] });
     expect(classifyDuplicateState(item, 'store-2', 'user-1')).toBe('active-different-store');
+  });
+
+  it('classifies active same-store using entry store_id even when parent store_id differs', () => {
+    const item = makeListItem({
+      store_id: 'store-A',
+      quantities: [makeEntry({ is_purchased: false, store_id: 'store-B' })],
+    });
+    expect(classifyDuplicateState(item, 'store-B', 'user-1')).toBe('active-same-store');
   });
 
   it('classifies purchased same-trip correctly', () => {

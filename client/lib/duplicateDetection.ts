@@ -47,7 +47,7 @@ export function classifyDuplicateState(
 ): DuplicateState {
   const activeEntry = match.quantities.find((entry) => !entry.archived_at && !entry.is_purchased);
   if (activeEntry) {
-    return match.store_id === incomingStoreId ? 'active-same-store' : 'active-different-store';
+    return activeEntry.store_id === incomingStoreId ? 'active-same-store' : 'active-different-store';
   }
 
   const purchasedEntries = match.quantities.filter((entry) => !entry.archived_at && entry.is_purchased);

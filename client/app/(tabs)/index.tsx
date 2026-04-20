@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MultiTripModal, TripUser } from '@/components/MultiTripModal';
 
 type FlatListItem =
-  | { type: 'header'; id: string; title: string; storeId: string; parents: ListItem[] }
+  | { type: 'header'; id: string; title: string; storeId: string; entries: Array<{ parent: ListItem; entry: QuantityEntry }> }
   | { type: 'item'; id: string; data: { parent: ListItem; entry: QuantityEntry } };
 
 interface MultiTripContextState {
@@ -134,23 +134,26 @@ export default function ShoppingListScreen() {
 
   const flatData = useMemo(() => {
     if (!listItems) return [];
-    const groups: Record<string, { id: string; parents: ListItem[] }> = {};
+    const groups: Record<string, { id: string; title: string; entries: Array<{ parent: ListItem; entry: QuantityEntry }> }> = {};
     listItems.forEach((parent) => {
-      const storeName = parent.store?.name || 'Other';
-      const storeId = parent.store_id || 'other';
-      if (!groups[storeName]) groups[storeName] = { id: storeId, parents: [] };
-      groups[storeName].parents.push(parent);
+      parent.quantities.forEach((entry) => {
+        const storeId = entry.store_id || 'other';
+        const storeName = entry.store?.name || 'Other';
+        const groupKey = `${storeId}:${storeName}`;
+        if (!groups[groupKey]) {
+          groups[groupKey] = { id: storeId, title: storeName, entries: [] };
+        }
+        groups[groupKey].entries.push({ parent, entry });
+      });
     });
     const result: FlatListItem[] = [];
-    Object.entries(groups).forEach(([title, { id, parents }]) => {
-      result.push({ type: 'header', id: `header-${id}`, title, storeId: id, parents });
-      parents.forEach((parent) => {
-        parent.quantities.forEach((entry) => {
-          result.push({
-            type: 'item',
-            id: entry.id,
-            data: { parent, entry },
-          });
+    Object.values(groups).forEach(({ id, title, entries }) => {
+      result.push({ type: 'header', id: `header-${id}`, title, storeId: id, entries });
+      entries.forEach(({ parent, entry }) => {
+        result.push({
+          type: 'item',
+          id: entry.id,
+          data: { parent, entry },
         });
       });
     });
@@ -196,7 +199,7 @@ export default function ShoppingListScreen() {
     setEditName(parent.name);
     setEditQty(entry.quantity || '');
     setEditQtyChips(chips);
-    setEditStoreId(parent.store_id || '');
+    setEditStoreId(entry.store_id || '');
     setEditStoreDropdownOpen(false);
     setIsEditModalVisible(true);
   };
@@ -205,26 +208,28 @@ export default function ShoppingListScreen() {
     if (!editingParent || !editingEntry) return;
     const parentSnapshot = {
       name: editingParent.name,
-      store_id: editingParent.store_id,
       category_id: editingParent.category_id,
     };
     const parentUpdates = {
       name: editName,
-      store_id: editStoreId || null,
       category_id: editingParent.category_id,
     };
-    const quantitySnapshot = {
+    const entrySnapshot = {
       quantity: editingEntry.quantity,
+      store_id: editingEntry.store_id,
     };
-    const quantityUpdates = {
+    const entryUpdates = {
       quantity: editQty || null,
+      store_id: editStoreId || null,
     };
     const parentChanged =
       parentSnapshot.name !== parentUpdates.name ||
-      parentSnapshot.store_id !== parentUpdates.store_id;
-    const quantityChanged = quantitySnapshot.quantity !== quantityUpdates.quantity;
+      parentSnapshot.category_id !== parentUpdates.category_id;
+    const entryChanged =
+      entrySnapshot.quantity !== entryUpdates.quantity ||
+      entrySnapshot.store_id !== entryUpdates.store_id;
 
-    if (!parentChanged && !quantityChanged) {
+    if (!parentChanged && !entryChanged) {
       setIsEditModalVisible(false);
       setEditingParent(null);
       setEditingEntry(null);
@@ -234,8 +239,8 @@ export default function ShoppingListScreen() {
     if (parentChanged) {
       await updateListItemFields({ id: editingParent.id, ...parentUpdates });
     }
-    if (quantityChanged) {
-      await updateQuantityEntry({ id: editingEntry.id, ...quantityUpdates });
+    if (entryChanged) {
+      await updateQuantityEntry({ id: editingEntry.id, ...entryUpdates });
     }
 
     pushAction({
@@ -244,16 +249,16 @@ export default function ShoppingListScreen() {
         if (parentChanged) {
           await updateListItemFields({ id: editingParent.id, ...parentSnapshot });
         }
-        if (quantityChanged) {
-          await updateQuantityEntry({ id: editingEntry.id, ...quantitySnapshot });
+        if (entryChanged) {
+          await updateQuantityEntry({ id: editingEntry.id, ...entrySnapshot });
         }
       },
       redo: async () => {
         if (parentChanged) {
           await updateListItemFields({ id: editingParent.id, ...parentUpdates });
         }
-        if (quantityChanged) {
-          await updateQuantityEntry({ id: editingEntry.id, ...quantityUpdates });
+        if (entryChanged) {
+          await updateQuantityEntry({ id: editingEntry.id, ...entryUpdates });
         }
       }
     });
@@ -278,7 +283,7 @@ export default function ShoppingListScreen() {
         const result = await addItem({
           name: parentToDelete.name,
           quantity: entryToDelete.quantity ?? undefined,
-          store_id: parentToDelete.store_id,
+          store_id: entryToDelete.store_id,
           category_id: parentToDelete.category_id,
           item_id: parentToDelete.item_id,
           warnings: parentToDelete.warnings,
@@ -326,8 +331,8 @@ export default function ShoppingListScreen() {
         .filter((entry) => {
           if (!entry.is_purchased || entry.archived_at) return false;
           if (!storeId) return true;
-          if (storeId === 'other') return !parent.store_id;
-          return parent.store_id === storeId;
+          if (storeId === 'other') return !entry.store_id;
+          return entry.store_id === storeId;
         })
         .map((entry) => ({ parent, entry }))
     );
@@ -462,22 +467,23 @@ export default function ShoppingListScreen() {
       }
     }
     const draggedParent = draggedItem.data.parent;
-    if (newStoreId && newStoreId !== (draggedParent.store_id ?? 'other')) {
-      const originalStoreId = draggedParent.store_id;
-      const parentId = draggedParent.id;
+    const draggedEntry = draggedItem.data.entry;
+    if (newStoreId && newStoreId !== (draggedEntry.store_id ?? 'other')) {
+      const originalStoreId = draggedEntry.store_id;
+      const entryId = draggedEntry.id;
       const itemName = draggedParent.name;
-      await updateListItemFields({ id: parentId, store_id: newStoreId === 'other' ? null : newStoreId });
+      await updateQuantityEntry({ id: entryId, store_id: newStoreId === 'other' ? null : newStoreId });
       pushAction({
         label: `Moved ${itemName} to ${newStoreName}`,
-        undo: async () => { await updateListItemFields({ id: parentId, store_id: originalStoreId }); },
-        redo: async () => { await updateListItemFields({ id: parentId, store_id: newStoreId === 'other' ? null : newStoreId }); }
+        undo: async () => { await updateQuantityEntry({ id: entryId, store_id: originalStoreId }); },
+        redo: async () => { await updateQuantityEntry({ id: entryId, store_id: newStoreId === 'other' ? null : newStoreId }); }
       });
     }
   };
 
   const renderItem = ({ item, drag, isActive }: RenderItemParams<FlatListItem>) => {
     if (item.type === 'header') {
-      const hasPurchased = item.parents.some((parent) => parent.quantities.some((entry) => entry.is_purchased));
+      const hasPurchased = item.entries.some(({ entry }) => entry.is_purchased);
       return (
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionHeaderText}>{item.title}</Text>
@@ -499,7 +505,7 @@ export default function ShoppingListScreen() {
     const secondaryParts = [
       entry.quantity,
       parent.category?.name,
-      parent.store?.name,
+      entry.store?.name,
     ].filter(Boolean);
     const secondaryText = secondaryParts.join(' · ');
     const displayName = parent.master_item?.short_name || parent.name;

@@ -50,7 +50,6 @@ export function DuplicateResolutionDialog({
   const [customQty, setCustomQty] = useState('');
 
   const isVisible = !!match;
-  const existingStoreName = storeName ?? match?.store?.name ?? 'this store';
   const targetEntry = useMemo(() => {
     if (!match) {
       return null;
@@ -61,6 +60,7 @@ export function DuplicateResolutionDialog({
       null
     );
   }, [match]);
+  const existingStoreName = storeName ?? targetEntry?.store?.name ?? 'this store';
   const existingQty = targetEntry?.quantity ?? incomingQuantity;
 
   const showCombine = !customMode && !!combineOptions && combineOptions.length > 0 && duplicateState.startsWith('active-');
