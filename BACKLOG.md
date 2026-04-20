@@ -74,3 +74,15 @@ _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assig
 - [x] `useQuickAcceptState.ts` — consolidated `isArmed`/`isArmedRef` behind `setArmed(next)` helper in Review 2 fix-up.
 - [x] SmartAddItem-quickaccept-test.tsx non-null non-default profile test — discarded; duplicates the custom-profile test's code path.
 
+### From F78
+- [ ] Unit conversion for combine (lb ↔ oz, ml ↔ l, g ↔ kg) — V1 treats convertible-but-different units as incompatible; custom or add-new only. (deferred from F78)
+- [ ] Fuzzy one-off name matching beyond case/trim — deferred to post-F83. (deferred from F78)
+- [ ] Grouped-checkbox UI (one product header with N sub-checkboxes) — F103 keeps flat rendering; revisit if flat model proves insufficient. (deferred from F78)
+- [x] Add direct unit test for `useAddQuantityEntry` household guard (parallel to `list-f103-test.tsx` `useAddToList` coverage). Fixed.
+- [x] Add component test covering duplicate dialog Cancel/✕ restoring `savedQuery` in SmartAddItem. Fixed.
+- [x] Add end-to-end component test for cross-store Add New (new `list_items` parent at incoming store). Fixed.
+- [x] `formatCombineOption` sum output ("3lb") has no space while multipack ("2 × 1.5 lb") does — inconsistent inside the duplicate dialog; unify spacing. Fixed.
+
+### From F104
+- [x] `list_items.store_id` column formal DROP — promoted to #106.
+- [x] Warnings stale-store problem — promoted to #107.

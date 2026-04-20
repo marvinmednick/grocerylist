@@ -11,3 +11,7 @@
 - **Result:** Passed — no blocking issues
 - **Tests:** 644/644 passed, 0 skipped
 - **Non-blocking:** none
+
+## 2026-04-20 — Shipped
+- **Commit:** `feat: per-entry store ID migration (#104)`
+- **Closed:** #104

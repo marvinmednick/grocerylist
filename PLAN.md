@@ -43,7 +43,7 @@
 | F101 | Voice Input Mode (Speech Recognition API) | Backlog | — | [#101](https://github.com/marvinmednick/grocerylist/issues/101) |
 | F102 | Optimistic Toggle for Checkboxes | Done | [specs/F102-optimistic-toggle.md](specs/F102-optimistic-toggle.md) | [#102](https://github.com/marvinmednick/grocerylist/issues/102) |
 | F103 | List Item / Quantity Model Refactor | Done | [specs/F103-list-item-quantity-refactor.md](specs/F103-list-item-quantity-refactor.md) · [design](docs/design/F103-list-item-quantity-refactor.md) | [#103](https://github.com/marvinmednick/grocerylist/issues/103) |
-| F104 | Per-Entry Store ID (store_id migration) | Specced | [specs/F104-per-entry-store-id.md](specs/F104-per-entry-store-id.md) | [#104](https://github.com/marvinmednick/grocerylist/issues/104) |
+| F104 | Per-Entry Store ID (store_id migration) | Done | [specs/F104-per-entry-store-id.md](specs/F104-per-entry-store-id.md) | [#104](https://github.com/marvinmednick/grocerylist/issues/104) |
 | F105 | Multi-Target Duplicate Picker | Backlog | — | [#105](https://github.com/marvinmednick/grocerylist/issues/105) |
 
 **Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `Needs Fixes` → `In Review` → `Done`

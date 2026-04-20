@@ -469,3 +469,26 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: Keep `list_items.store_id` column as always-NULL deprecated field (not dropped — avoids FK/RLS risk; future migration can drop). Warnings stay on parent for V1. F105 (multi-target picker) depends on F104 and is specced separately.
 - **Design review**: not triggered — all patterns are extensions of existing F103 patterns
 - **Next**: `/review-plan F104` after implementor writes the plan
+
+---
+### 2026-04-20 — /review-plan F104 (Per-Entry Store ID)
+- **Completed**: Reviewed implementor's draft plan against spec. Three silent-breakage gaps found; approved plan written to `plans/F104-plan-approved.md`.
+- **Findings**: (1) `index.tsx` `renderItem` secondary text uses `parent.store?.name` (line ~502) — not mentioned in spec or plan. After F104, `ListItem.store` doesn't exist; store name silently disappears. Fix: change to `entry.store?.name`. (2) `SmartAddItem.tsx:1505` passes `duplicateMatch?.store?.name` as `storeName` prop to `DuplicateResolutionDialog` — always `undefined` after F104. Fix: derive from `getTargetEntry(duplicateMatch)?.store?.name` via a memo. (3) `DuplicateResolutionDialog.tsx:53` has fallback chain `storeName ?? match?.store?.name ?? 'this store'` — `match?.store?.name` always `undefined` after F104. Fix: change to `targetEntry?.store?.name` (already computed on line 54). `DuplicateResolutionDialog.tsx` added to Files to Modify.
+- **Design decisions**: none — all three are unambiguous fixes
+- **Design review**: not triggered
+- **Next**: `./implement F104` (auto-detects approved plan file)
+
+---
+### 2026-04-20 — /review-impl F104 (Review 1)
+- **Completed**: Full code review of F104 implementation. All patterns pass. 644/644 tests pass, 0 skipped. PLAN.md → In Review. GitHub issue #104 labelled `in-review`.
+- **Findings**: All 3 approved-plan gap corrections confirmed in code: (1) `renderItem` secondary text uses `entry.store?.name` ✓, (2) `SmartAddItem` passes `storeName={targetEntryForDialog?.store?.name}` via dedicated memo ✓, (3) `DuplicateResolutionDialog` fallback chain uses `targetEntry?.store?.name` ✓. Migration `20250101000020` applied locally and remotely. Minor: backfill UPDATE omits `AND li.store_id IS NOT NULL` vs. spec — functionally equivalent since NULL entries stay NULL. `useUpdateListItemFields` cleanly removed from SmartAddItem.
+- **Design decisions**: none
+- **Design review**: not triggered — patterns followed, no new patterns
+- **Next**: Ship via `/complete F104`
+
+---
+### 2026-04-20 — /complete F104 (Per-Entry Store ID)
+- **Completed**: F104 shipped. Commit `75da822`. Issue #104 closed. PLAN.md → Done. Backlog: 2 F104 items promoted to GitHub Issues (#106 store_id DROP, #107 stale warnings).
+- **Design decisions**: none new
+- **Design review**: skipped — no novel patterns; F104 applied existing F103 patterns to store assignment
+- **Next**: Capture duplicate dialog UI change (Add New in option list) as a feature
