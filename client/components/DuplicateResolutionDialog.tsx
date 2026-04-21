@@ -63,7 +63,26 @@ export function DuplicateResolutionDialog({
   const existingStoreName = storeName ?? targetEntry?.store?.name ?? 'this store';
   const existingQty = targetEntry?.quantity ?? incomingQuantity;
 
-  const showCombine = !customMode && !!combineOptions && combineOptions.length > 0 && duplicateState.startsWith('active-');
+  const showOptions = !customMode;
+  const showCombineOptions =
+    !!combineOptions && combineOptions.length > 0 && duplicateState.startsWith('active-');
+  const trimmedIncomingQuantity = incomingQuantity.trim();
+  const incomingQuantityText = trimmedIncomingQuantity ? ` ${trimmedIncomingQuantity}` : '';
+  const addSeparateLabel = useMemo(() => {
+    if (duplicateState.startsWith('purchased-')) {
+      return trimmedIncomingQuantity
+        ? `Add a separate${incomingQuantityText} item`
+        : 'Add a separate item';
+    }
+    if (duplicateState === 'active-different-store' && incomingStoreName) {
+      return trimmedIncomingQuantity
+        ? `Add a separate${incomingQuantityText} at ${incomingStoreName}`
+        : `Add a separate item at ${incomingStoreName}`;
+    }
+    return trimmedIncomingQuantity
+      ? `Add a separate${incomingQuantityText} item`
+      : 'Add a separate item';
+  }, [duplicateState, incomingQuantityText, incomingStoreName, trimmedIncomingQuantity]);
 
   const handleDismiss = () => {
     setCustomMode(false);
@@ -112,18 +131,18 @@ export function DuplicateResolutionDialog({
             >
               <Text style={styles.summary}>{summaryText}</Text>
 
-              {showCombine ? (
-                <View style={styles.section}>
-                  <Text style={styles.sectionLabel}>Combine as:</Text>
-                  {duplicateState === 'active-different-store' ? (
-                    <View style={styles.crossStoreActions}>
-                      {combineOptions.map((option, index) => (
-                        <View key={`${option.type}-${index}`} style={styles.crossStoreRow}>
+              {showOptions ? (
+                <View style={styles.optionsList}>
+                  {showCombineOptions && duplicateState === 'active-different-store'
+                    ? combineOptions.map((option, index) => (
+                        <React.Fragment key={`${option.type}-${index}`}>
                           <TouchableOpacity
                             style={styles.actionButton}
                             onPress={() => onCombine(option, match?.store_id ?? null)}
                           >
-                            <Text style={styles.actionButtonText}>{`${option.label} at ${existingStoreName}`}</Text>
+                            <Text style={styles.actionButtonText}>
+                              {`Combine as ${option.label} at ${existingStoreName}`}
+                            </Text>
                           </TouchableOpacity>
                           {incomingStoreId ? (
                             <TouchableOpacity
@@ -131,26 +150,27 @@ export function DuplicateResolutionDialog({
                               onPress={() => onCombine(option, incomingStoreId)}
                             >
                               <Text style={styles.actionButtonText}>
-                                {`${option.label} at ${incomingStoreName ?? 'target store'}`}
+                                {`Combine as ${option.label} at ${incomingStoreName ?? 'target store'}`}
                               </Text>
                             </TouchableOpacity>
                           ) : null}
-                        </View>
-                      ))}
-                    </View>
-                  ) : (
-                    <View style={styles.combineRow}>
-                      {combineOptions.map((option, index) => (
+                        </React.Fragment>
+                      ))
+                    : null}
+                  {showCombineOptions && duplicateState !== 'active-different-store'
+                    ? combineOptions.map((option, index) => (
                         <TouchableOpacity
                           key={`${option.type}-${index}`}
                           style={styles.actionButton}
                           onPress={() => onCombine(option)}
                         >
-                          <Text style={styles.actionButtonText}>{option.label}</Text>
+                          <Text style={styles.actionButtonText}>{`Combine as ${option.label}`}</Text>
                         </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
+                      ))
+                    : null}
+                  <TouchableOpacity testID="duplicate-add-separate" style={styles.actionButton} onPress={onAddNew}>
+                    <Text style={styles.actionButtonText}>{addSeparateLabel}</Text>
+                  </TouchableOpacity>
                 </View>
               ) : null}
 
@@ -176,9 +196,6 @@ export function DuplicateResolutionDialog({
                 </View>
               ) : (
                 <View style={styles.bottomRow}>
-                  <TouchableOpacity testID="duplicate-add-new" style={styles.actionButton} onPress={onAddNew}>
-                    <Text style={styles.actionButtonText}>Add New</Text>
-                  </TouchableOpacity>
                   <TouchableOpacity testID="duplicate-custom" style={styles.actionButton} onPress={() => setCustomMode(true)}>
                     <Text style={styles.actionButtonText}>Custom</Text>
                   </TouchableOpacity>
@@ -235,21 +252,9 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 16,
   },
-  sectionLabel: {
-    fontSize: 13,
-    color: '#6b7280',
-    marginBottom: 8,
-  },
-  combineRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  optionsList: {
     gap: 8,
-  },
-  crossStoreActions: {
-    gap: 8,
-  },
-  crossStoreRow: {
-    gap: 8,
+    marginBottom: 16,
   },
   actionButton: {
     backgroundColor: '#f3f4f6',

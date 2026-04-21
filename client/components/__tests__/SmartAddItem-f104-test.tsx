@@ -159,7 +159,7 @@ describe('SmartAddItem F104', () => {
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByText('Milk'));
-    fireEvent.press(await screen.findByTestId('duplicate-add-new'));
+    fireEvent.press(await screen.findByTestId('duplicate-add-separate'));
 
     await waitFor(() => {
       expect(addQuantityEntry).toHaveBeenCalledWith(
@@ -177,7 +177,7 @@ describe('SmartAddItem F104', () => {
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByText('Milk'));
-    fireEvent.press(await screen.findByText('2 gal at Alt Market'));
+    fireEvent.press(await screen.findByText('Combine as 2 gal at Alt Market'));
 
     await waitFor(() => {
       expect(updateQuantityEntry).toHaveBeenCalledWith(

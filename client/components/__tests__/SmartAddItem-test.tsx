@@ -211,7 +211,7 @@ describe('SmartAddItem', () => {
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByText('Milk'));
-    fireEvent.press(await screen.findByText('2 gal'));
+    fireEvent.press(await screen.findByText('Combine as 2 gal'));
 
     await waitFor(() => {
       expect(pushAction).toHaveBeenCalledWith(
@@ -225,7 +225,7 @@ describe('SmartAddItem', () => {
 
     fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
     fireEvent.press(await screen.findByText('Milk'));
-    fireEvent.press(await screen.findByText('Add New'));
+    fireEvent.press(await screen.findByTestId('duplicate-add-separate'));
 
     await waitFor(() => {
       expect(pushAction).toHaveBeenCalledWith(
@@ -280,11 +280,11 @@ describe('SmartAddItem', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Duplicate Item')).toBeTruthy();
-      expect(screen.getByText('2 gal at Market')).toBeTruthy();
-      expect(screen.getByText('2 gal at Alt Market')).toBeTruthy();
+      expect(screen.getByText('Combine as 2 gal at Market')).toBeTruthy();
+      expect(screen.getByText('Combine as 2 gal at Alt Market')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByText('Add New'));
+    fireEvent.press(screen.getByTestId('duplicate-add-separate'));
 
     await waitFor(() => {
       expect(addItem).toHaveBeenCalledWith(
@@ -1012,7 +1012,7 @@ describe('SmartAddItem', () => {
     });
     expect(createMasterItem).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByText('Add New'));
+    fireEvent.press(screen.getByTestId('duplicate-add-separate'));
 
     await waitFor(() => {
       expect(createMasterItem).toHaveBeenCalledWith(

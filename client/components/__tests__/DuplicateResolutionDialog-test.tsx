@@ -98,8 +98,8 @@ describe('DuplicateResolutionDialog', () => {
 
   it('shows Combine buttons for active same-store duplicate', () => {
     renderDialog();
-    expect(screen.getByText('Combine as:')).toBeTruthy();
-    expect(screen.getByText('3 lb')).toBeTruthy();
+    expect(screen.queryByText('Combine as:')).toBeNull();
+    expect(screen.getByText('Combine as 3 lb')).toBeTruthy();
   });
 
   it('hides Combine section for purchased items', () => {
@@ -108,7 +108,7 @@ describe('DuplicateResolutionDialog', () => {
       combineOptions: makeCombineOptions(),
       match: makeMatch({ quantities: [makeEntry({ is_purchased: true })] }),
     });
-    expect(screen.queryByText('Combine as:')).toBeNull();
+    expect(screen.queryByText(/Combine as/)).toBeNull();
   });
 
   it('shows per-store combine buttons for cross-store duplicate', () => {
@@ -117,29 +117,29 @@ describe('DuplicateResolutionDialog', () => {
       incomingStoreId: 'store-2',
       incomingStoreName: 'Costco',
     });
-    expect(screen.getByText('3 lb at Safeway')).toBeTruthy();
-    expect(screen.getByText('3 lb at Costco')).toBeTruthy();
+    expect(screen.getByText('Combine as 3 lb at Safeway')).toBeTruthy();
+    expect(screen.getByText('Combine as 3 lb at Costco')).toBeTruthy();
   });
 
-  it('shows Add New, Custom, and Cancel in bottom row', () => {
+  it('shows only Custom and Cancel in the bottom row', () => {
     renderDialog();
-    expect(screen.getByText('Add New')).toBeTruthy();
     expect(screen.getByText('Custom')).toBeTruthy();
     expect(screen.getByText('Cancel')).toBeTruthy();
+    expect(screen.queryByText('Add New')).toBeNull();
   });
 
   it('switches to custom input mode when Custom tapped', () => {
     renderDialog();
     fireEvent.press(screen.getByTestId('duplicate-custom'));
     expect(screen.getByTestId('duplicate-custom-input')).toBeTruthy();
-    expect(screen.queryByText('Combine as:')).toBeNull();
+    expect(screen.queryByText('Combine as 3 lb')).toBeNull();
   });
 
   it('returns to main view when Cancel tapped in custom mode', () => {
     renderDialog();
     fireEvent.press(screen.getByTestId('duplicate-custom'));
     fireEvent.press(screen.getByText('Cancel'));
-    expect(screen.getByText('Combine as:')).toBeTruthy();
+    expect(screen.getByText('Combine as 3 lb')).toBeTruthy();
   });
 
   it('dismisses dialog when ✕ tapped', () => {
@@ -150,13 +150,33 @@ describe('DuplicateResolutionDialog', () => {
 
   it('calls onCombine with correct option when combine button tapped', () => {
     const { onCombine } = renderDialog();
-    fireEvent.press(screen.getByText('3 lb'));
+    fireEvent.press(screen.getByText('Combine as 3 lb'));
     expect(onCombine).toHaveBeenCalledWith(expect.objectContaining({ type: 'sum' }));
   });
 
-  it('calls onAddNew when Add New tapped', () => {
+  it('calls onCombine with the existing store id for cross-store combine', () => {
+    const { onCombine } = renderDialog({
+      duplicateState: 'active-different-store',
+      incomingStoreId: 'store-2',
+      incomingStoreName: 'Costco',
+    });
+    fireEvent.press(screen.getByText('Combine as 3 lb at Safeway'));
+    expect(onCombine).toHaveBeenCalledWith(expect.objectContaining({ type: 'sum' }), 'store-1');
+  });
+
+  it('calls onCombine with the incoming store id for cross-store combine', () => {
+    const { onCombine } = renderDialog({
+      duplicateState: 'active-different-store',
+      incomingStoreId: 'store-2',
+      incomingStoreName: 'Costco',
+    });
+    fireEvent.press(screen.getByText('Combine as 3 lb at Costco'));
+    expect(onCombine).toHaveBeenCalledWith(expect.objectContaining({ type: 'sum' }), 'store-2');
+  });
+
+  it('calls onAddNew when Add a separate is tapped', () => {
     const { onAddNew } = renderDialog();
-    fireEvent.press(screen.getByTestId('duplicate-add-new'));
+    fireEvent.press(screen.getByTestId('duplicate-add-separate'));
     expect(onAddNew).toHaveBeenCalled();
   });
 
@@ -172,5 +192,50 @@ describe('DuplicateResolutionDialog', () => {
     const { onDismiss } = renderDialog();
     fireEvent.press(screen.getByTestId('duplicate-cancel'));
     expect(onDismiss).toHaveBeenCalled();
+  });
+
+  it('shows the same-store add-separate label with quantity', () => {
+    renderDialog();
+    expect(screen.getByText('Add a separate 1.5 lb item')).toBeTruthy();
+  });
+
+  it('shows the cross-store add-separate label with the incoming store name', () => {
+    renderDialog({
+      duplicateState: 'active-different-store',
+      incomingStoreId: 'store-2',
+      incomingStoreName: 'Costco',
+    });
+    expect(screen.getByText('Add a separate 1.5 lb at Costco')).toBeTruthy();
+  });
+
+  it('shows the add-separate label without quantity when quantity is empty', () => {
+    renderDialog({
+      incomingQuantity: '',
+    });
+    expect(screen.getByText('Add a separate item')).toBeTruthy();
+  });
+
+  it('shows the purchased-same-trip add-separate label without a store suffix', () => {
+    renderDialog({
+      duplicateState: 'purchased-same-trip',
+      match: makeMatch({ quantities: [makeEntry({ is_purchased: true })] }),
+      incomingStoreName: 'Costco',
+    });
+    expect(screen.getByText('Add a separate 1.5 lb item')).toBeTruthy();
+    expect(screen.queryByText('Add a separate 1.5 lb at Costco')).toBeNull();
+  });
+
+  it('shows the purchased-other-user add-separate label without combine options', () => {
+    renderDialog({
+      duplicateState: 'purchased-other-user',
+      match: makeMatch({ quantities: [makeEntry({ is_purchased: true })] }),
+    });
+    expect(screen.getByText('Add a separate 1.5 lb item')).toBeTruthy();
+    expect(screen.queryByText(/Combine as/)).toBeNull();
+  });
+
+  it('never renders the old Combine as heading', () => {
+    renderDialog();
+    expect(screen.queryByText('Combine as:')).toBeNull();
   });
 });
