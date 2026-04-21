@@ -316,6 +316,47 @@ describe('SmartAddItem', () => {
     });
   });
 
+  it('quick-adds when the result header hit target is pressed directly', async () => {
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
+    fireEvent.press(await screen.findByTestId('smart-add-result-header-0'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          item_id: 'master-1',
+          name: 'Milk',
+        })
+      );
+    });
+  });
+
+  it('quick-adds when the qty row background is pressed', async () => {
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
+    fireEvent.press(await screen.findByTestId('smart-add-result-qty-row-0'));
+
+    await waitFor(() => {
+      expect(addItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          item_id: 'master-1',
+          name: 'Milk',
+        })
+      );
+    });
+  });
+
+  it('updates qty pill selection without quick-adding when a qty pill is tapped', async () => {
+    render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
+
+    fireEvent.changeText(screen.getByPlaceholderText('Add item...'), 'milk');
+    fireEvent.press(await screen.findByText('1 gal'));
+
+    expect(addItem).not.toHaveBeenCalled();
+  });
+
   it('passes quantity_parsed with packagePlural on quick-add', async () => {
     render(<SmartAddItem activeStoreId="store-1" listItems={[]} />);
 

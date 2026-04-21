@@ -1136,8 +1136,13 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
                   index === 0 && isArmed && styles.topResultArmed,
                 ]}
               >
-                <View style={styles.resultMainSection}>
-                  <TouchableOpacity style={styles.resultHeader} onPress={() => onCommitAdd(fullItem, interpretation, rowKey)}>
+                <TouchableOpacity
+                  testID={`smart-add-result-main-${index}`}
+                  style={styles.resultMainSection}
+                  activeOpacity={1}
+                  onPress={() => onCommitAdd(fullItem, interpretation, rowKey)}
+                >
+                  <View testID={`smart-add-result-header-${index}`} style={styles.resultHeader}>
                     <View style={styles.resultTitleRow}>
                       <Text style={styles.resultName}>{interpretation.name}</Text>
                       {interpretation.orphans.length > 0 ? (
@@ -1147,7 +1152,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
                         <Text style={styles.onListIndicator}>on list</Text>
                       ) : null}
                     </View>
-                  </TouchableOpacity>
+                  </View>
 
                   {otherQtyRowKey === rowKey ? (
                     <View style={styles.inlineOtherEditor}>
@@ -1176,7 +1181,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
                       </TouchableOpacity>
                     </View>
                   ) : (
-                    <View style={styles.inlinePillRow}>
+                    <View testID={`smart-add-result-qty-row-${index}`} style={styles.inlinePillRow}>
                       <Text style={styles.inlineLabel}>Qty: </Text>
                       {orderedQty.slice(0, MAX_VISIBLE_QTY_PILLS).map((qtyOption) => {
                         const isActive = activeQty === qtyOption;
@@ -1256,7 +1261,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
                       )}
                     </View>
                   ) : null}
-                </View>
+                </TouchableOpacity>
 
                 <TouchableOpacity
                   testID={`edit-add-${fullItem.id}`}
@@ -1595,7 +1600,12 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   resultHeader: {
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    minHeight: 44,
     marginBottom: 4,
+    paddingRight: 8,
+    paddingVertical: 6,
   },
   resultTitleRow: {
     flexDirection: 'row',
@@ -1704,7 +1714,8 @@ const styles = StyleSheet.create({
     height: 32,
   },
   resultEditBtn: {
-    paddingHorizontal: 16,
+    width: 48,
+    alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#f9fafb',
     borderLeftWidth: 1,
