@@ -36,16 +36,16 @@ The duplicate resolution dialog currently places "Add New" in a separate bottom 
 | Context | Button label |
 |---------|-------------|
 | Same-store combine | `Combine as [qty]` |
-| Cross-store combine, at existing store | `Combine as [qty] in [existing store]` |
-| Cross-store combine, at incoming store | `Combine as [qty] in [incoming store]` |
+| Cross-store combine, at existing store | `Combine as [qty] at [existing store]` |
+| Cross-store combine, at incoming store | `Combine as [qty] at [incoming store]` |
 | Add separate, same store | `Add a separate [qty] item` |
 | Add separate, cross-store | `Add a separate [qty] at [incoming store]` |
 | No incoming quantity (any) | `Add a separate item` / `Add a separate item at [incoming store]` |
 | Purchased state (any) | `Add a separate [qty] item` (same as same-store; no store qualifier) |
 
-**Rationale:** "Combine as" uses "in [store]" (a location prepositional phrase natural for combining into). "Add a separate" uses "at [store]" (a location prepositional phrase natural for placing a new item). The distinction is subtle but reads naturally. The incoming store (current active store) is always the store for the Add Separate option — you are adding this new entry where you are currently shopping.
+**Rationale:** Both combine and add-separate use "at [store]" — consistent grammar that reads naturally for all actions. The incoming store (current active store) is always the store for the Add Separate option — you are adding this new entry where you are currently shopping.
 
-**Alternatives considered:** Always show store name even for same-store — rejected; the summary line already contextualizes the store, and repeating it on every option adds noise when there's no ambiguity.
+**Alternatives considered:** Using "in [store]" for combine and "at [store]" for add-separate — rejected for inconsistency; "at" reads correctly for both actions and the distinction is too subtle to justify mixing prepositions. Always show store name even for same-store — rejected; the summary line already contextualizes the store, and repeating it on every option adds noise when there's no ambiguity.
 
 ### Cross-store "Add a separate" always at the incoming (current) store
 

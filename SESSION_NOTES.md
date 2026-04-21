@@ -492,3 +492,35 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: none new
 - **Design review**: skipped — no novel patterns; F104 applied existing F103 patterns to store assignment
 - **Next**: Capture duplicate dialog UI change (Add New in option list) as a feature
+
+---
+### 2026-04-20 — /design F108 (Add New as Inline Duplicate Option)
+- **Completed**: Wrote `docs/design/F108-add-new-inline-option.md`. PLAN.md → Designed.
+- **Findings**: Pure UI rearrangement — no data model or hook changes. Only `DuplicateResolutionDialog.tsx` (and possibly test fixtures) changes.
+- **Design decisions**: (1) All options vertical, one per line — no horizontal chip row. (2) "Combine as:" section label dropped; action embedded in button label: "Combine as 3 gal". (3) Add New renamed "Add a separate [qty] item" (same-store) or "Add a separate [qty] at [incoming store]" (cross-store). (4) "in" for combine store qualifiers, "at" for add-separate. (5) Add-separate always at the incoming (current) store. (6) Custom + Cancel remain on bottom row unchanged.
+- **Design review**: not triggered — extension of existing F78 uniform-button pattern; no novel patterns
+- **Next**: `/spec F108` when ready
+
+---
+### 2026-04-20 — /review-impl F107 (Warning Recompute on Entry Store Change)
+- **Completed**: Full code review of F107 implementation. Code passes all technical checks. 645/645 tests pass, 0 skipped. Added F107 to PLAN.md as `In Review`. Created `plans/F107-log.md`.
+- **Findings**: F107 was implemented without going through the standard spec flow — no progress file, spec, or PLAN.md entry existed at review time. Process gap resolved during review. Code itself is clean: `recomputeListItemWarnings` correctly sits inside `incrementLocalMutation`/`decrementLocalMutation`, all undo/redo callers go through `updateQuantityEntry` so warnings recompute on undo/redo too. Inline edit modal always passes `store_id` in `entryUpdates` so `recomputeListItemWarnings` fires for quantity-only inline edits (extra work, not incorrect).
+- **Design decisions**: none — selected option 3 from the issue (recompute on `useUpdateQuantityEntry` store change)
+- **Design review**: not triggered — no new patterns; existing mutation tracking pattern applied correctly
+- **Next**: Ship via `/complete F107`
+
+---
+### 2026-04-20 — F108 spec written
+- **Completed**: `specs/F108-add-new-inline-option.md`; PLAN.md updated (Designed → Specced); `plans/F108-log.md` created; GitHub #108 updated with spec link and acceptance criteria.
+- **Findings**: Design doc was fully consistent with codebase — no drift. Change is self-contained to `DuplicateResolutionDialog.tsx`: replace horizontal chip rows + "Combine as:" header + bottom-row "Add New" with a single vertical `optionsList` View containing all option buttons. Combine labels gain "Combine as " prefix; add-separate label is context-sensitive (same-store: "item", cross-store: "at [store]", purchased: no store qualifier). `showCombine` boolean replaced by `showOptions` + `showCombineOptions`. Three now-unused styles removed (`combineRow`, `crossStoreActions`, `crossStoreRow`, `sectionLabel`).
+- **Design decisions**: none — all decisions from `docs/design/F108-add-new-inline-option.md`
+- **Design review**: not triggered — no new patterns; uses established uniform-button-styling pattern (F78) and existing `actionButton` style
+- **Next**: Implementor runs `./implement F108`
+
+---
+### 2026-04-20 — F108 /review-impl (Passed)
+- **Completed**: Full review of F108 implementation. 653/653 tests pass. PLAN.md → In Review. GitHub #108 labeled in-review.
+- **Findings**: Clean implementation. `addSeparateLabel` useMemo correctly covers all four duplicate states and the empty-quantity fallback. Cross-store section uses `React.Fragment` to keep per-option button pairs flat in the `optionsList`. All four stale styles removed. The implementor also updated `SmartAddItem-test.tsx` and `SmartAddItem-f104-test.tsx` as correct cascading dependency work (old testID and label strings updated). Two bonus cross-store combine callback tests added beyond spec.
+- **Design decisions**: none
+- **Design review**: not triggered — no new patterns; all changes within the established uniform-button-styling and bottom-anchored dialog patterns (F78)
+- **Next**: Ready to ship — run `/complete F108`

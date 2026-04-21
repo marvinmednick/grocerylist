@@ -46,7 +46,7 @@
 | F104 | Per-Entry Store ID (store_id migration) | Done | [specs/F104-per-entry-store-id.md](specs/F104-per-entry-store-id.md) | [#104](https://github.com/marvinmednick/grocerylist/issues/104) |
 | F105 | Multi-Target Duplicate Picker | Backlog | — | [#105](https://github.com/marvinmednick/grocerylist/issues/105) |
 | F107 | Warning Recompute on Entry Store Change | In Review | — | [#107](https://github.com/marvinmednick/grocerylist/issues/107) |
-| F108 | Add New as Inline Duplicate Option | Designed | [docs/design/F108-add-new-inline-option.md](docs/design/F108-add-new-inline-option.md) | [#108](https://github.com/marvinmednick/grocerylist/issues/108) |
+| F108 | Add New as Inline Duplicate Option | Done | [specs/F108-add-new-inline-option.md](specs/F108-add-new-inline-option.md) · [design](docs/design/F108-add-new-inline-option.md) | [#108](https://github.com/marvinmednick/grocerylist/issues/108) |
 
 **Statuses:** `Backlog` → `Designed` → `Specced` → `In Progress` → `Needs Fixes` → `In Review` → `Done`
 (`Designed` is optional — features with clear requirements can go `Backlog` → `Specced` directly)
