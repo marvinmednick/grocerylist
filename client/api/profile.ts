@@ -26,6 +26,13 @@ export const DEFAULT_QUICK_ACCEPT_SETTINGS: QuickAcceptSettings = {
   arming_delay_ms: 1500,
 };
 
+export const DEFAULT_WARNING_PREFS: WarningPreferences = {
+  avoided: 'toast_and_badge',
+  unavailable: 'toast_and_badge',
+  non_preferred: 'badge_only',
+  non_standard_qty: 'badge_only',
+};
+
 interface MyProfile {
   id: string;
   household_id: string;

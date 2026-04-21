@@ -31,7 +31,7 @@ import {
 } from '@/api/list';
 import { useMetadata } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
-import { DEFAULT_QUICK_ACCEPT_SETTINGS, useMyProfile } from '@/api/profile';
+import { DEFAULT_QUICK_ACCEPT_SETTINGS, DEFAULT_WARNING_PREFS, useMyProfile } from '@/api/profile';
 import { useVocabulary } from '@/api/vocabulary';
 import { DuplicateResolutionDialog } from '@/components/DuplicateResolutionDialog';
 import { WarningCallout } from '@/components/WarningCallout';
@@ -96,12 +96,6 @@ interface PendingAddDetails {
 const MAX_VISIBLE_QTY_PILLS = 7;
 const MAX_VISIBLE_STORE_PILLS = 3;
 
-const DEFAULT_WARNING_PREFS = {
-  avoided: 'toast_and_badge',
-  unavailable: 'toast_and_badge',
-  non_preferred: 'badge_only',
-  non_standard_qty: 'badge_only',
-} as const;
 
 function getRowKey(interpretation: ParsedInput, index: number): string {
   return `${interpretation.matchedItemId ?? interpretation.name}-${index}`;

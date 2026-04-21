@@ -15,6 +15,7 @@ import { X } from 'lucide-react-native';
 import { useHousehold } from '@/lib/household';
 import {
   DEFAULT_QUICK_ACCEPT_SETTINGS,
+  DEFAULT_WARNING_PREFS,
   type QuickAcceptSettings,
   useHouseholdMemberColors,
   useHouseholdName,
@@ -39,12 +40,6 @@ export const PROFILE_COLORS = [
   { name: 'Pink', hex: '#db2777' },
 ];
 
-const DEFAULT_WARNING_PREFS: WarningPreferences = {
-  avoided: 'toast_and_badge',
-  unavailable: 'toast_and_badge',
-  non_preferred: 'badge_only',
-  non_standard_qty: 'badge_only',
-};
 
 const WARNING_OPTIONS: Record<string, Array<{ label: string; value: string }>> = {
   avoided: [

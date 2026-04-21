@@ -91,10 +91,10 @@ const getWarningKey = (warning: Warning): string => {
   }
 
   if (warning.type === 'non_preferred') {
-    return [warning.type, JSON.stringify(warning.preferred_stores)].join('|');
+    return [warning.type, ...warning.preferred_stores.slice().sort()].join('|');
   }
 
-  return [warning.type, warning.entered, JSON.stringify(warning.standard)].join('|');
+  return [warning.type, warning.entered, ...warning.standard.slice().sort()].join('|');
 };
 
 const dedupeWarnings = (warnings: Warning[]): Warning[] => {
