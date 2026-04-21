@@ -125,6 +125,17 @@ function isPureCount(quantity: QuantityParsed): boolean {
   );
 }
 
+function getPackageCount(quantity: QuantityParsed): number {
+  return quantity.count ?? 1;
+}
+
+function packagePluralFor(quantity: QuantityParsed): string {
+  if (!quantity.packageType) {
+    return '';
+  }
+  return quantity.packagePlural ?? `${quantity.packageType}s`;
+}
+
 function sameNumber(left: number | null, right: number | null): boolean {
   if (left === null || right === null) {
     return left === right;
@@ -183,6 +194,29 @@ export function combineQuantities(existing: QuantityParsed, incoming: QuantityPa
   }
 
   if (
+    (isPureCount(existing) && incoming.packageType && incoming.sizeDescriptive === null) ||
+    (isPureCount(incoming) && existing.packageType && existing.sizeDescriptive === null)
+  ) {
+    const packaged = existing.packageType ? existing : incoming;
+    const plainCount = existing.packageType ? incoming : existing;
+
+    const option: CombineOption = {
+      type: 'sum',
+      result: {
+        ...emptyQuantity(),
+        count: getPackageCount(packaged) + (plainCount.count ?? 0),
+        packageType: packaged.packageType,
+        packagePlural: packagePluralFor(packaged),
+        sizeQty: packaged.sizeQty,
+        sizeUnit: packaged.sizeUnit,
+      },
+      label: '',
+    };
+    option.label = formatCombineOption(option);
+    return { options: [option] };
+  }
+
+  if (
     existing.packageType === null &&
     incoming.packageType === null &&
     existing.sizeQty !== null &&
@@ -230,8 +264,8 @@ export function combineQuantities(existing: QuantityParsed, incoming: QuantityPa
     existing.sizeDescriptive === null &&
     incoming.sizeDescriptive === null
   ) {
-    const existingCount = existing.count ?? 1;
-    const incomingCount = incoming.count ?? 1;
+    const existingCount = getPackageCount(existing);
+    const incomingCount = getPackageCount(incoming);
     const hasSameSize = sameNumber(existing.sizeQty, incoming.sizeQty) && existing.sizeUnit === incoming.sizeUnit;
 
     const sumOption: CombineOption = {
@@ -249,7 +283,7 @@ export function combineQuantities(existing: QuantityParsed, incoming: QuantityPa
     sumOption.label = formatCombineOption(sumOption);
 
     const options: CombineOption[] = [sumOption];
-    const canMultipack = hasSameSize && sameNumber(existing.count, incoming.count);
+    const canMultipack = hasSameSize && existing.sizeQty !== null && sameNumber(existing.count, incoming.count);
     if (canMultipack) {
       const multipack: CombineOption = {
         type: 'multipack',

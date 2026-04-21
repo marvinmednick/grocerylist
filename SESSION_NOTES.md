@@ -524,3 +524,27 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: none
 - **Design review**: not triggered — no new patterns; all changes within the established uniform-button-styling and bottom-anchored dialog patterns (F78)
 - **Next**: Ready to ship — run `/complete F108`
+
+---
+### 2026-04-20 — /investigate: duplicate dialog missing combine option (issue #109)
+- **Completed**: Investigated user-reported bug: "You already have 2 at Costco" + no combine option when adding "1 case" of an item already at "2".
+- **Findings**: Two symptoms, one root cause. (1) Summary showing "2" is CORRECT — the existing DB entry has `quantity = "2"` (plain count), likely added before package-type vocabulary was in common use or via default qty chip. The dialog correctly displays the stored value. (2) No combine option: `combineQuantities` in `quantityFormat.ts:156` has no branch for pure count + package type. The existing four branches require symmetric types. `{ count: 2 } + { count: 1, packageType: 'case' }` falls through all branches → null. NOT a F108 regression — combineQuantities is unchanged. Filed as #109.
+- **Design decisions**: none
+- **Design review**: not triggered — contained bug in a utility function, no pattern implications
+- **Next**: `/resolve 109` to fix, or defer
+
+---
+### 2026-04-20 — /resolve 109
+- **Completed**: Fixed both `combineQuantities` bugs from issue #109 and added regression coverage. Verified with focused Jest plus `./check-tests --show-known`.
+- **Findings**: Added a mixed-type branch so plain count + packaged quantity now combines by inheriting package metadata from the packaged side (`2` + `1 case` → `3 cases`). Tightened same-package multipack gating so size-less packages (`1 case` + `1 case`) only produce the sum option instead of duplicate `"2 cases"` labels.
+- **Design decisions**: none
+- **Design review**: not triggered — contained utility fix, no broader pattern change
+- **Next**: Commit when ready; close #109 after commit
+
+---
+### 2026-04-20 — /review-impl #109 (Passed)
+- **Completed**: Full review of #109 (combineQuantities bug fixes). 655/655 tests pass.
+- **Findings**: Both fixes correct. Bug 1: new branch for pure count + package type uses `getPackageCount`/`packagePluralFor` helpers; handles both orderings. Bug 2: `existing.sizeQty !== null` added to `canMultipack` guard — prevents size-less packages from generating a duplicate-label multipack option. Minor gap: no explicit test for reversed (packaged + plain count) ordering, but code handles it.
+- **Design decisions**: none
+- **Design review**: not triggered — contained utility function fix, no pattern implications
+- **Next**: `/complete 109` to ship

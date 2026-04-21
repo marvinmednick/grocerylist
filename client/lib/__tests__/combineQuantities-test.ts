@@ -76,6 +76,38 @@ describe('combineQuantities', () => {
     );
   });
 
+  it('combines plain count with packaged quantity by treating the count as that package', () => {
+    const result = combineQuantities(
+      parsed({ count: 2 }),
+      parsed({ count: 1, packageType: 'case', packagePlural: 'cases' })
+    );
+    expect(result?.options).toEqual([
+      expect.objectContaining({
+        type: 'sum',
+        result: expect.objectContaining({
+          count: 3,
+          packageType: 'case',
+          packagePlural: 'cases',
+        }),
+        label: '3 cases',
+      }),
+    ]);
+  });
+
+  it('does not offer duplicate multipack option for same-package quantities without size info', () => {
+    const result = combineQuantities(
+      parsed({ count: 1, packageType: 'case', packagePlural: 'cases' }),
+      parsed({ count: 1, packageType: 'case', packagePlural: 'cases' })
+    );
+    expect(result?.options).toHaveLength(1);
+    expect(result?.options[0]).toEqual(
+      expect.objectContaining({
+        type: 'sum',
+        label: '2 cases',
+      })
+    );
+  });
+
   it('returns null for incompatible units: 1 lb + 2 each', () => {
     const result = combineQuantities(
       parsed({ sizeQty: 1, sizeUnit: 'lb' }),
