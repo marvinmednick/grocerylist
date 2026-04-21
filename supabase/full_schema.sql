@@ -135,7 +135,6 @@ CREATE TABLE list_items (
     item_id UUID REFERENCES items(id) ON DELETE SET NULL,
     name TEXT NOT NULL,
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    store_id UUID REFERENCES stores(id) ON DELETE SET NULL, -- deprecated: always NULL as of F104; store lives on list_item_quantities
     added_at TIMESTAMPTZ DEFAULT NOW(),
     archived_at TIMESTAMPTZ,
     warnings JSONB DEFAULT '[]',
