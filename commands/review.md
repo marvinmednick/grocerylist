@@ -1,15 +1,29 @@
 Review the code changes described or shown (use recent git diff if no specific code is provided): $ARGUMENTS
 
-## Step 0 — Read the Progress File
+## Step 0 — Determine Review Path
 
-Before reviewing any code, read `plans/F[N]-progress.md`:
+Before reviewing any code, check whether a progress file exists:
 
-- **Missing file:** Warn the user — AGENT.md requires the implementor to create this. Do not proceed until resolved.
-- **Status ≠ `Complete`:** This is a **blocking** finding — stop and report. Do not review incomplete work.
-- **Issues non-empty:** Flag each item prominently in the review report. These are problems the implementor already identified — they may explain findings in the diff or represent unresolved deviations from the spec.
-- **File checklist:** Cross-check the ✅/🔄/⏳ entries against the spec's "Files to Modify" list. Note any files that appear in the spec but are absent from the progress log (possible omission) or any files in the log that were not in the spec (possible scope creep).
+```bash
+ls plans/F[N]-progress.md 2>/dev/null || ls plans/I[N]-progress.md 2>/dev/null
+```
+
+**If found** — this is a spec/implement-path feature. Read the progress file:
+- **Status ≠ `Complete`:** Blocking — stop and report. Do not review incomplete work.
+- **Issues non-empty:** Flag each item prominently. These are problems the implementor already identified.
+- **File checklist:** Cross-check ✅/🔄/⏳ entries against the spec's "Files to Modify" list. Note any omissions or scope creep.
 
 Continue to code review only when Status is `Complete` and Issues is empty (or all issues are understood and explained).
+
+**If not found** — check for a log file:
+
+```bash
+ls plans/F[N]-log.md 2>/dev/null || ls plans/I[N]-log.md 2>/dev/null
+```
+
+- **Log file exists with `Workflow: resolve`:** This was a `/resolve`-path issue — no spec or progress file is expected. Skip progress file checks and spec-conformance checks. Review for: code correctness, test coverage of the specific fix, and that PLAN.md tracking is in order. Continue.
+- **Log file exists without `Workflow: resolve`:** Progress file is missing for a spec-path feature — warn the user per AGENT.md and do not proceed.
+- **No log file either:** No process artifacts found at all — warn the user and do not proceed.
 
 ---
 

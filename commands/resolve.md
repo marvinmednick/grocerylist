@@ -233,6 +233,30 @@ The code path responsible for this behavior could not be identified from static 
 
 ---
 
+## Create Log Entry
+
+After the fix is verified (before committing), create `plans/[prefix][N]-log.md` — using the same identifier prefix as used in PLAN.md (e.g. `plans/I107-log.md` or `plans/F107-log.md`):
+
+```markdown
+# [Issue title]
+
+GitHub: [#N](URL)
+Workflow: resolve (no spec, no progress file)
+
+---
+
+## YYYY-MM-DD — Resolved
+
+- **Fix:** [one sentence: what was changed and why]
+- **Path:** [Path A — bug investigation / Path B — direct fix]
+- **Files changed:** [list]
+- **Tests:** [X/X passed]
+```
+
+This log is the signal used by `/review-impl` to detect resolve-path issues and adjust review scope accordingly.
+
+---
+
 ## Design Review
 
 After identifying and applying a fix (Phase 3 direct fix path or Type 1 spec), check whether the root cause reveals a broader principle:

@@ -548,3 +548,18 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: none
 - **Design review**: not triggered — contained utility function fix, no pattern implications
 - **Next**: `/complete 109` to ship
+
+---
+### 2026-04-20 — /resolve 110
+- **Completed**: Fixed SmartAdd row hit targeting so the main body quick-adds while qty pills and the chevron keep their existing interactions. Verified with focused SmartAdd tests and `./check-tests --show-known`.
+- **Findings**: Root cause was narrow hit-target wiring in `SmartAddItem`: only the header/title touch target triggered quick-add, while the qty-row background and other empty space in the highlighted row were inert. The fix moved quick-add ownership to the row main section and added regression tests for qty-row background taps and nested qty-pill taps.
+- **Design decisions**: none
+- **Design review**: not triggered — contained interaction bug in one component, no broader pattern change
+- **Next**: Commit when ready; close #110 after commit
+
+---
+### 2026-04-20 — /review-impl #110 (Passed)
+- **Completed**: Full review of #110 (SmartAdd full result row selectable). 658/658 tests pass. Issue #110 closed.
+- **Findings**: Clean fix — outer `resultMainSection` View promoted to `TouchableOpacity` with `activeOpacity={1}` (suppresses whole-row dimming so pill taps show only pill feedback). Inner `resultHeader` TouchableOpacity demoted to View. Edit chevron remains outside the outer wrapper. Three targeted tests cover header press, qty-row background press, and pill-only press (no add). No non-blocking items.
+- **Design decisions**: none
+- **Design review**: not triggered — contained interaction fix, no new patterns
