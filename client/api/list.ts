@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useHousehold } from '@/lib/household';
-import type { Warning } from '@/api/items';
+import { computeWarnings, type Warning } from '@/api/items';
 import type { QuantityParsed } from '@/lib/quantityFormat';
 
 export interface QuantityEntry {
@@ -61,6 +61,104 @@ function decrementLocalMutation() {
 export function __resetLocalMutationCount() {
   localMutationCount = 0;
 }
+
+type WarningAggregationEntry = {
+  id: string;
+  quantity: string | null;
+  store_id: string | null;
+  archived_at: string | null;
+};
+
+type WarningAggregationListItem = {
+  id: string;
+  item_id: string | null;
+  quantities: WarningAggregationEntry[];
+  master_item: {
+    default_qty: string | null;
+    alternate_qtys: string[] | null;
+    item_store_preferences?: Array<{
+      store_id: string;
+      status: 'preferred' | 'avoided' | 'unavailable' | 'neutral';
+      comment: string | null;
+      store?: { id: string; name: string; color_code: string };
+    }> | null;
+  } | null;
+};
+
+const getWarningKey = (warning: Warning): string => {
+  if (warning.type === 'avoided' || warning.type === 'unavailable') {
+    return [warning.type, warning.store_id, warning.store_name ?? '', warning.comment ?? ''].join('|');
+  }
+
+  if (warning.type === 'non_preferred') {
+    return [warning.type, JSON.stringify(warning.preferred_stores)].join('|');
+  }
+
+  return [warning.type, warning.entered, JSON.stringify(warning.standard)].join('|');
+};
+
+const dedupeWarnings = (warnings: Warning[]): Warning[] => {
+  const seen = new Set<string>();
+
+  return warnings.filter((warning) => {
+    const key = getWarningKey(warning);
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+};
+
+const recomputeListItemWarnings = async (listItemId: string) => {
+  const { data, error } = await supabase
+    .from('list_items')
+    .select(`
+      id,
+      item_id,
+      quantities:list_item_quantities!list_item_id(
+        id, quantity, store_id, archived_at
+      ),
+      master_item:items!item_id(
+        default_qty,
+        alternate_qtys,
+        item_store_preferences(
+          store_id, status, comment,
+          store:stores(id, name, color_code)
+        )
+      )
+    `)
+    .eq('id', listItemId)
+    .single();
+
+  if (error) throw error;
+
+  const listItem = data as WarningAggregationListItem;
+  const warnings =
+    !listItem.item_id || !listItem.master_item
+      ? []
+      : dedupeWarnings(
+          (listItem.quantities ?? [])
+            .filter((entry) => !entry.archived_at)
+            .flatMap((entry) =>
+              computeWarnings(
+                listItem.master_item?.item_store_preferences,
+                entry.store_id,
+                entry.quantity,
+                listItem.master_item.default_qty,
+                listItem.master_item.alternate_qtys
+              )
+            )
+        );
+
+  const { error: updateError } = await supabase
+    .from('list_items')
+    .update({ warnings })
+    .eq('id', listItemId);
+
+  if (updateError) throw updateError;
+};
 
 // Fetch the active shopping list
 export const useShoppingList = (onRemoteChange?: (event: string, itemName?: string) => void) => {
@@ -376,6 +474,8 @@ export const useUpdateQuantityEntry = () => {
       quantity_parsed?: QuantityParsed | null;
       store_id?: string | null;
     }) => {
+      const storeChanged = 'store_id' in updates;
+
       incrementLocalMutation();
       try {
         const { data, error } = await supabase
@@ -386,6 +486,11 @@ export const useUpdateQuantityEntry = () => {
           .single();
 
         if (error) throw error;
+
+        if (storeChanged) {
+          await recomputeListItemWarnings((data as QuantityEntry).list_item_id);
+        }
+
         return data;
       } finally {
         decrementLocalMutation();

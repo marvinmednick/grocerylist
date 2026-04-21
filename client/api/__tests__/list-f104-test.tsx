@@ -169,26 +169,114 @@ describe('list F104 hooks', () => {
     );
   });
 
-  it('useUpdateQuantityEntry accepts store_id update', async () => {
-    const updatePayloads: unknown[] = [];
+  it('useUpdateQuantityEntry recomputes parent warnings when store_id changes', async () => {
+    const quantityUpdatePayloads: unknown[] = [];
+    const listItemUpdatePayloads: unknown[] = [];
 
-    mockFrom.mockReturnValue({
-      update: (payload: unknown) => {
-        updatePayloads.push(payload);
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'list_item_quantities') {
         return {
-          eq: jest.fn().mockReturnValue({
-            select: jest.fn().mockReturnValue({
-              single: jest.fn().mockResolvedValue({ data: { id: 'entry-1' }, error: null }),
+          update: (payload: unknown) => {
+            quantityUpdatePayloads.push(payload);
+            return {
+              eq: jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                  single: jest.fn().mockResolvedValue({
+                    data: { id: 'entry-1', list_item_id: 'parent-1', quantity: '1 gal', store_id: 'store-3' },
+                    error: null,
+                  }),
+                }),
+              }),
+            };
+          },
+        };
+      }
+
+      if (table === 'list_items') {
+        return {
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockReturnValue({
+              single: jest.fn().mockResolvedValue({
+                data: {
+                  id: 'parent-1',
+                  item_id: 'master-1',
+                  quantities: [{ id: 'entry-1', quantity: '1 gal', store_id: 'store-3', archived_at: null }],
+                  master_item: {
+                    default_qty: '1 gal',
+                    alternate_qtys: [],
+                    item_store_preferences: [
+                      {
+                        store_id: 'store-3',
+                        status: 'avoided',
+                        comment: 'Too expensive',
+                        store: { id: 'store-3', name: 'Alt Market', color_code: '#16a34a' },
+                      },
+                    ],
+                  },
+                },
+                error: null,
+              }),
             }),
           }),
+          update: (payload: unknown) => {
+            listItemUpdatePayloads.push(payload);
+            return {
+              eq: jest.fn().mockResolvedValue({ error: null }),
+            };
+          },
         };
-      },
+      }
+
+      throw new Error(`Unexpected table ${table}`);
     });
 
     const mutation = useUpdateQuantityEntry();
     await mutation.mutateAsync({ id: 'entry-1', store_id: 'store-3' });
 
-    expect(updatePayloads).toEqual([expect.objectContaining({ store_id: 'store-3' })]);
+    expect(quantityUpdatePayloads).toEqual([expect.objectContaining({ store_id: 'store-3' })]);
+    expect(listItemUpdatePayloads).toEqual([
+      {
+        warnings: [
+          {
+            type: 'avoided',
+            store_id: 'store-3',
+            store_name: 'Alt Market',
+            comment: 'Too expensive',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('useUpdateQuantityEntry does not recompute parent warnings for quantity-only edits', async () => {
+    const quantityUpdatePayloads: unknown[] = [];
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'list_item_quantities') {
+        return {
+          update: (payload: unknown) => {
+            quantityUpdatePayloads.push(payload);
+            return {
+              eq: jest.fn().mockReturnValue({
+                select: jest.fn().mockReturnValue({
+                  single: jest.fn().mockResolvedValue({
+                    data: { id: 'entry-1', list_item_id: 'parent-1', quantity: '2' },
+                    error: null,
+                  }),
+                }),
+              }),
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table ${table}`);
+    });
+
+    const mutation = useUpdateQuantityEntry();
+    await mutation.mutateAsync({ id: 'entry-1', quantity: '2' });
+
+    expect(quantityUpdatePayloads).toEqual([expect.objectContaining({ quantity: '2' })]);
   });
 
   it('useUpdateListItemFields does not accept store_id', () => {

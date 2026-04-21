@@ -171,6 +171,10 @@ describe('ShoppingListScreen F103', () => {
     fireEvent.changeText(screen.getByDisplayValue('1L'), '3L');
     fireEvent.press(screen.getByText('Save'));
     await waitFor(() => expect(updateQuantityEntry).toHaveBeenCalledWith(expect.objectContaining({ id: 'q1', quantity: '3L' })));
+    expect(updateQuantityEntry).toHaveBeenCalledWith({
+      id: 'q1',
+      quantity: '3L',
+    });
     expect(updateListItemFields).not.toHaveBeenCalled();
   });
 

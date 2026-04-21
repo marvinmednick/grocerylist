@@ -222,12 +222,20 @@ export default function ShoppingListScreen() {
       quantity: editQty || null,
       store_id: editStoreId || null,
     };
+    const quantityChanged = entrySnapshot.quantity !== entryUpdates.quantity;
+    const storeChanged = entrySnapshot.store_id !== entryUpdates.store_id;
+    const entryForwardUpdate = {
+      ...(quantityChanged ? { quantity: entryUpdates.quantity } : {}),
+      ...(storeChanged ? { store_id: entryUpdates.store_id } : {}),
+    };
+    const entryUndoUpdate = {
+      ...(quantityChanged ? { quantity: entrySnapshot.quantity } : {}),
+      ...(storeChanged ? { store_id: entrySnapshot.store_id } : {}),
+    };
     const parentChanged =
       parentSnapshot.name !== parentUpdates.name ||
       parentSnapshot.category_id !== parentUpdates.category_id;
-    const entryChanged =
-      entrySnapshot.quantity !== entryUpdates.quantity ||
-      entrySnapshot.store_id !== entryUpdates.store_id;
+    const entryChanged = quantityChanged || storeChanged;
 
     if (!parentChanged && !entryChanged) {
       setIsEditModalVisible(false);
@@ -240,7 +248,7 @@ export default function ShoppingListScreen() {
       await updateListItemFields({ id: editingParent.id, ...parentUpdates });
     }
     if (entryChanged) {
-      await updateQuantityEntry({ id: editingEntry.id, ...entryUpdates });
+      await updateQuantityEntry({ id: editingEntry.id, ...entryForwardUpdate });
     }
 
     pushAction({
@@ -250,7 +258,7 @@ export default function ShoppingListScreen() {
           await updateListItemFields({ id: editingParent.id, ...parentSnapshot });
         }
         if (entryChanged) {
-          await updateQuantityEntry({ id: editingEntry.id, ...entrySnapshot });
+          await updateQuantityEntry({ id: editingEntry.id, ...entryUndoUpdate });
         }
       },
       redo: async () => {
@@ -258,7 +266,7 @@ export default function ShoppingListScreen() {
           await updateListItemFields({ id: editingParent.id, ...parentUpdates });
         }
         if (entryChanged) {
-          await updateQuantityEntry({ id: editingEntry.id, ...entryUpdates });
+          await updateQuantityEntry({ id: editingEntry.id, ...entryForwardUpdate });
         }
       }
     });
