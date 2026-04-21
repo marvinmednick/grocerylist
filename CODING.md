@@ -362,6 +362,10 @@ api/
     list-test.ts             ← api/hook tests here
 ```
 
+**Test file naming:** Name test files after the topic they cover, not the feature that created them. Use `[module]-[topic]-test.tsx` (e.g. `SmartAddItem-store-test.tsx`, `list-entry-mutations-test.tsx`). Never embed a feature number in a test filename (e.g. `list-f104-test.tsx`) — feature numbers become meaningless as later features add tests to the same file. When a new feature needs tests in an existing module, add them to the relevant existing file or create a new topic-named file.
+
+**`describe` block labels:** Match the file topic, not the feature number. Write `describe('list entry mutation hooks', ...)` not `describe('list F104 hooks', ...)`.
+
 ### Required Test Wrapper
 
 Components that use `useHousehold()`, `useUndo()`, or any React Query hook require all three providers. The Supabase mock returns a null session, so `householdId` will be null — fine for UI tests, but mutation tests need to mock the household query response explicitly.

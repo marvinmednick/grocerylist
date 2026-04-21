@@ -39,7 +39,7 @@ const safeAreaMetrics = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
 };
 
-describe('ItemsScreen F85 parsed quantity payloads', () => {
+describe('ItemsScreen parsed quantity payloads', () => {
   const createMutateAsync = jest.fn();
   const updateMutateAsync = jest.fn();
   const pushAction = jest.fn();
