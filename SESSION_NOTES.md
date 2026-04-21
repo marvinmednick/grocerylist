@@ -563,3 +563,11 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Findings**: Clean fix — outer `resultMainSection` View promoted to `TouchableOpacity` with `activeOpacity={1}` (suppresses whole-row dimming so pill taps show only pill feedback). Inner `resultHeader` TouchableOpacity demoted to View. Edit chevron remains outside the outer wrapper. Three targeted tests cover header press, qty-row background press, and pill-only press (no add). No non-blocking items.
 - **Design decisions**: none
 - **Design review**: not triggered — contained interaction fix, no new patterns
+
+---
+### 2026-04-20 — /complete F107 (Warning Recompute on Entry Store Change)
+- **Completed**: F107 shipped. 658/658 tests pass. Issue #107 closed. PLAN.md → Done. Backlog: handleSaveEdit item discarded (fixed in commit); dedupeWarnings item promoted to #111.
+- **Findings**: handleSaveEdit diff-only update was actually implemented as part of the F107 fix (not just the warning recompute) — the backlog item was already resolved in the same commit.
+- **Design decisions**: none
+- **Design review**: not triggered — no new patterns; existing mutation tracking pattern applied
+- **Next**: 11 commits unpushed

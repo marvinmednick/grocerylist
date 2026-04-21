@@ -86,3 +86,7 @@ _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assig
 ### From F104
 - [x] `list_items.store_id` column formal DROP — promoted to #106.
 - [x] Warnings stale-store problem — promoted to #107.
+
+### From F107
+- [x] `index.tsx:handleSaveEdit` always passes `store_id` in `entryUpdates` — fixed in F107 commit (diff-only update implemented).
+- [x] `dedupeWarnings` uses `JSON.stringify` for dedup — promoted to #111.

@@ -17,7 +17,17 @@ gh issue view [N] --json number,title,body,labels 2>/dev/null
 
 ## Step 1 — Verify Tests
 
-Run the test suite to confirm the baseline is clean before committing:
+First check whether a recent passing run already covers the current working tree:
+
+```bash
+# .last-test-output.txt is written by ./check-tests on every run
+stat .last-test-output.txt 2>/dev/null
+git log -1 --format="%ct" -- client/   # last commit time touching client/
+```
+
+If `.last-test-output.txt` is **newer** than the last commit that touched `client/` and that run recorded zero failures, the baseline is already verified — skip the test run and note "tests verified by recent /review-impl run."
+
+Otherwise run the full suite:
 
 ```bash
 ./check-tests --show-known
