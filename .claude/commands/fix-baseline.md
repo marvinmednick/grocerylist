@@ -1,3 +1,1 @@
-Diagnose and propose fixes for pre-existing test failures.
-
-Read and follow the full instructions in `commands/fix-baseline.md`.
+/home/mmednick/.workflow-template/claude-stubs/fix-baseline.md

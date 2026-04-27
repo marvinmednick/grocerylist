@@ -1,3 +1,1 @@
-Review the implementation plan for $ARGUMENTS against its spec.
-
-Read and follow the full instructions in `commands/review-plan.md`.
+/home/mmednick/.workflow-template/claude-stubs/review-plan.md
