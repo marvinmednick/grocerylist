@@ -836,11 +836,13 @@ All workflow commands are available in both **Claude Code** and **Codex CLI**:
 | `/review-plan F1` | `$review-plan F1` | Review an implementation plan |
 | `/triage 18 19` | `$triage 18 19` | Assess severity/effort for bugs |
 
-**How it works:** Command instructions live in `commands/*.md` (single source of truth). Both tools reference these shared files through thin wrappers:
+**How it works:** Command instructions live in `commands/*.md` (single source of truth, symlinked from `~/.workflow-template`). Both tools reference these shared files through thin wrappers:
 - Claude: `.claude/commands/*.md` → reads `commands/*.md`
 - Codex: `.codex/skills/*/SKILL.md` → reads `commands/*.md`
 
-**Updating a command:** Edit the file in `commands/` — both tools pick up the change automatically.
+**Updating a command:** Edit `~/.workflow-template/<command>.md` and push to `marvinmednick/workflow-template`. All projects using symlinks pick up the change via `./update-workflow`.
+
+**Pulling workflow improvements:** Run `./update-workflow` from the project root. It pulls the `~/.workflow-template` clone — all symlinked files (commands, scripts, stubs, configs) update instantly.
 
 ---
 
@@ -887,7 +889,9 @@ All workflow commands are available in both **Claude Code** and **Codex CLI**:
 | `CLAUDE.md` | Starting a Claude session — project guidance and architecture |
 | `AGENT.md` | Starting any implementation session — behavioral rules for all tools |
 | `CODING.md` | Starting any implementation session — coding conventions and patterns |
-| `commands/*.md` | Shared command instructions — single source of truth for both Claude and Codex |
+| `commands/*.md` | Shared command instructions — symlinked from `~/.workflow-template`; edit there and push to propagate |
+| `update-workflow` | Pull latest workflow-template improvements — run from project root |
+| `REVIEW.md` | Project-specific review checklist — read by `/review-impl` and the built-in `/review` |
 | `docs/tools/codex.md` | Codex invocation, API key, model selection (human reference) |
 | `docs/tools/gemini.md` | Gemini invocation and copy-paste reference (human reference) |
 | `docs/tools/aider.md` | aider setup, edit formats, model selection (human reference) |
