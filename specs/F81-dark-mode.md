@@ -415,7 +415,7 @@ const makeStyles = (colors: AppColors) =>
 
 ### New Files
 
-None. All changes are to existing files.
+- `client/lib/__tests__/theme-test.tsxx` — theme provider unit tests (hooks, AsyncStorage persistence, color resolution)
 
 ---
 
@@ -479,7 +479,7 @@ None — no `list_items` mutations.
 
 ### Tests to Write
 
-**New file: `client/lib/__tests__/theme-test.ts`**
+**New file: `client/lib/__tests__/theme-test.tsx`**
 
 ```
 - it('defaults themePreference to "system" on mount with no stored value')
@@ -619,15 +619,13 @@ jest.mock('./lib/theme', () => ({
 
 ### Deferred Items
 
-Append to `BACKLOG.md` under "Deferred from Specs":
+The following were explicitly descoped and are tracked in BACKLOG.md:
 
-```
-- [ ] Animated crossfade between light/dark transitions — instant switch is V1 acceptable. (deferred from F81)
-- [ ] Custom color themes beyond light/dark — not a current requirement. (deferred from F81)
-- [ ] Per-component or per-screen theme override — not needed. (deferred from F81)
-- [ ] Updating test color assertions to reference named constants instead of literal hex strings — tests check light-mode values that happen to match token values; they pass but don't express intent. Low priority cleanup. (deferred from F81)
-- [ ] Non-color hardcoded values (font sizes, border radii, spacing) — separate cleanup concern, not in scope. (deferred from F81)
-```
+- Animated crossfade between light/dark transitions — instant switch is V1 acceptable.
+- Custom color themes beyond light/dark — not a current requirement.
+- Per-component or per-screen theme override — not needed.
+- Updating test color assertions to reference named constants instead of literal hex strings — tests check light-mode values that happen to match token values; they pass but don't express intent. Low priority cleanup.
+- Non-color hardcoded values (font sizes, border radii, spacing) — separate cleanup concern, not in scope.
 
 ---
 
@@ -694,7 +692,7 @@ aider --model <model-flag> \
   client/components/Abbreviations.tsx \
   client/jest.setup.js \
   "client/components/__tests__/Settings-test.tsx" \
-  "client/lib/__tests__/theme-test.ts"
+  "client/lib/__tests__/theme-test.tsx"
 ```
 
 **Copy-paste (web UI):** Paste `AGENT.md`, `CODING.md`, `specs/F81-dark-mode.md`, `docs/design/F81-dark-mode.md`, then source files in batches matching the implementation batch order.
