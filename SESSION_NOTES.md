@@ -571,3 +571,19 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: none
 - **Design review**: not triggered — no new patterns; existing mutation tracking pattern applied
 - **Next**: 11 commits unpushed
+
+---
+### 2026-04-30 — /spec F81 (Dark Mode Visual Implementation)
+- **Completed**: Spec written to `specs/F81-dark-mode.md`. PLAN.md updated (F81 → Specced). `plans/F81-log.md` created. BACKLOG.md updated (5 deferred items). GitHub issue #81 updated with spec link and acceptance criteria.
+- **Findings**: Consistency check clean — `lib/theme.tsx`, `constants/Colors.ts`, `app/_layout.tsx`, `components/Settings.tsx` all match design doc assumptions. The spec establishes the global `useThemeColors` jest mock in `jest.setup.js` to prevent test breakage across all ~20 existing test files after the migration. The Toast warning variant keeps hardcoded amber signal colors; the default Toast uses `textPrimary`/`background` inversion for contrast on both themes.
+- **Design decisions**: Toast default container uses `colors.textPrimary` as bg and `colors.background` as text (inverted surface effect) — this was not explicitly resolved in the design doc but follows naturally from the palette. Noted in spec.
+- **Design review**: not triggered — applied existing patterns throughout; no novel UI beyond what was already resolved in /design
+- **Next**: `./implement F81 --plan` to generate implementor plan, then `/review-plan F81`
+
+---
+### 2026-04-30 — /design F81 (Dark Mode Visual Implementation)
+- **Completed**: Full design conversation. Created `docs/design/F81-dark-mode.md`. Updated PLAN.md (F81 → Designed). Updated ui-guidelines.md §16 (filled TBD) and Decision Log (3 new entries).
+- **Findings**: Infrastructure already scaffolded (`AppThemeProvider`, Settings switch, `Colors.ts` token slots) but all components use hardcoded hex values. `_layout.tsx` has a gap: `ThemeProvider` uses raw `useColorScheme()` (device) while `AppThemeProvider` manages a custom preference — these can disagree when the user forces a mode.
+- **Design decisions**: 3-state preference (system/light/dark) in AsyncStorage; `useThemeColors()` hook with `makeStyles(colors)` + `useMemo` pattern; full 18-token palette in `constants/Colors.ts`; Settings uses 3 radio rows (not a Switch); data-driven colors (store, profile) unchanged; no undo; implementation can batch but all must complete before Done.
+- **Design review**: not triggered — no existing design doc to compare against
+- **Next**: `/spec F81` when ready to write the implementation spec

@@ -448,11 +448,51 @@ This is a **novel pattern** in this app. All future features needing "mine vs. o
 
 ## 16. Dark Mode
 
-Light/dark mode support is scaffolded via `useColorScheme()` and `constants/Colors.ts`. The color tokens in section 2 have both light and dark values.
+**Established (F81).** All new components must use `useThemeColors()` from `lib/theme.tsx` rather than hardcoded hex values.
 
-In practice: new components should use the `Colors[colorScheme]` tokens rather than hardcoded hex values, so dark mode works automatically when the palette is finalized.
+### Theme preference
 
-[TBD: is dark mode a priority? If yes, test every new screen in both modes. If not, build light-first and revisit.]
+Three states: `'system' | 'light' | 'dark'`. Stored in AsyncStorage (key `@app_theme_pref`). "System" defers to the device `useColorScheme()` at runtime. Exposed via `useAppTheme()` as `themePreference` (stored) and `isDark` (resolved boolean).
+
+### Color hook pattern
+
+```typescript
+import { useThemeColors } from '@/lib/theme';
+
+const makeStyles = (colors: AppColors) => StyleSheet.create({
+  container: { backgroundColor: colors.background },
+  text: { color: colors.textPrimary },
+});
+
+export function MyComponent() {
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+}
+```
+
+### Token reference
+
+See the full `AppColors` type and light/dark values in `constants/Colors.ts`. Summary:
+
+| Token | Role |
+|-------|------|
+| `background` | Main screen background |
+| `surface` | Modal bodies, input backgrounds, list rows, cards |
+| `surfaceRaised` | Section headers, chip rows, badge pill backgrounds |
+| `border` | Dividers, separator lines |
+| `inputBorder` | Text input borders (slightly darker than `border` in light) |
+| `textPrimary` / `textSecondary` / `textMuted` / `textDisabled` | Text hierarchy |
+| `primary` / `primaryForeground` | Interactive elements |
+| `destructiveText` / `destructiveSurface` | Error text, red icon pill backgrounds |
+| `buttonSecondary` / `buttonSecondaryText` | Cancel/secondary button |
+| `modalOverlay` | Translucent backdrop |
+| `star` | Default store amber indicator (unchanged in dark) |
+
+**Fixed signal colors** (not theme tokens): warning badge colors (amber-500, red-500, gray-500) and data-driven colors (store `color_code`, profile `color`) are **not** swapped by the theme — they must render as defined regardless of mode.
+
+### Test both modes
+
+All new screens and components must be verified in both light and dark modes before shipping.
 
 ---
 
@@ -491,3 +531,6 @@ When a new visual or interaction pattern is established during a `/design` sessi
 | Bottom-anchored dialog modal | 7a dialog card with `justifyContent: 'flex-end'` instead of `'center'`. Card slides up from bottom, keeping content above (search bar, list) visible behind dimmed backdrop. KAV + ScrollView still apply. Use for contextual quick-decision dialogs where surrounding screen context matters. Centered 7a remains default for form/edit modals. | F78 | First non-centered dialog modal; justified by contextual nature of duplicate resolution |
 | Uniform button styling for choice dialogs | When a dialog presents 4+ options with no objectively primary action, use uniform button styling (gray-100 bg, dark text) for all actions. Cancel is text-only. Position and grouping provide hierarchy, not color. Follows iOS action sheet pattern. | F78 | Avoids visual noise when correct choice depends on user intent |
 | "on list" passive indicator | Small muted gray (`#9ca3af`) "on list" text on SmartAddItem dropdown rows where the item already exists on the shopping list. Single indicator regardless of active/purchased state. Right side of result title row. | F78 | First passive state indicator in search results |
+| Dark mode color source | All components use `useThemeColors()` hook from `lib/theme.tsx`; never hardcode hex values. `makeStyles(colors)` pattern with `useMemo` for memoization. See §16. | F81 | Replaces de-facto hardcoded Tailwind hex constants |
+| Theme preference: 3-state | Settings Appearance: System / Light / Dark. System follows device at runtime. Stored in AsyncStorage per device. `isDark` computed from resolved preference. | F81 | Not synced to profiles table — display mode is device-specific |
+| Appearance toggle UI | Three tappable radio rows (System / Light / Dark) under "APPEARANCE" section in Settings. Active row shows Lucide `Check` on right. System row has subtitle "Follows device setting". | F81 | Extension of tappable-row pattern; no new component type |

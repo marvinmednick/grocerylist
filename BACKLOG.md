@@ -90,3 +90,10 @@ _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assig
 ### From F107
 - [x] `index.tsx:handleSaveEdit` always passes `store_id` in `entryUpdates` — fixed in F107 commit (diff-only update implemented).
 - [x] `dedupeWarnings` uses `JSON.stringify` for dedup — promoted to #111.
+
+### From F81
+- [ ] Animated crossfade between light/dark transitions — instant switch is V1 acceptable. (deferred from F81)
+- [ ] Custom color themes beyond light/dark — not a current requirement. (deferred from F81)
+- [ ] Per-component or per-screen theme override — not needed. (deferred from F81)
+- [ ] Update test color assertions to reference named constants instead of literal hex strings — currently tests check light-mode hex values; they pass but don't express intent. Low priority cleanup. (deferred from F81)
+- [ ] Non-color hardcoded values (font sizes, border radii, spacing) — separate cleanup concern. (deferred from F81)
