@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ChevronRight, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VocabularyType } from '@/api/vocabulary';
 import { VocabularyManagement } from '@/components/VocabularyManagement';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 interface SizesAndPackagesProps {
   visible: boolean;
@@ -12,6 +14,8 @@ interface SizesAndPackagesProps {
 
 export function SizesAndPackages({ visible, onClose }: SizesAndPackagesProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [activeScreen, setActiveScreen] = useState<VocabularyType | null>(null);
 
   useEffect(() => {
@@ -33,7 +37,7 @@ export function SizesAndPackages({ visible, onClose }: SizesAndPackagesProps) {
           <View style={styles.header}>
             <Text style={styles.title}>Sizes & Packages</Text>
             <TouchableOpacity testID="sizes-packages-close" onPress={onClose} style={styles.closeButton}>
-              <X size={22} color="#111827" />
+              <X size={22} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
@@ -44,7 +48,7 @@ export function SizesAndPackages({ visible, onClose }: SizesAndPackagesProps) {
               onPress={() => setActiveScreen('units')}
             >
               <Text style={styles.navRowText}>Units</Text>
-              <ChevronRight size={18} color="#9ca3af" />
+              <ChevronRight size={18} color={colors.textDisabled} />
             </TouchableOpacity>
             <TouchableOpacity
               testID="vocab-nav-packages"
@@ -52,7 +56,7 @@ export function SizesAndPackages({ visible, onClose }: SizesAndPackagesProps) {
               onPress={() => setActiveScreen('packages')}
             >
               <Text style={styles.navRowText}>Packages</Text>
-              <ChevronRight size={18} color="#9ca3af" />
+              <ChevronRight size={18} color={colors.textDisabled} />
             </TouchableOpacity>
             <TouchableOpacity
               testID="vocab-nav-sizes"
@@ -60,7 +64,7 @@ export function SizesAndPackages({ visible, onClose }: SizesAndPackagesProps) {
               onPress={() => setActiveScreen('size_descriptors')}
             >
               <Text style={styles.navRowText}>Sizes</Text>
-              <ChevronRight size={18} color="#9ca3af" />
+              <ChevronRight size={18} color={colors.textDisabled} />
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -69,10 +73,10 @@ export function SizesAndPackages({ visible, onClose }: SizesAndPackagesProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
     paddingHorizontal: 20,
   },
   header: {
@@ -84,7 +88,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   closeButton: {
     padding: 8,
@@ -94,9 +98,9 @@ const styles = StyleSheet.create({
   },
   navRow: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 12,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
     paddingHorizontal: 16,
     paddingVertical: 14,
     flexDirection: 'row',
@@ -107,6 +111,6 @@ const styles = StyleSheet.create({
   navRowText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.textPrimary,
   },
 });

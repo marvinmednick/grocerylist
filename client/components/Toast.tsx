@@ -1,5 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, StyleSheet, Text } from 'react-native';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 interface ToastProps {
   message: string;
@@ -17,6 +19,8 @@ export const Toast: React.FC<ToastProps> = ({
   variant = 'default',
 }) => {
   const opacity = useRef(new Animated.Value(0)).current;
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const effectiveDuration = duration ?? (variant === 'warning' ? 4000 : 3000);
   const containerStyle = variant === 'warning' ? styles.warningContainer : styles.container;
   const textStyle = variant === 'warning' ? styles.warningText : styles.text;
@@ -52,13 +56,13 @@ export const Toast: React.FC<ToastProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     position: 'absolute',
     bottom: 100,
     left: 20,
     right: 20,
-    backgroundColor: '#1f2937',
+    backgroundColor: colors.textPrimary,
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 12,
@@ -70,7 +74,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   text: {
-    color: 'white',
+    color: colors.background,
     fontSize: 14,
     fontWeight: '600',
   },

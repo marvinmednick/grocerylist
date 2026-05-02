@@ -17,7 +17,7 @@ describe('Toast', () => {
     render(<Toast message="Hello" visible={true} onDismiss={jest.fn()} />);
 
     const styles = StyleSheet.flatten(screen.getByTestId('toast-container').props.style);
-    expect(styles.backgroundColor).toBe('#1f2937');
+    expect(styles.backgroundColor).toBe('#111827');
   });
 
   it('renders with amber styling when variant is warning', () => {

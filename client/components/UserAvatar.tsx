@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Pressable, Modal } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
@@ -8,9 +8,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Settings } from '@/components/Settings';
 import { SizesAndPackages } from '@/components/SizesAndPackages';
 import { Abbreviations } from '@/components/Abbreviations';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 export const UserAvatar: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { displayName, displayNameShort, avatarColor } = useHousehold();
   const [menuVisible, setMenuVisible] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
@@ -27,7 +31,7 @@ export const UserAvatar: React.FC = () => {
   };
 
   const avatarLetter = (displayNameShort?.[0] || displayName?.[0] || '?').toUpperCase();
-  const backgroundColor = avatarColor || '#2563eb';
+  const backgroundColor = avatarColor || colors.primary;
 
   return (
     <View>
@@ -104,7 +108,7 @@ export const UserAvatar: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppColors) => StyleSheet.create({
   avatar: {
     width: 36,
     height: 36,
@@ -113,7 +117,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -124,7 +128,7 @@ const styles = StyleSheet.create({
   menu: {
     position: 'absolute',
     right: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     borderRadius: 8,
     padding: 8,
     minWidth: 150,
@@ -134,25 +138,25 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   userName: {
     padding: 8,
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#374151',
+    color: colors.textSecondary,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: colors.surfaceRaised,
   },
   menuItem: {
     padding: 8,
   },
   menuText: {
     fontSize: 14,
-    color: '#374151',
+    color: colors.textSecondary,
   },
   signOutText: {
     fontSize: 14,
-    color: '#ef4444',
+    color: colors.destructiveText,
   },
 });

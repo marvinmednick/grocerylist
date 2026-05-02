@@ -1,66 +1,149 @@
 import React from 'react';
-import { renderHook, waitFor, act } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppThemeProvider, useAppTheme } from '../theme';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Text, TouchableOpacity } from 'react-native';
 
-const mockGetItem = AsyncStorage.getItem as jest.Mock;
-const mockSetItem = AsyncStorage.setItem as jest.Mock;
+jest.unmock('@/lib/theme');
 
-const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <AppThemeProvider>{children}</AppThemeProvider>
-);
+import { AppThemeProvider, useAppTheme, useThemeColors } from '@/lib/theme';
+import { useColorScheme } from '@/components/useColorScheme';
 
-describe('AppThemeProvider', () => {
+jest.mock('@/components/useColorScheme', () => ({
+  useColorScheme: jest.fn(),
+}));
+
+const mockUseColorScheme = useColorScheme as jest.Mock;
+const mockAsyncStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>;
+
+function ThemeProbe() {
+  const { themePreference, isDark, setThemePreference } = useAppTheme();
+  const { colors } = useThemeColors();
+
+  return (
+    <>
+      <Text testID="theme-preference">{themePreference}</Text>
+      <Text testID="is-dark">{String(isDark)}</Text>
+      <Text testID="background-color">{colors.background}</Text>
+      <TouchableOpacity testID="set-dark" onPress={() => setThemePreference('dark')}>
+        <Text>Set dark</Text>
+      </TouchableOpacity>
+      <TouchableOpacity testID="set-light" onPress={() => setThemePreference('light')}>
+        <Text>Set light</Text>
+      </TouchableOpacity>
+    </>
+  );
+}
+
+describe('theme provider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseColorScheme.mockReturnValue('light');
+    mockAsyncStorage.getItem.mockResolvedValue(null);
+    mockAsyncStorage.setItem.mockResolvedValue();
   });
 
-  it('defaults isDark to false when storage value is null', async () => {
-    mockGetItem.mockResolvedValue(null);
-    const { result } = renderHook(() => useAppTheme(), { wrapper });
+  it('defaults themePreference to "system" on mount with no stored value', async () => {
+    render(
+      <AppThemeProvider>
+        <ThemeProbe />
+      </AppThemeProvider>
+    );
 
-    await waitFor(() => {
-      expect(mockGetItem).toHaveBeenCalledWith('@app_theme');
-    });
-    expect(result.current.isDark).toBe(false);
+    expect(screen.getByTestId('theme-preference').props.children).toBe('system');
+    await act(async () => {});
+    expect(screen.getByTestId('theme-preference').props.children).toBe('system');
   });
 
-  it('sets isDark true when storage value is dark', async () => {
-    mockGetItem.mockResolvedValue('dark');
-    const { result } = renderHook(() => useAppTheme(), { wrapper });
+  it('resolves isDark to false when system preference and device is light', async () => {
+    render(
+      <AppThemeProvider>
+        <ThemeProbe />
+      </AppThemeProvider>
+    );
 
-    await waitFor(() => {
-      expect(result.current.isDark).toBe(true);
-    });
+    await act(async () => {});
+    expect(screen.getByTestId('is-dark').props.children).toBe('false');
   });
 
-  it('writes dark when toggling from light mode', async () => {
-    mockGetItem.mockResolvedValue(null);
-    const { result } = renderHook(() => useAppTheme(), { wrapper });
+  it('setThemePreference("dark") sets isDark to true regardless of device scheme', async () => {
+    render(
+      <AppThemeProvider>
+        <ThemeProbe />
+      </AppThemeProvider>
+    );
 
-    await waitFor(() => {
-      expect(mockGetItem).toHaveBeenCalledWith('@app_theme');
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('set-dark'));
     });
 
-    act(() => {
-      result.current.toggleTheme();
-    });
-
-    expect(mockSetItem).toHaveBeenCalledWith('@app_theme', 'dark');
+    expect(screen.getByTestId('is-dark').props.children).toBe('true');
   });
 
-  it('writes light when toggling from dark mode', async () => {
-    mockGetItem.mockResolvedValue('dark');
-    const { result } = renderHook(() => useAppTheme(), { wrapper });
+  it('setThemePreference("light") sets isDark to false even when device is dark', async () => {
+    mockUseColorScheme.mockReturnValue('dark');
 
-    await waitFor(() => {
-      expect(result.current.isDark).toBe(true);
+    render(
+      <AppThemeProvider>
+        <ThemeProbe />
+      </AppThemeProvider>
+    );
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('set-light'));
     });
 
-    act(() => {
-      result.current.toggleTheme();
+    expect(screen.getByTestId('is-dark').props.children).toBe('false');
+  });
+
+  it('setThemePreference calls AsyncStorage.setItem with key @app_theme_pref', async () => {
+    render(
+      <AppThemeProvider>
+        <ThemeProbe />
+      </AppThemeProvider>
+    );
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('set-dark'));
     });
 
-    expect(mockSetItem).toHaveBeenCalledWith('@app_theme', 'light');
+    expect(mockAsyncStorage.setItem).toHaveBeenCalledWith('@app_theme_pref', 'dark');
+  });
+
+  it('loads themePreference from AsyncStorage on mount', async () => {
+    mockAsyncStorage.getItem.mockResolvedValue('dark');
+
+    render(
+      <AppThemeProvider>
+        <ThemeProbe />
+      </AppThemeProvider>
+    );
+
+    await act(async () => {});
+    expect(screen.getByTestId('is-dark').props.children).toBe('true');
+  });
+
+  it('useThemeColors returns colors.background "#ffffff" when isDark is false', async () => {
+    render(
+      <AppThemeProvider>
+        <ThemeProbe />
+      </AppThemeProvider>
+    );
+
+    await act(async () => {});
+    expect(screen.getByTestId('background-color').props.children).toBe('#ffffff');
+  });
+
+  it('useThemeColors returns colors.background "#111827" when isDark is true', async () => {
+    mockUseColorScheme.mockReturnValue('dark');
+    mockAsyncStorage.getItem.mockResolvedValue('dark');
+
+    render(
+      <AppThemeProvider>
+        <ThemeProbe />
+      </AppThemeProvider>
+    );
+
+    await act(async () => {});
+    expect(screen.getByTestId('background-color').props.children).toBe('#111827');
   });
 });

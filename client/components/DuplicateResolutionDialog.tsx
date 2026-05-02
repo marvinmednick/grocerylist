@@ -16,6 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ListItem } from '@/api/list';
 import type { CombineOption } from '@/lib/quantityFormat';
 import type { DuplicateState } from '@/lib/duplicateDetection';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 interface DuplicateResolutionDialogProps {
   match: ListItem | null;
@@ -46,6 +48,8 @@ export function DuplicateResolutionDialog({
   onDismiss,
 }: DuplicateResolutionDialogProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [customMode, setCustomMode] = useState(false);
   const [customQty, setCustomQty] = useState('');
 
@@ -121,7 +125,7 @@ export function DuplicateResolutionDialog({
             <View style={styles.titleBar}>
               <Text style={styles.titleText}>Duplicate Item</Text>
               <TouchableOpacity testID="duplicate-dialog-close" onPress={handleDismiss}>
-                <X size={20} color="#6b7280" />
+                <X size={20} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -183,7 +187,7 @@ export function DuplicateResolutionDialog({
                     onChangeText={setCustomQty}
                     autoFocus
                     placeholder="e.g. 3 lbs"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor={colors.textDisabled}
                   />
                   <View style={styles.customActions}>
                     <TouchableOpacity style={styles.actionButton} onPress={handleCustomConfirm}>
@@ -212,18 +216,18 @@ export function DuplicateResolutionDialog({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppColors) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: colors.modalOverlay,
   },
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
   },
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     maxHeight: '60%',
@@ -239,14 +243,14 @@ const styles = StyleSheet.create({
   titleText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   content: {
     paddingHorizontal: 20,
   },
   summary: {
     fontSize: 15,
-    color: '#374151',
+    color: colors.textSecondary,
     marginBottom: 16,
   },
   section: {
@@ -257,13 +261,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   actionButton: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceRaised,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
   actionButtonText: {
-    color: '#374151',
+    color: colors.textSecondary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -273,19 +277,19 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   cancelText: {
-    color: '#6b7280',
+    color: colors.textMuted,
     fontSize: 14,
     fontWeight: '600',
   },
   customInput: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.inputBorder,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 10,
     fontSize: 16,
-    color: '#111827',
+    color: colors.textPrimary,
   },
   customActions: {
     flexDirection: 'row',

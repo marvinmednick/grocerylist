@@ -11,6 +11,8 @@ import { useUndo } from '@/api/undoContext';
 import { formatQuantity, parseQuantityText } from '@/lib/quantityFormat';
 import { DEFAULT_VOCABULARY } from '@/lib/vocabulary';
 import { Abbreviations } from '@/components/Abbreviations';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 type PreferenceStatus = 'neutral' | 'preferred' | 'avoided' | 'unavailable';
 
@@ -89,6 +91,8 @@ function serializeFormSnapshot({
 
 export default function ItemsScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortOption>('name_asc');
   const [recentOnly, setRecentOnly] = useState(false);
@@ -406,20 +410,20 @@ export default function ItemsScreen() {
           <Text style={styles.title}>Master Database</Text>
           <View style={styles.titleRowActions}>
             <TouchableOpacity testID="open-new-item-modal-btn" style={styles.addBtn} onPress={() => openModal()}>
-              <Plus size={24} color="#2563eb" />
+              <Plus size={24} color={colors.primary} />
             </TouchableOpacity>
             <HeaderActions />
           </View>
         </View>
 
         <View style={styles.searchBar}>
-          <Search size={20} color="#9ca3af" />
+          <Search size={20} color={colors.textDisabled} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search your library..."
             value={search}
             onChangeText={setSearch}
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.textDisabled}
           />
         </View>
       </View>
@@ -458,13 +462,13 @@ export default function ItemsScreen() {
 
       {error ? (
         <View style={styles.center}>
-          <Text style={{ color: 'red', padding: 20, textAlign: 'center' }}>
+          <Text style={[styles.errorText, { padding: 20, textAlign: 'center' }]}>
             Error loading items: {(error as Error).message}
           </Text>
         </View>
       ) : isLoading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -483,11 +487,11 @@ export default function ItemsScreen() {
                   </Text>
                   <View style={styles.badgeRow}>
                     <View style={styles.badge}>
-                      <Tag size={12} color="#6b7280" />
+                      <Tag size={12} color={colors.textMuted} />
                       <Text style={styles.badgeText}>{item.category?.name || 'Uncategorized'}</Text>
                     </View>
                     <View style={styles.badge}>
-                      <Store size={12} color="#6b7280" />
+                      <Store size={12} color={colors.textMuted} />
                       <Text style={styles.badgeText}>{preferredStore?.store?.name || 'Any Store'}</Text>
                     </View>
                   </View>
@@ -514,7 +518,7 @@ export default function ItemsScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{editingItem ? 'Edit Item' : 'New Master Item'}</Text>
               <TouchableOpacity onPress={() => setIsModalVisible(false)} style={styles.modalCloseBtn}>
-                <X size={20} color="#6b7280" />
+                <X size={20} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -639,7 +643,7 @@ export default function ItemsScreen() {
                       <Text style={styles.dropdownPlaceholder}>Select store...</Text>
                     )}
                   </View>
-                  <ChevronDown size={16} color="#6b7280" />
+                  <ChevronDown size={16} color={colors.textMuted} />
                 </TouchableOpacity>
 
                 {prefDropdownOpen ? (
@@ -651,7 +655,7 @@ export default function ItemsScreen() {
                         value={prefStoreFilterText}
                         onChangeText={setPrefStoreFilterText}
                         placeholder="Filter stores..."
-                        placeholderTextColor="#9ca3af"
+                        placeholderTextColor={colors.textDisabled}
                         autoFocus
                       />
                     ) : null}
@@ -714,7 +718,7 @@ export default function ItemsScreen() {
                         setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
                       }}
                       placeholder="Add a note about this store..."
-                      placeholderTextColor="#9ca3af"
+                      placeholderTextColor={colors.textDisabled}
                       multiline
                     />
                   </View>
@@ -818,22 +822,22 @@ export default function ItemsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ffffff' },
-  header: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+const makeStyles = (colors: AppColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  header: { padding: 16, borderBottomWidth: 1, borderBottomColor: colors.surfaceRaised },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   titleRowActions: { flexDirection: 'row', alignItems: 'center' },
-  title: { fontSize: 24, fontWeight: '800', color: '#111827' },
-  addBtn: { backgroundColor: '#eff6ff', padding: 8, borderRadius: 12 },
+  title: { fontSize: 24, fontWeight: '800', color: colors.textPrimary },
+  addBtn: { backgroundColor: colors.buttonSecondary, padding: 8, borderRadius: 12 },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceRaised,
     paddingHorizontal: 12,
     height: 44,
     borderRadius: 12,
   },
-  searchInput: { flex: 1, marginLeft: 8, fontSize: 16, color: '#111827' },
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 16, color: colors.textPrimary },
   controlsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -845,45 +849,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 12,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceRaised,
   },
   sortPillActive: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
   },
   sortPillText: {
     fontSize: 13,
-    color: '#374151',
+    color: colors.textSecondary,
     fontWeight: '500',
   },
   sortPillTextActive: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
   },
   listContent: { padding: 16 },
   itemCard: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
+    borderColor: colors.surfaceRaised,
     marginBottom: 12,
   },
   itemInfo: { flex: 1 },
-  itemName: { fontSize: 18, fontWeight: '700', color: '#111827' },
+  itemName: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
   badgeRow: { flexDirection: 'row', marginTop: 8, gap: 8 },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
-  badgeText: { fontSize: 12, color: '#4b5563', marginLeft: 4 },
+  badgeText: { fontSize: 12, color: colors.textDisabled, marginLeft: 4 },
   newBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -891,35 +895,37 @@ const styles = StyleSheet.create({
   },
   newBadgeText: {
     fontSize: 10,
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontWeight: '600',
   },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyContainer: { alignItems: 'center', marginTop: 40 },
-  emptyText: { color: '#9ca3af', fontSize: 16 },
-  modalOverlay: { flex: 1, justifyContent: 'center', paddingHorizontal: 16, backgroundColor: 'rgba(0,0,0,0.5)' },
+  emptyText: { color: colors.textDisabled, fontSize: 16 },
+  errorText: { color: colors.destructiveText },
+  modalOverlay: { flex: 1, justifyContent: 'center', paddingHorizontal: 16, backgroundColor: colors.modalOverlay },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 24,
     maxHeight: '85%',
   },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   modalCloseBtn: { padding: 4 },
-  modalTitle: { fontSize: 20, fontWeight: '700' },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#9ca3af',
+    color: colors.textDisabled,
     marginBottom: 8,
     textTransform: 'uppercase',
   },
   modalInput: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceRaised,
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
     fontSize: 16,
+    color: colors.textPrimary,
   },
   aliasesContainer: {
     marginBottom: 16,
@@ -935,12 +941,12 @@ const styles = StyleSheet.create({
   },
   aliasInputAddButton: {
     borderRadius: 10,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.buttonSecondary,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   aliasInputAddButtonText: {
-    color: '#2563eb',
+    color: colors.primary,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -954,32 +960,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 999,
-    backgroundColor: '#e0e7ff',
+    backgroundColor: colors.surfaceRaised,
     paddingLeft: 10,
     paddingRight: 8,
     paddingVertical: 4,
     gap: 6,
   },
   aliasChipText: {
-    color: '#1f2937',
+    color: colors.textPrimary,
     fontSize: 13,
     fontWeight: '600',
   },
   aliasChipRemove: {
-    color: '#374151',
+    color: colors.textSecondary,
     fontSize: 16,
     lineHeight: 16,
   },
   aliasAddButton: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#bfdbfe',
-    backgroundColor: '#eff6ff',
+    borderColor: colors.border,
+    backgroundColor: colors.buttonSecondary,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   aliasAddText: {
-    color: '#1d4ed8',
+    color: colors.primary,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -989,10 +995,10 @@ const styles = StyleSheet.create({
   },
   activeAbbreviationRow: {
     fontSize: 14,
-    color: '#374151',
+    color: colors.textSecondary,
   },
   defineAbbreviationsText: {
-    color: '#2563eb',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 20,
@@ -1003,10 +1009,10 @@ const styles = StyleSheet.create({
   },
   dropdownTrigger: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 12,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1017,24 +1023,24 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   dropdownPlaceholder: {
-    color: '#9ca3af',
+    color: colors.textDisabled,
     fontSize: 14,
     fontWeight: '500',
   },
   dropdownMenu: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
   },
   storeFilterInput: {
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: colors.surfaceRaised,
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 14,
-    color: '#111827',
+    color: colors.textPrimary,
   },
   dropdownOption: {
     flexDirection: 'row',
@@ -1047,7 +1053,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   storeColorDot: {
     width: 10,
@@ -1057,7 +1063,7 @@ const styles = StyleSheet.create({
   storeNameText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   segmentedContainer: {
     flexDirection: 'row',
@@ -1070,20 +1076,20 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   segmentSelected: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
   },
   segmentUnselected: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceRaised,
   },
   segmentText: {
     fontSize: 12,
     fontWeight: '600',
   },
   segmentTextSelected: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
   },
   segmentTextUnselected: {
-    color: '#374151',
+    color: colors.textSecondary,
   },
   inlineCommentSection: {
     marginTop: 8,
@@ -1097,7 +1103,7 @@ const styles = StyleSheet.create({
   summaryLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.textSecondary,
   },
   summaryStores: {
     flexDirection: 'row',
@@ -1106,20 +1112,20 @@ const styles = StyleSheet.create({
   },
   summaryStoreName: {
     fontSize: 13,
-    color: '#2563eb',
+    color: colors.primary,
     fontWeight: '600',
   },
   emptyCommentText: {
-    color: '#9ca3af',
+    color: colors.textDisabled,
     fontSize: 14,
   },
   commentRow: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1128,33 +1134,33 @@ const styles = StyleSheet.create({
   commentRowText: {
     flex: 1,
     fontSize: 14,
-    color: '#111827',
+    color: colors.textPrimary,
   },
   tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
   tag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1 },
-  tagActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  tagInactive: { backgroundColor: 'white', borderColor: '#d1d5db' },
-  tagTextActive: { color: 'white', fontWeight: '600' },
-  tagTextInactive: { color: '#374151' },
+  tagActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  tagInactive: { backgroundColor: colors.surface, borderColor: colors.inputBorder },
+  tagTextActive: { color: colors.primaryForeground, fontWeight: '600' },
+  tagTextInactive: { color: colors.textSecondary },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8 },
   cancelBtn: {
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 10,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.buttonSecondary,
     alignItems: 'center',
   },
   saveBtn: {
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 10,
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     alignItems: 'center',
   },
   saveBtnDisabled: {
-    backgroundColor: '#9ca3af',
+    backgroundColor: colors.textDisabled,
   },
-  cancelBtnText: { fontWeight: '700', color: '#4b5563' },
-  saveBtnText: { fontWeight: '700', color: 'white' },
-  saveBtnTextDisabled: { color: '#e5e7eb' },
+  cancelBtnText: { fontWeight: '700', color: colors.buttonSecondaryText },
+  saveBtnText: { fontWeight: '700', color: colors.primaryForeground },
+  saveBtnTextDisabled: { color: colors.border },
 });

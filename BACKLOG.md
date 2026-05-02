@@ -97,3 +97,8 @@ _(Store dropdown filter → promoted to GitHub #62. Visual feedback for re-assig
 - [ ] Per-component or per-screen theme override — not needed. (deferred from F81)
 - [ ] Update test color assertions to reference named constants instead of literal hex strings — currently tests check light-mode hex values; they pass but don't express intent. Low priority cleanup. (deferred from F81)
 - [ ] Non-color hardcoded values (font sizes, border radii, spacing) — separate cleanup concern. (deferred from F81)
+
+### Found in F81 Review
+- [x] `auth.tsx` — three tokenizable hex values not replaced: fixed by adding `destructiveBorder`, `successSurface`, `successBorder` tokens and replacing all six `errorBox`/`successBox`/`errorText`/`successText` hardcoded values.
+- [x] `HeaderActions.tsx` / `index.tsx` undo/redo badge colors — fixed by adding `undoBadge`/`redoBadge` tokens.
+- [x] `SmartAddItem.tsx` quick-accept armed state blues — fixed by adding `primarySurface`, `primaryBorder`, `primarySurfaceActive` tokens.

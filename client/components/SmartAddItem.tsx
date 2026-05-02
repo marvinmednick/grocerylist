@@ -59,6 +59,8 @@ import {
 } from '@/lib/quantityFormat';
 import { classifyDuplicateState, findDuplicate, type DuplicateState } from '@/lib/duplicateDetection';
 import { useQuickAcceptState } from '@/lib/useQuickAcceptState';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 interface SmartAddItemProps {
   disabled?: boolean;
@@ -130,6 +132,8 @@ function normalizeQuantityText(rawQuantity: string, parsed: QuantityParsed | nul
 
 export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], onWarningToast }: SmartAddItemProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [query, setQuery] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<EditTarget | null>(null);
@@ -1041,7 +1045,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
   return (
     <View style={[styles.container, disabled && { opacity: 0.6 }]}> 
       <View testID="smart-add-search-bar" style={[styles.searchBar, isArmed && styles.searchBarArmed]}>
-        <Search size={20} color="#9ca3af" style={styles.searchIcon} />
+        <Search size={20} color={colors.textDisabled} style={styles.searchIcon} />
         <TextInput
           style={styles.input}
           placeholder={disabled ? 'Loading household...' : 'Add item...'}
@@ -1049,7 +1053,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
           onChangeText={(text) => setQuery(handleTextChange(text))}
           onSubmitEditing={handleSubmitEditing}
           returnKeyType="done"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={colors.textDisabled}
           editable={!disabled}
         />
         {query.length > 0 && !disabled && (
@@ -1058,7 +1062,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
             onPress={() => setQuery(handleTextChange(''))}
             style={styles.clearBtn}
           >
-            <X size={18} color="#6b7280" />
+            <X size={18} color={colors.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -1156,7 +1160,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
                         onChangeText={setOtherQtyInput}
                         autoFocus
                         placeholder="e.g. 3 lbs"
-                        placeholderTextColor="#9ca3af"
+                        placeholderTextColor={colors.textDisabled}
                         returnKeyType="done"
                         onSubmitEditing={() => {
                           const trimmed = otherQtyInput.trim();
@@ -1269,7 +1273,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
                     })
                   }
                 >
-                  <ChevronRight size={20} color="#9ca3af" />
+                  <ChevronRight size={20} color={colors.textDisabled} />
                 </TouchableOpacity>
               </View>
             );
@@ -1309,7 +1313,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
                     value={oneOffQtyInput}
                     onChangeText={setOneOffQtyInput}
                     placeholder="e.g. 3 lbs"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor={colors.textDisabled}
                     autoFocus
                     returnKeyType="done"
                     onSubmitEditing={() => {
@@ -1333,7 +1337,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
                 )
               }
             >
-              <ChevronRight size={20} color="#2563eb" />
+              <ChevronRight size={20} color={colors.primary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1345,7 +1349,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{selectedItem?.name || query}</Text>
               <TouchableOpacity onPress={closeEditModal} style={styles.modalCloseBtn}>
-                <X size={24} color="#6b7280" />
+                <X size={24} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -1402,7 +1406,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
                         <View
                           style={[
                             styles.storeColorDot,
-                            { backgroundColor: metadata?.stores?.find((s) => s.id === editStoreId)?.color_code ?? '#9ca3af' },
+                            { backgroundColor: metadata?.stores?.find((s) => s.id === editStoreId)?.color_code ?? colors.textDisabled },
                           ]}
                         />
                         <Text style={styles.storeNameText}>{metadata?.stores?.find((s) => s.id === editStoreId)?.name ?? ''}</Text>
@@ -1411,7 +1415,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
                       <Text style={styles.dropdownPlaceholder}>No store</Text>
                     )}
                   </View>
-                  <ChevronDown size={16} color="#6b7280" />
+                  <ChevronDown size={16} color={colors.textMuted} />
                 </TouchableOpacity>
 
                 {editStoreDropdownOpen ? (
@@ -1424,7 +1428,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
                         setEditStoreDropdownOpen(false);
                       }}
                     >
-                      <Text style={[styles.storeNameText, { color: '#9ca3af' }]}>No store</Text>
+                      <Text style={[styles.storeNameText, { color: colors.textDisabled }]}>No store</Text>
                     </TouchableOpacity>
                     {(() => {
                       const allStores = metadata?.stores || [];
@@ -1514,7 +1518,7 @@ export function SmartAddItem({ disabled = false, activeStoreId, listItems = [], 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     width: '100%',
     paddingHorizontal: 16,
@@ -1523,16 +1527,16 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceRaised,
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 48,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
   },
   searchBarArmed: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#bfdbfe',
+    backgroundColor: colors.primarySurface,
+    borderColor: colors.primaryBorder,
   },
   searchIcon: {
     marginRight: 8,
@@ -1540,7 +1544,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#111827',
+    color: colors.textPrimary,
     height: '100%',
   },
   clearBtn: {
@@ -1551,10 +1555,10 @@ const styles = StyleSheet.create({
     top: 56,
     left: 16,
     right: 16,
-    backgroundColor: 'white',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -1564,30 +1568,30 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   sectionHeader: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: colors.surfaceRaised,
   },
   sectionHeaderText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#9ca3af',
+    color: colors.textDisabled,
   },
   resultRowComplex: {
     flexDirection: 'row',
     alignItems: 'stretch',
     borderBottomWidth: 1,
-    borderBottomColor: '#f9fafb',
+    borderBottomColor: colors.surfaceRaised,
   },
   topResultHighlight: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.primarySurface,
   },
   topResultArmed: {
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.primarySurfaceActive,
     borderLeftWidth: 3,
-    borderLeftColor: '#2563eb',
+    borderLeftColor: colors.primary,
   },
   resultMainSection: {
     flex: 1,
@@ -1609,26 +1613,26 @@ const styles = StyleSheet.create({
   },
   orphanText: {
     fontSize: 13,
-    color: '#9ca3af',
+    color: colors.textDisabled,
     textDecorationLine: 'line-through',
   },
   onListIndicator: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: colors.textDisabled,
     marginLeft: 8,
   },
   pillActiveBlue: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   pillTextActive: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontWeight: '700',
   },
   resultName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   inlinePillRow: {
     flexDirection: 'row',
@@ -1640,7 +1644,7 @@ const styles = StyleSheet.create({
   inlineLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#9ca3af',
+    color: colors.textDisabled,
     textTransform: 'uppercase',
     width: 40,
   },
@@ -1649,17 +1653,17 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#ffffff',
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   inlinePillText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#4b5563',
+    color: colors.textDisabled,
   },
   unresolvedStoreHint: {
     fontSize: 11,
-    color: '#9ca3af',
+    color: colors.textDisabled,
     fontWeight: '600',
   },
   inlineOtherEditor: {
@@ -1667,17 +1671,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   otherQtyInputInline: {
     flex: 1,
     fontSize: 13,
-    color: '#111827',
+    color: colors.textPrimary,
     height: 32,
   },
   otherCloseButton: {
@@ -1686,70 +1690,70 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.buttonSecondary,
   },
   otherCloseText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#374151',
+    color: colors.buttonSecondaryText,
   },
   otherQtyPopover: {
     marginTop: 6,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   otherQtyInput: {
     fontSize: 13,
-    color: '#111827',
+    color: colors.textPrimary,
     height: 32,
   },
   resultEditBtn: {
     width: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
     borderLeftWidth: 1,
-    borderLeftColor: '#f3f4f6',
+    borderLeftColor: colors.surfaceRaised,
   },
   createRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
+    borderTopColor: colors.surfaceRaised,
   },
   createMain: {
     flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.buttonSecondary,
   },
   createMainButton: {
     paddingVertical: 4,
   },
   createText: {
-    color: '#2563eb',
+    color: colors.primary,
     fontWeight: '500',
   },
   createEditBtn: {
     paddingHorizontal: 16,
     height: 48,
     justifyContent: 'center',
-    backgroundColor: '#dbeafe',
+    backgroundColor: colors.buttonSecondary,
     borderLeftWidth: 1,
-    borderLeftColor: '#bfdbfe',
+    borderLeftColor: colors.border,
   },
   modalOverlay: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 16,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: colors.modalOverlay,
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 24,
     maxHeight: '85%',
@@ -1766,20 +1770,22 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
+    color: colors.textPrimary,
   },
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#9ca3af',
+    color: colors.textDisabled,
     marginBottom: 8,
     textTransform: 'uppercase',
   },
   modalInput: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceRaised,
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
     fontSize: 16,
+    color: colors.textPrimary,
   },
   tagsContainer: {
     flexDirection: 'row',
@@ -1794,18 +1800,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   tagActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   tagInactive: {
-    backgroundColor: 'white',
-    borderColor: '#d1d5db',
+    backgroundColor: colors.surface,
+    borderColor: colors.inputBorder,
   },
   tagTextActive: {
-    color: 'white',
+    color: colors.primaryForeground,
   },
   tagTextInactive: {
-    color: '#374151',
+    color: colors.textSecondary,
   },
   modalActions: {
     flexDirection: 'row',
@@ -1815,10 +1821,10 @@ const styles = StyleSheet.create({
   },
   dropdownTrigger: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 12,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1829,16 +1835,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   dropdownPlaceholder: {
-    color: '#9ca3af',
+    color: colors.textDisabled,
     fontSize: 14,
     fontWeight: '500',
   },
   dropdownMenu: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     marginTop: 4,
   },
   dropdownOption: {
@@ -1856,12 +1862,12 @@ const styles = StyleSheet.create({
   storeNameText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   storeMoreText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#374151',
+    color: colors.textSecondary,
   },
   actionBtn: {
     paddingVertical: 10,
@@ -1870,17 +1876,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelBtn: {
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.buttonSecondary,
   },
   saveBtn: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
   },
   cancelText: {
     fontWeight: '700',
-    color: '#374151',
+    color: colors.buttonSecondaryText,
   },
   saveText: {
     fontWeight: '700',
-    color: 'white',
+    color: colors.primaryForeground,
   },
 });

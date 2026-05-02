@@ -5,11 +5,12 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useHousehold } from '@/lib/household';
 import { Settings } from '../Settings';
 import { useHouseholdMemberColors, useHouseholdName, useMyProfile, useUpdateProfile } from '@/api/profile';
-import { useAppTheme } from '@/lib/theme';
+import { useAppTheme, useThemeColors } from '@/lib/theme';
 
 jest.mock('@/api/profile');
 jest.mock('@/lib/theme', () => ({
   useAppTheme: jest.fn(),
+  useThemeColors: jest.fn(),
 }));
 jest.mock('@/lib/household', () => {
   const actual = jest.requireActual('@/lib/household');
@@ -25,9 +26,10 @@ const mockUseHouseholdName = useHouseholdName as jest.Mock;
 const mockUseMyProfile = useMyProfile as jest.Mock;
 const mockUseUpdateProfile = useUpdateProfile as jest.Mock;
 const mockUseAppTheme = useAppTheme as jest.Mock;
+const mockUseThemeColors = useThemeColors as jest.Mock;
 
 const mutate = jest.fn();
-const toggleTheme = jest.fn();
+const setThemePreference = jest.fn();
 const safeAreaMetrics = {
   insets: { top: 44, bottom: 34, left: 0, right: 0 },
   frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -63,7 +65,37 @@ describe('Settings', () => {
       },
     });
     mockUseUpdateProfile.mockReturnValue({ mutate });
-    mockUseAppTheme.mockReturnValue({ isDark: false, toggleTheme });
+    mockUseAppTheme.mockReturnValue({ isDark: false, themePreference: 'light', setThemePreference });
+    mockUseThemeColors.mockReturnValue({
+      colors: {
+        textPrimary: '#111827',
+        textSecondary: '#374151',
+        textMuted: '#6b7280',
+        textDisabled: '#9ca3af',
+        background: '#ffffff',
+        surface: '#ffffff',
+        surfaceRaised: '#f3f4f6',
+        border: '#e5e7eb',
+        primary: '#2563eb',
+        primaryForeground: '#ffffff',
+        destructiveText: '#991b1b',
+        destructiveSurface: '#fee2e2',
+        successText: '#166534',
+        buttonSecondary: '#e5e7eb',
+        buttonSecondaryText: '#374151',
+        inputBorder: '#d1d5db',
+        modalOverlay: 'rgba(0,0,0,0.5)',
+        star: '#fbbf24',
+        destructiveBorder: '#fecaca',
+        successSurface: '#dcfce7',
+        successBorder: '#bbf7d0',
+        primarySurface: '#eff6ff',
+        primaryBorder: '#bfdbfe',
+        primarySurfaceActive: '#dbeafe',
+        undoBadge: '#ef4444',
+        redoBadge: '#10b981',
+      },
+    });
   });
 
   it('pre-fills display name from profile', () => {
@@ -141,10 +173,52 @@ describe('Settings', () => {
     });
   });
 
-  it('toggles dark mode from switch', () => {
+  it('renders APPEARANCE section header in the App section', () => {
     render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
-    fireEvent(screen.getByTestId('settings-dark-mode-switch'), 'valueChange', true);
-    expect(toggleTheme).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('APPEARANCE')).toBeTruthy();
+  });
+
+  it('renders System, Light, and Dark preference rows', () => {
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
+    expect(screen.getByTestId('settings-appearance-system')).toBeTruthy();
+    expect(screen.getByTestId('settings-appearance-light')).toBeTruthy();
+    expect(screen.getByTestId('settings-appearance-dark')).toBeTruthy();
+  });
+
+  it('shows "Follows device setting" subtitle on the System row', () => {
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
+    expect(screen.getByText('Follows device setting')).toBeTruthy();
+  });
+
+  it('shows Check icon next to the active preference row only', () => {
+    mockUseAppTheme.mockReturnValue({ isDark: true, themePreference: 'dark', setThemePreference });
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
+    expect(screen.getAllByTestId('settings-appearance-check-dark').length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('settings-appearance-check-light')).toBeNull();
+    expect(screen.queryByTestId('settings-appearance-check-system')).toBeNull();
+  });
+
+  it('calls setThemePreference with "dark" when Dark row is tapped', () => {
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
+    fireEvent.press(screen.getByTestId('settings-appearance-dark'));
+    expect(setThemePreference).toHaveBeenCalledWith('dark');
+  });
+
+  it('calls setThemePreference with "light" when Light row is tapped', () => {
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
+    fireEvent.press(screen.getByTestId('settings-appearance-light'));
+    expect(setThemePreference).toHaveBeenCalledWith('light');
+  });
+
+  it('calls setThemePreference with "system" when System row is tapped', () => {
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
+    fireEvent.press(screen.getByTestId('settings-appearance-system'));
+    expect(setThemePreference).toHaveBeenCalledWith('system');
+  });
+
+  it('does not render the dark mode switch', () => {
+    render(<Settings visible={true} onClose={jest.fn()} />, { wrapper: createWrapper() });
+    expect(screen.queryByTestId('settings-dark-mode-switch')).toBeNull();
   });
 
   it('calls onClose when X button is pressed', () => {

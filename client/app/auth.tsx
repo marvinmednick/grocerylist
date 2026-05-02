@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { DEFAULT_VOCABULARY } from '../lib/vocabulary';
 import { Stack, useRouter } from 'expo-router';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 const PROFILE_COLOR_PALETTE = [
   '#2563eb',
@@ -61,6 +63,8 @@ async function seedVocabularyForHousehold(householdId: string): Promise<void> {
 }
 
 export default function AuthScreen() {
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -203,7 +207,7 @@ export default function AuthScreen() {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="white" />
+              <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <Text style={styles.primaryButtonText}>Sign In</Text>
             )}
@@ -222,16 +226,16 @@ export default function AuthScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#f3f4f6', // Light gray bg
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   card: {
-    backgroundColor: 'white',
+    backgroundColor: colors.surface,
     padding: 32,
     borderRadius: 24,
     width: '100%',
@@ -245,13 +249,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#111827',
+    color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6b7280',
+    color: colors.textMuted,
     textAlign: 'center',
     marginBottom: 32,
   },
@@ -261,23 +265,23 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   errorBox: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: colors.destructiveSurface,
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: colors.destructiveBorder,
   },
   successBox: {
-    backgroundColor: '#dcfce7',
+    backgroundColor: colors.successSurface,
     borderWidth: 1,
-    borderColor: '#bbf7d0',
+    borderColor: colors.successBorder,
   },
   errorText: {
-    color: '#991b1b',
+    color: colors.destructiveText,
     textAlign: 'center',
     fontSize: 14,
     fontWeight: '500',
   },
   successText: {
-    color: '#166534',
+    color: colors.successText,
     textAlign: 'center',
     fontSize: 14,
     fontWeight: '500',
@@ -288,17 +292,18 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#374151',
+    color: colors.textSecondary,
     marginBottom: 8,
     textTransform: 'uppercase',
   },
   input: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
+    color: colors.textPrimary,
   },
   buttonContainer: {
     marginTop: 16,
@@ -310,20 +315,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButton: {
-    backgroundColor: '#2563eb', // Blue
+    backgroundColor: colors.primary,
   },
   primaryButtonText: {
-    color: 'white',
+    color: colors.primaryForeground,
     fontWeight: '700',
     fontSize: 16,
   },
   secondaryButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.inputBorder,
   },
   secondaryButtonText: {
-    color: '#374151',
+    color: colors.buttonSecondaryText,
     fontWeight: '600',
     fontSize: 16,
   },
