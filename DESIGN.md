@@ -108,7 +108,19 @@ When another household member modifies the shopping list, the app shows a toast 
 - **Remote Change Detection:** The Supabase realtime channel callback checks `localMutationCount === 0` before invoking the `onRemoteChange` callback.
 - **Toast Component:** `components/Toast.tsx` — an absolutely positioned, animated (fade in/out) notification at the bottom of the screen that auto-dismisses after 3 seconds.
 
-### G. Quantity and Input Parsing System
+### G. Theme System (Dark Mode)
+
+> **Full design:** `docs/design/F81-dark-mode.md`
+
+All component colors come from a typed `AppColors` palette (`constants/Colors.ts`) with 26 semantic tokens. The palette has separate `lightColors` and `darkColors` objects.
+
+- **`ThemePreference`** (`'system' | 'light' | 'dark'`) is persisted to AsyncStorage under `@app_theme_pref`.
+- **`AppThemeProvider`** (`lib/theme.tsx`) resolves preference + device scheme → `isDark`, exposes `useAppTheme()` (for preference state and toggle) and `useThemeColors()` (for the resolved palette).
+- **Component pattern:** Every screen and component calls `useThemeColors()` and builds styles via a `makeStyles(colors: AppColors)` factory inside `useMemo`. No component uses hardcoded hex values for theme-sensitive colors.
+- **Intentional hardcodes:** Signal colors that must be the same in both modes — warning amber (`#f59e0b`), error icon red (`#ef4444`), gray icon (`#6b7280`), toast warning amber tones, store color dots, and per-user avatar identity colors.
+- **Test mock:** `jest.setup.js` provides a global `useThemeColors` mock returning the full light palette so all component tests can call the hook safely without a provider.
+
+### H. Quantity and Input Parsing System
 
 > **Full architecture:** `docs/design/vocabulary-and-quantity-architecture.md`
 

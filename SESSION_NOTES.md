@@ -595,3 +595,11 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: none
 - **Design review**: not triggered — patterns followed (makeStyles, useMemo, useThemeColors); no new patterns established
 - **Next**: Ready to ship — run `/complete F81`
+
+---
+### 2026-05-02 — /complete F81 (Dark Mode Visual Implementation)
+- **Completed**: Shipped F81. 669/669 tests pass. Committed 32 files. Closed #81. PLAN.md → Done. Token palette expanded 18→26 during review to cover auth error/success surfaces+borders, primary-tinted armed states, and undo/redo badge colors.
+- **Findings**: DESIGN.md and CODING.md had no mention of the F81 theming pattern — updated both to document `makeStyles(colors) + useMemo` as the mandatory component pattern.
+- **Design decisions**: Added §G (Theme System) to DESIGN.md §3 Core System Patterns; updated CODING.md §7 Styling with full theming guidance and intentional hardcode list.
+- **Design review**: CODING.md §7 updated to replace hardcoded hex in example with `colors.background`; intentional hardcodes explicitly documented.
+- **Next**: Backlog triage done — 4 F81 items discarded, 1 promoted to #112 (test color assertion cleanup). No F81-scope items remain.

@@ -14,6 +14,10 @@
 - Key decisions: 3-state AsyncStorage preference, `useThemeColors()` hook, `makeStyles(colors)` component pattern, 18-token palette, Appearance section replaces binary Switch.
 - Implementation split into 5 ordered batches; feature not Done until all complete.
 
+## 2026-05-02 — Shipped
+- **Commit:** `feat: dark mode visual implementation (refs #81)`
+- **Closed:** #81
+
 ## 2026-04-30 — Review 1 (Passed)
 - **Result:** Passed — no blocking issues
 - **Tests:** 669/669 passed, 0 skipped
