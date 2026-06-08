@@ -35,6 +35,46 @@ jest.mock('./lib/supabase', () => ({
   },
 }));
 
+// Mock theme hooks globally for components that now call useThemeColors().
+jest.mock('./lib/theme', () => ({
+  AppThemeProvider: ({ children }) => children,
+  useAppTheme: jest.fn(() => ({
+    isDark: false,
+    themePreference: 'light',
+    setThemePreference: jest.fn(),
+  })),
+  useThemeColors: jest.fn(() => ({
+    colors: {
+      textPrimary: '#111827',
+      textSecondary: '#374151',
+      textMuted: '#6b7280',
+      textDisabled: '#9ca3af',
+      background: '#ffffff',
+      surface: '#ffffff',
+      surfaceRaised: '#f3f4f6',
+      border: '#e5e7eb',
+      primary: '#2563eb',
+      primaryForeground: '#ffffff',
+      destructiveText: '#991b1b',
+      destructiveSurface: '#fee2e2',
+      successText: '#166534',
+      buttonSecondary: '#e5e7eb',
+      buttonSecondaryText: '#374151',
+      inputBorder: '#d1d5db',
+      modalOverlay: 'rgba(0,0,0,0.5)',
+      star: '#fbbf24',
+      destructiveBorder: '#fecaca',
+      successSurface: '#dcfce7',
+      successBorder: '#bbf7d0',
+      primarySurface: '#eff6ff',
+      primaryBorder: '#bfdbfe',
+      primarySurfaceActive: '#dbeafe',
+      undoBadge: '#ef4444',
+      redoBadge: '#10b981',
+    },
+  })),
+}));
+
 // Mock Expo Router
 jest.mock('expo-router', () => ({
   useRouter: () => ({

@@ -20,6 +20,8 @@ import {
 import { useMasterItemNames } from '@/api/items';
 import { useVocabulary } from '@/api/vocabulary';
 import { DEFAULT_VOCABULARY } from '@/lib/vocabulary';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 type ViewMode = 'canonical' | 'alias';
 
@@ -49,6 +51,8 @@ function normalizeList(values: string[]): string[] {
 
 export function Abbreviations({ visible, onClose, initialSearch }: AbbreviationsProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { data: wordAliasMap = new Map<string, string>() } = useWordAliases();
   const { data: suggestionsMap = new Map<string, string[]>() } = useAbbreviationSuggestions();
   const { data: itemNames = [] } = useMasterItemNames();
@@ -304,7 +308,7 @@ export function Abbreviations({ visible, onClose, initialSearch }: Abbreviations
         <View style={styles.header}>
           <Text style={styles.title}>Abbreviations</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton} testID="abbreviations-close">
-            <X size={22} color="#111827" />
+            <X size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -336,7 +340,7 @@ export function Abbreviations({ visible, onClose, initialSearch }: Abbreviations
           onChangeText={(value) => (viewMode === 'canonical' ? setCanonicalSearch(value) : setAliasSearch(value))}
           placeholder={viewMode === 'canonical' ? 'Search canonical words or aliases' : 'Search aliases or canonical words'}
           autoCapitalize="none"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={colors.textDisabled}
         />
 
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent} keyboardShouldPersistTaps="handled">
@@ -420,14 +424,14 @@ export function Abbreviations({ visible, onClose, initialSearch }: Abbreviations
                   style={styles.deletePill}
                   onPress={() => setShowDeleteConfirm(true)}
                 >
-                  <Trash2 size={16} color="#dc2626" />
+                  <Trash2 size={16} color={colors.destructiveText} />
                 </TouchableOpacity>
               ) : (
                 <View style={styles.deletePillSpacer} />
               )}
               <Text style={styles.dialogTitle}>{canonicalNormalized || 'New Abbreviation'}</Text>
               <TouchableOpacity onPress={closeDialog} style={styles.dialogCloseButton}>
-                <X size={18} color="#111827" />
+                <X size={18} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
@@ -549,10 +553,10 @@ export function Abbreviations({ visible, onClose, initialSearch }: Abbreviations
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
     paddingHorizontal: 20,
   },
   header: {
@@ -564,7 +568,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   closeButton: {
     padding: 8,
@@ -581,28 +585,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   segmentActive: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
   },
   segmentInactive: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceRaised,
   },
   segmentTextActive: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontWeight: '700',
     fontSize: 12,
   },
   segmentTextInactive: {
-    color: '#4b5563',
+    color: colors.textDisabled,
     fontWeight: '700',
     fontSize: 12,
   },
   searchInput: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceRaised,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#111827',
+    color: colors.textPrimary,
     marginBottom: 10,
   },
   list: {
@@ -614,43 +618,43 @@ const styles = StyleSheet.create({
   },
   row: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
   },
   placeholderRow: {
-    borderColor: '#d1d5db',
-    backgroundColor: '#ffffff',
+    borderColor: colors.inputBorder,
+    backgroundColor: colors.surface,
   },
   rowPrimary: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.textPrimary,
     marginBottom: 2,
   },
   aliasMatchHighlight: {
     fontWeight: '700',
-    color: '#2563eb',
+    color: colors.primary,
   },
   rowSecondary: {
     fontSize: 13,
-    color: '#4b5563',
+    color: colors.textDisabled,
   },
   placeholderHelp: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 2,
   },
   dialogBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(17, 24, 39, 0.5)',
+    backgroundColor: colors.modalOverlay,
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
   dialogCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 16,
     maxHeight: '88%',
@@ -665,7 +669,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 30,
     borderRadius: 999,
-    backgroundColor: '#fee2e2',
+    backgroundColor: colors.destructiveSurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -677,7 +681,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontWeight: '700',
-    color: '#111827',
+    color: colors.textPrimary,
     fontSize: 16,
     marginHorizontal: 8,
   },
@@ -687,25 +691,25 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#6b7280',
+    color: colors.textMuted,
     textTransform: 'uppercase',
     marginBottom: 6,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.inputBorder,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#111827',
+    color: colors.textPrimary,
     marginBottom: 10,
   },
   readOnlyInput: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
   },
   readOnlyText: {
-    color: '#111827',
+    color: colors.textPrimary,
     fontSize: 15,
   },
   chipsWrap: {
@@ -718,19 +722,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 999,
-    backgroundColor: '#e0e7ff',
+    backgroundColor: colors.surfaceRaised,
     paddingLeft: 10,
     paddingRight: 8,
     paddingVertical: 4,
     gap: 6,
   },
   chipText: {
-    color: '#1f2937',
+    color: colors.textPrimary,
     fontSize: 13,
     fontWeight: '600',
   },
   chipRemove: {
-    color: '#374151',
+    color: colors.textSecondary,
     fontSize: 16,
     lineHeight: 16,
   },
@@ -744,13 +748,13 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   addAliasButton: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.buttonSecondary,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   addAliasText: {
-    color: '#2563eb',
+    color: colors.primary,
     fontWeight: '700',
     fontSize: 13,
   },
@@ -760,26 +764,26 @@ const styles = StyleSheet.create({
   },
   suggestionsLabel: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     fontWeight: '600',
     marginBottom: 6,
   },
   suggestionChip: {
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: colors.border,
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.buttonSecondary,
   },
   suggestionChipText: {
-    color: '#1d4ed8',
+    color: colors.primary,
     fontSize: 13,
     fontWeight: '600',
   },
   warningRed: {
     marginTop: 6,
-    color: '#991b1b',
+    color: colors.destructiveText,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -793,13 +797,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
     padding: 10,
     borderRadius: 10,
-    backgroundColor: '#fef2f2',
+    backgroundColor: colors.destructiveSurface,
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: colors.border,
     gap: 8,
   },
   confirmText: {
-    color: '#7f1d1d',
+    color: colors.destructiveText,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -810,14 +814,14 @@ const styles = StyleSheet.create({
   },
   confirmCancel: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.inputBorder,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 7,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
   },
   confirmCancelText: {
-    color: '#374151',
+    color: colors.textSecondary,
     fontWeight: '600',
     fontSize: 13,
   },
@@ -828,7 +832,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#dc2626',
   },
   confirmDeleteText: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontWeight: '700',
     fontSize: 13,
   },
@@ -839,17 +843,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   cancelButton: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.buttonSecondary,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   cancelButtonText: {
-    color: '#4b5563',
+    color: colors.buttonSecondaryText,
     fontWeight: '700',
   },
   saveButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -858,7 +862,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   saveButtonText: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontWeight: '700',
   },
 });

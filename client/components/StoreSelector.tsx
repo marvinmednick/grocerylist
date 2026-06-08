@@ -15,6 +15,8 @@ import { Check, Pencil, Trash2, X } from 'lucide-react-native';
 import { useCreateStore, useDeleteStore, useMetadata, useStoreCascadeInfo, useUpdateStore } from '@/api/metadata';
 import { useUndo } from '@/api/undoContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 const STORE_COLORS = [
   '#005596',
@@ -42,6 +44,8 @@ interface StoreOption {
 
 export const StoreSelector: React.FC<StoreSelectorProps> = ({ activeStoreId, onStoreChange }) => {
   const insets = useSafeAreaInsets();
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newStoreName, setNewStoreName] = useState('');
@@ -179,7 +183,7 @@ export const StoreSelector: React.FC<StoreSelectorProps> = ({ activeStoreId, onS
                 <Text style={styles.storeName}>{store.name}</Text>
                 {store.id === activeStoreId ? (
                   <View testID={`active-store-check-${store.id}`}>
-                    <Check size={16} color="#2563eb" />
+                    <Check size={16} color={colors.primary} />
                   </View>
                 ) : null}
                 <TouchableOpacity
@@ -188,7 +192,7 @@ export const StoreSelector: React.FC<StoreSelectorProps> = ({ activeStoreId, onS
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   style={styles.editStoreBtn}
                 >
-                  <Pencil size={14} color="#9ca3af" />
+                  <Pencil size={14} color={colors.textDisabled} />
                 </TouchableOpacity>
               </TouchableOpacity>
             ))}
@@ -208,7 +212,7 @@ export const StoreSelector: React.FC<StoreSelectorProps> = ({ activeStoreId, onS
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>New Store</Text>
               <TouchableOpacity onPress={closeCreateModal} style={styles.modalCloseBtn}>
-                <X size={20} color="#6b7280" />
+                <X size={20} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -220,7 +224,7 @@ export const StoreSelector: React.FC<StoreSelectorProps> = ({ activeStoreId, onS
                 value={newStoreName}
                 onChangeText={setNewStoreName}
                 placeholder="Store name"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.textDisabled}
               />
 
               <Text style={styles.label}>Color</Text>
@@ -274,11 +278,11 @@ export const StoreSelector: React.FC<StoreSelectorProps> = ({ activeStoreId, onS
                 onPress={() => setShowDeleteConfirm(true)}
                 style={styles.trashPill}
               >
-                <Trash2 size={16} color="#dc2626" />
+                <Trash2 size={16} color={colors.destructiveText} />
               </TouchableOpacity>
               <Text style={styles.editModalTitle}>Edit Store</Text>
               <TouchableOpacity onPress={closeEditModal} style={styles.modalCloseBtn}>
-                <X size={20} color="#6b7280" />
+                <X size={20} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -290,7 +294,7 @@ export const StoreSelector: React.FC<StoreSelectorProps> = ({ activeStoreId, onS
                 value={editStoreName}
                 onChangeText={setEditStoreName}
                 placeholder="Store name"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.textDisabled}
               />
 
               <Text style={styles.label}>Color</Text>
@@ -353,7 +357,7 @@ export const StoreSelector: React.FC<StoreSelectorProps> = ({ activeStoreId, onS
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppColors) => StyleSheet.create({
   wrapper: {
     position: 'relative',
     zIndex: 20,
@@ -368,12 +372,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   placeholderText: {
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   chevronText: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#6b7280',
+    color: colors.textMuted,
   },
   overlay: {
     position: 'absolute',
@@ -387,9 +391,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 34,
     left: 0,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 12,
     paddingVertical: 8,
     minWidth: 220,
@@ -414,7 +418,7 @@ const styles = StyleSheet.create({
   },
   storeName: {
     flex: 1,
-    color: '#111827',
+    color: colors.textPrimary,
     fontSize: 14,
     fontWeight: '500',
   },
@@ -423,13 +427,13 @@ const styles = StyleSheet.create({
   },
   addStoreRow: {
     borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
+    borderTopColor: colors.surfaceRaised,
     marginTop: 4,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
   addStoreText: {
-    color: '#2563eb',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -437,10 +441,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 16,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: colors.modalOverlay,
   },
   modalCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 24,
     maxHeight: '85%',
@@ -461,7 +465,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   modalCloseBtn: {
     padding: 4,
@@ -469,21 +473,21 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#6b7280',
+    color: colors.textMuted,
     marginBottom: 8,
     textTransform: 'uppercase',
   },
   input: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceRaised,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: '#111827',
+    color: colors.textPrimary,
     fontSize: 16,
     marginBottom: 16,
   },
@@ -502,13 +506,13 @@ const styles = StyleSheet.create({
   deleteConfirmSection: {
     marginTop: 16,
     padding: 12,
-    backgroundColor: '#fef2f2',
+    backgroundColor: colors.destructiveSurface,
     borderRadius: 10,
     gap: 10,
   },
   deleteConfirmText: {
     fontSize: 13,
-    color: '#991b1b',
+    color: colors.destructiveText,
     lineHeight: 18,
   },
   deleteConfirmActions: {
@@ -517,13 +521,13 @@ const styles = StyleSheet.create({
   },
   cancelDeleteBtn: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.buttonSecondary,
     borderRadius: 8,
     paddingVertical: 8,
     alignItems: 'center',
   },
   cancelDeleteBtnText: {
-    color: '#374151',
+    color: colors.buttonSecondaryText,
     fontWeight: '600',
     fontSize: 13,
   },
@@ -535,12 +539,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   deleteBtnText: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontWeight: '700',
     fontSize: 13,
   },
   trashPill: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: colors.destructiveSurface,
     padding: 8,
     borderRadius: 8,
   },
@@ -551,18 +555,18 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   cancelButton: {
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.buttonSecondary,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 20,
     alignItems: 'center',
   },
   cancelButtonText: {
-    color: '#374151',
+    color: colors.buttonSecondaryText,
     fontWeight: '700',
   },
   addButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 20,
@@ -572,7 +576,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   addButtonText: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontWeight: '700',
   },
 });

@@ -14,9 +14,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { UndoProvider } from '@/api/undoContext';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { HouseholdProvider } from '@/lib/household';
-import { AppThemeProvider } from '@/lib/theme';
-
-import { useColorScheme } from '@/components/useColorScheme';
+import { AppThemeProvider, useAppTheme } from '@/lib/theme';
 
 const queryClient = new QueryClient();
 
@@ -67,7 +65,7 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { isDark } = useAppTheme();
   const [session, setSession] = useState<Session | null>(null);
   const [initialized, setInitialized] = useState(false);
   const segments = useSegments();
@@ -118,7 +116,7 @@ function RootLayoutNav() {
   );
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
       {session ? (
         <HouseholdProvider>{stackContent}</HouseholdProvider>
       ) : (

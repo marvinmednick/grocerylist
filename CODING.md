@@ -240,18 +240,29 @@ if (Platform.OS === 'web') {
 
 Use `StyleSheet.create()` only. Do not use NativeWind `className` props.
 
-**Safe area:** Use `useSafeAreaInsets` from `react-native-safe-area-context` to apply insets manually (e.g., `paddingTop: insets.top` on a header). Do not use the built-in `SafeAreaView` from `react-native` — it is deprecated and triggers warnings in tests. If you do use `SafeAreaView`, import it from `react-native-safe-area-context`. Tests that render components using either require a `SafeAreaProvider` wrapper (see `index-interactions-test.tsx` for the pattern).
+**Theme colors (F81):** All color values must come from the `AppColors` palette — never use hardcoded hex strings for colors that should adapt to dark mode. Use the `makeStyles(colors) + useMemo` pattern in every component:
 
 ```typescript
-// Correct
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ffffff' },
-});
-<View style={styles.container} />
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
-// Wrong — do not use
-<View className="flex-1 bg-white" />
+export const MyComponent: React.FC = () => {
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  // ...
+};
+
+const makeStyles = (colors: AppColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  text: { color: colors.textPrimary },
+});
 ```
+
+The `AppColors` palette is defined in `constants/Colors.ts` with 26 semantic tokens (light + dark values). See `docs/design/F81-dark-mode.md` for the full token list and the rationale for which colors are intentionally hardcoded (signal colors: warning icons, store color dots, avatar identity colors).
+
+**Intentionally hardcoded colors** (do not replace with tokens): fixed signal colors like `#f59e0b` (warning amber), `#ef4444` (error red icon), `#6b7280` (gray icon), toast warning amber (`#fffbeb`/`#fbbf24`/`#92400e`), and per-user avatar identity colors from the profile palette.
+
+**Safe area:** Use `useSafeAreaInsets` from `react-native-safe-area-context` to apply insets manually (e.g., `paddingTop: insets.top` on a header). Do not use the built-in `SafeAreaView` from `react-native` — it is deprecated and triggers warnings in tests. If you do use `SafeAreaView`, import it from `react-native-safe-area-context`. Tests that render components using either require a `SafeAreaProvider` wrapper (see `index-interactions-test.tsx` for the pattern).
 
 ### 8. Modal / Full-Screen View Requirements
 

@@ -1,13 +1,18 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AlertTriangle, HelpCircle, Info, XCircle } from 'lucide-react-native';
 import { getWarningText, type Warning } from '@/api/items';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 interface WarningCalloutProps {
   warnings: Warning[];
 }
 
 export const WarningCallout: React.FC<WarningCalloutProps> = ({ warnings }) => {
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+
   if (!warnings.length) {
     return null;
   }
@@ -32,10 +37,10 @@ export const WarningCallout: React.FC<WarningCalloutProps> = ({ warnings }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppColors) => StyleSheet.create({
   container: {
-    backgroundColor: '#fffbeb',
-    borderColor: '#fbbf24',
+    backgroundColor: colors.surfaceRaised,
+    borderColor: colors.border,
     borderWidth: 1,
     borderRadius: 10,
     padding: 12,
@@ -50,7 +55,7 @@ const styles = StyleSheet.create({
   text: {
     flex: 1,
     fontSize: 12,
-    color: '#92400e',
+    color: colors.textSecondary,
     lineHeight: 18,
   },
 });

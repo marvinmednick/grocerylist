@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { AlertTriangle, HelpCircle, Info, X, XCircle } from 'lucide-react-native';
 import { getWarningText, type Warning } from '@/api/items';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 interface WarningBadgeProps {
   warnings?: Warning[];
@@ -16,6 +18,8 @@ interface WarningBadgeProps {
 
 export const WarningBadge: React.FC<WarningBadgeProps> = ({ warnings }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const warningDetails = useMemo(() => {
     return (warnings ?? []).map((warning) => ({
@@ -83,7 +87,7 @@ export const WarningBadge: React.FC<WarningBadgeProps> = ({ warnings }) => {
             <View style={styles.modalCardHeader}>
               <Text style={styles.modalCardTitle}>Warnings</Text>
               <TouchableOpacity onPress={() => setIsOpen(false)} testID="warning-modal-close">
-                <X size={18} color="#6b7280" />
+                <X size={18} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
             {warningDetails.map((detail, index) => (
@@ -112,7 +116,7 @@ export const WarningBadge: React.FC<WarningBadgeProps> = ({ warnings }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppColors) => StyleSheet.create({
   wrapper: {
     marginRight: 8,
     position: 'relative',
@@ -124,13 +128,13 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: colors.modalOverlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
   },
   modalCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     width: '100%',
@@ -145,7 +149,7 @@ const styles = StyleSheet.create({
   modalCardTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   modalRow: {
     flexDirection: 'row',
@@ -156,7 +160,7 @@ const styles = StyleSheet.create({
   modalRowText: {
     flex: 1,
     fontSize: 13,
-    color: '#374151',
+    color: colors.textSecondary,
     lineHeight: 18,
   },
 });

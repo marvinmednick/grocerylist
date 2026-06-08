@@ -1,1 +1,1 @@
-/home/mmednick/.workflow-template/feature.md
+/home/mmednick/Development/workflow_template/feature.md

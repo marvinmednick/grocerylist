@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RotateCcw, RotateCw } from 'lucide-react-native';
 import { useUndo } from '@/api/undoContext';
 import { UserAvatar } from '@/components/UserAvatar';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 export const HeaderActions: React.FC = () => {
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { undoLastAction, redoLastAction, canUndo, canRedo, undoStack, redoStack } = useUndo();
 
   return (
@@ -15,7 +19,7 @@ export const HeaderActions: React.FC = () => {
         disabled={!canUndo}
         style={[styles.button, !canUndo && styles.disabledButton]}
       >
-        <RotateCcw size={20} color={canUndo ? '#2563eb' : '#9ca3af'} />
+        <RotateCcw size={20} color={canUndo ? colors.primary : colors.textDisabled} />
         {undoStack.length > 0 && (
           <View style={[styles.badge, styles.undoBadge]}>
             <Text style={styles.badgeText}>{undoStack.length}</Text>
@@ -29,7 +33,7 @@ export const HeaderActions: React.FC = () => {
         disabled={!canRedo}
         style={[styles.button, styles.withMargin, !canRedo && styles.disabledButton]}
       >
-        <RotateCw size={20} color={canRedo ? '#2563eb' : '#9ca3af'} />
+        <RotateCw size={20} color={canRedo ? colors.primary : colors.textDisabled} />
         {redoStack.length > 0 && (
           <View style={[styles.badge, styles.redoBadge]}>
             <Text style={styles.badgeText}>{redoStack.length}</Text>
@@ -44,14 +48,14 @@ export const HeaderActions: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   button: {
     padding: 8,
-    backgroundColor: '#eff6ff',
+    backgroundColor: colors.buttonSecondary,
     borderRadius: 12,
     position: 'relative',
   },
@@ -69,18 +73,18 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderWidth: 2,
-    borderColor: 'white',
+    borderColor: colors.primaryForeground,
     alignItems: 'center',
     justifyContent: 'center',
   },
   undoBadge: {
-    backgroundColor: '#ef4444',
+    backgroundColor: colors.undoBadge,
   },
   redoBadge: {
-    backgroundColor: '#10b981',
+    backgroundColor: colors.redoBadge,
   },
   badgeText: {
-    color: 'white',
+    color: colors.primaryForeground,
     fontSize: 9,
     fontWeight: '800',
   },

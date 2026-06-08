@@ -19,7 +19,7 @@
 | F90 | Token & Item Alias System (Data + Parser) | Done | [specs/F90-token-item-alias-system.md](specs/F90-token-item-alias-system.md) · [design](docs/design/F90-token-item-alias-system.md) | [#90](https://github.com/marvinmednick/grocerylist/issues/90) |
 | F91 | Alias System UI | Done | [specs/F91-alias-system-ui.md](specs/F91-alias-system-ui.md) · [design](docs/design/F90-token-item-alias-system.md) | [#91](https://github.com/marvinmednick/grocerylist/issues/91) |
 | F80 | Enhanced Shopping Mode (Store Focus) | Backlog | — | [#80](https://github.com/marvinmednick/grocerylist/issues/80) |
-| F81 | Dark Mode Visual Implementation | Specced | [specs/F81-dark-mode.md](specs/F81-dark-mode.md) · [design](docs/design/F81-dark-mode.md) | [#81](https://github.com/marvinmednick/grocerylist/issues/81) |
+| F81 | Dark Mode Visual Implementation | Done | [specs/F81-dark-mode.md](specs/F81-dark-mode.md) · [design](docs/design/F81-dark-mode.md) | [#81](https://github.com/marvinmednick/grocerylist/issues/81) |
 | F82 | Trip Notes | Backlog | — | [#82](https://github.com/marvinmednick/grocerylist/issues/82) |
 | F9 | Trip History View | Done | [specs/F9-trip-history.md](specs/F9-trip-history.md) · [design](docs/design/F9-trip-history.md) | [#11](https://github.com/marvinmednick/grocerylist/issues/11) |
 | F12 | Smart Entry Model | Done | [specs/F12-smart-entry-model.md](specs/F12-smart-entry-model.md) · [design](docs/design/F12-smart-entry-model.md) | [#42](https://github.com/marvinmednick/grocerylist/issues/42) |

@@ -4,14 +4,13 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X } from 'lucide-react-native';
+import { Check, X } from 'lucide-react-native';
 import { useHousehold } from '@/lib/household';
 import {
   DEFAULT_QUICK_ACCEPT_SETTINGS,
@@ -23,7 +22,9 @@ import {
   useUpdateProfile,
   WarningPreferences,
 } from '@/api/profile';
-import { useAppTheme } from '@/lib/theme';
+import type { AppColors } from '@/constants/Colors';
+import type { ThemePreference } from '@/lib/theme';
+import { useAppTheme, useThemeColors } from '@/lib/theme';
 
 interface SettingsProps {
   visible: boolean;
@@ -40,6 +41,7 @@ export const PROFILE_COLORS = [
   { name: 'Pink', hex: '#db2777' },
 ];
 
+const APPEARANCE_OPTIONS: ThemePreference[] = ['system', 'light', 'dark'];
 
 const WARNING_OPTIONS: Record<string, Array<{ label: string; value: string }>> = {
   avoided: [
@@ -70,7 +72,9 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose }) => {
   const { data: memberColors = [] } = useHouseholdMemberColors(householdId);
   const { data: householdName, isLoading: isHouseholdNameLoading } = useHouseholdName(householdId);
   const { mutate } = useUpdateProfile();
-  const { isDark, toggleTheme } = useAppTheme();
+  const { themePreference, setThemePreference } = useAppTheme();
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const [nameInput, setNameInput] = useState(displayName ?? '');
   const [shortNameInput, setShortNameInput] = useState(displayNameShort ?? '');
@@ -124,7 +128,7 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose }) => {
       <View style={styles.header}>
         <Text style={styles.title}>General</Text>
         <TouchableOpacity testID="settings-close-button" onPress={onClose} style={styles.closeButton}>
-          <X size={22} color="#111827" />
+          <X size={22} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -178,10 +182,31 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose }) => {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>App</Text>
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>Dark Mode</Text>
-          <Switch testID="settings-dark-mode-switch" value={isDark} onValueChange={toggleTheme} />
-        </View>
+        <Text style={styles.sectionSubtitle}>APPEARANCE</Text>
+        {APPEARANCE_OPTIONS.map((pref) => (
+          <TouchableOpacity
+            key={pref}
+            testID={`settings-appearance-${pref}`}
+            style={styles.appearanceRow}
+            onPress={() => setThemePreference(pref)}
+          >
+            <View>
+              <Text style={styles.rowLabel}>
+                {pref === 'system' ? 'System' : pref === 'light' ? 'Light' : 'Dark'}
+              </Text>
+              {pref === 'system' ? (
+                <Text style={styles.rowSubtitle}>Follows device setting</Text>
+              ) : null}
+            </View>
+            {themePreference === pref ? (
+              <Check
+                size={18}
+                color={colors.primary}
+                testID={`settings-appearance-check-${pref}`}
+              />
+            ) : null}
+          </TouchableOpacity>
+        ))}
       </View>
 
       <View style={styles.section}>
@@ -195,7 +220,7 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose }) => {
           autoCapitalize="none"
           autoCorrect={false}
           placeholder="e.g. enter"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={colors.textDisabled}
         />
         {!triggerWordValid && triggerWord.length > 0 ? (
           <Text style={styles.colorWarning}>Must be a single word (letters only)</Text>
@@ -212,7 +237,7 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose }) => {
           style={styles.input}
           keyboardType="numeric"
           placeholder="1500"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={colors.textDisabled}
         />
       </View>
 
@@ -307,7 +332,7 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose }) => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Household</Text>
         {isHouseholdNameLoading ? (
-          <ActivityIndicator size="small" color="#2563eb" />
+          <ActivityIndicator size="small" color={colors.primary} />
         ) : (
           <Text style={styles.householdName}>{householdName ?? ''}</Text>
         )}
@@ -322,14 +347,14 @@ export const Settings: React.FC<SettingsProps> = ({ visible, onClose }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppColors) => StyleSheet.create({
   scrollView: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
   },
   container: {
     flexGrow: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
     paddingHorizontal: 20,
     paddingBottom: 24,
   },
@@ -342,7 +367,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   closeButton: {
     padding: 8,
@@ -351,30 +376,38 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 12,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.textPrimary,
     marginBottom: 12,
+  },
+  sectionSubtitle: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    marginBottom: 10,
+    textTransform: 'uppercase',
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#4b5563',
+    color: colors.textDisabled,
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.inputBorder,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: '#111827',
+    color: colors.textPrimary,
     marginBottom: 12,
   },
   colorRow: {
@@ -389,41 +422,47 @@ const styles = StyleSheet.create({
   },
   colorWarning: {
     marginTop: 8,
-    color: '#991b1b',
+    color: colors.destructiveText,
     fontSize: 13,
     fontWeight: '600',
   },
   helperText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 2,
     marginBottom: 8,
   },
   saveButton: {
     marginTop: 14,
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 11,
     alignItems: 'center',
   },
   saveButtonText: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontWeight: '700',
     fontSize: 14,
   },
-  row: {
+  appearanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingVertical: 10,
   },
   rowLabel: {
     fontSize: 15,
-    color: '#111827',
+    color: colors.textPrimary,
     fontWeight: '600',
+  },
+  rowSubtitle: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   householdName: {
     fontSize: 15,
-    color: '#111827',
+    color: colors.textPrimary,
     fontWeight: '600',
   },
   warningRow: {
@@ -431,7 +470,7 @@ const styles = StyleSheet.create({
   },
   warningLabel: {
     fontSize: 14,
-    color: '#111827',
+    color: colors.textPrimary,
     fontWeight: '600',
     marginBottom: 8,
   },
@@ -446,19 +485,19 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   segmentSelected: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
   },
   segmentUnselected: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceRaised,
   },
   segmentText: {
     fontSize: 12,
     fontWeight: '600',
   },
   segmentTextSelected: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
   },
   segmentTextUnselected: {
-    color: '#374151',
+    color: colors.textSecondary,
   },
 });

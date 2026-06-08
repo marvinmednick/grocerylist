@@ -1,1 +1,1 @@
-/home/mmednick/.workflow-template/spec.md
+/home/mmednick/Development/workflow_template/spec.md

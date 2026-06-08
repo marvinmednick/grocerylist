@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -14,6 +14,8 @@ import { ChevronRight, X } from 'lucide-react-native';
 import { useTripHistory, useTripItems, TripSummary, TripItem } from '@/api/trips';
 import { supabase } from '@/lib/supabase';
 import { HeaderActions } from '@/components/HeaderActions';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 const getOwnerName = (trip: TripSummary) => {
   return trip.owner?.display_name_short ?? trip.owner?.display_name?.split('@')[0] ?? 'Unknown';
@@ -21,6 +23,8 @@ const getOwnerName = (trip: TripSummary) => {
 
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selectedTrip, setSelectedTrip] = useState<TripSummary | null>(null);
 
@@ -53,7 +57,7 @@ export default function HistoryScreen() {
           <Text style={styles.tripMeta}>{new Date(item.ended_at).toLocaleDateString()}</Text>
           <Text style={styles.tripMeta}>{detailsText}</Text>
         </View>
-        <ChevronRight size={20} color="#6b7280" />
+        <ChevronRight size={20} color={colors.textMuted} />
       </Pressable>
     );
   };
@@ -88,7 +92,7 @@ export default function HistoryScreen() {
       </View>
       {isLoading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#2563eb" testID="history-loading" />
+          <ActivityIndicator size="large" color={colors.primary} testID="history-loading" />
         </View>
       ) : (
         <FlatList
@@ -109,13 +113,13 @@ export default function HistoryScreen() {
                 : `${selectedStoreName} — ${selectedTripDate} · ${selectedOwnerName}`}
             </Text>
             <TouchableOpacity onPress={() => setSelectedTrip(null)} testID="history-close-modal">
-              <X size={22} color="#111827" />
+              <X size={22} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
           {isTripItemsLoading ? (
             <View style={styles.center}>
-              <ActivityIndicator size="large" color="#2563eb" testID="trip-items-loading" />
+              <ActivityIndicator size="large" color={colors.primary} testID="trip-items-loading" />
             </View>
           ) : (
             <FlatList
@@ -132,15 +136,15 @@ export default function HistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
   },
   screenHeader: {
     paddingHorizontal: 20,
     paddingBottom: 10,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -148,7 +152,7 @@ const styles = StyleSheet.create({
   screenTitle: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   center: {
     flex: 1,
@@ -160,9 +164,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   tripRow: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 14,
     flexDirection: 'row',
@@ -176,11 +180,11 @@ const styles = StyleSheet.create({
   storeName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   tripMeta: {
     fontSize: 14,
-    color: '#4b5563',
+    color: colors.textDisabled,
   },
   emptyContainer: {
     flexGrow: 1,
@@ -190,12 +194,12 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#6b7280',
+    color: colors.textMuted,
     textAlign: 'center',
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -204,19 +208,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: colors.border,
     gap: 12,
   },
   modalTitle: {
     flex: 1,
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   itemRow: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 10,
     padding: 12,
     flexDirection: 'row',
@@ -225,6 +229,6 @@ const styles = StyleSheet.create({
   },
   itemText: {
     fontSize: 15,
-    color: '#111827',
+    color: colors.textPrimary,
   },
 });

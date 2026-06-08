@@ -587,3 +587,19 @@ Use `/update-worklog` to auto-generate an entry from git analysis if entries wer
 - **Design decisions**: 3-state preference (system/light/dark) in AsyncStorage; `useThemeColors()` hook with `makeStyles(colors)` + `useMemo` pattern; full 18-token palette in `constants/Colors.ts`; Settings uses 3 radio rows (not a Switch); data-driven colors (store, profile) unchanged; no undo; implementation can batch but all must complete before Done.
 - **Design review**: not triggered — no existing design doc to compare against
 - **Next**: `/spec F81` when ready to write the implementation spec
+
+---
+### 2026-04-30 — /review-impl F81 (Dark Mode Visual Implementation)
+- **Completed**: Full review of F81 implementation. PLAN.md → In Review. GitHub #81 labeled in-review. 4 non-blocking items added to BACKLOG.md.
+- **Findings**: Core infrastructure (theme.tsx, Colors.ts), Settings appearance section, tab layout, and all 22 migrated files follow the spec. All 669 tests pass, 0 skipped. Timer hygiene correct in Toast test. Three tokenizable hex values missed in auth.tsx (`#fee2e2`, `#991b1b`, `#166534` — all have direct token mappings). Four sets of hardcoded colors have no token equivalent: HeaderActions undo/redo badge colors, SmartAddItem armed-state blues, auth error/success border/bg variants.
+- **Design decisions**: none
+- **Design review**: not triggered — patterns followed (makeStyles, useMemo, useThemeColors); no new patterns established
+- **Next**: Ready to ship — run `/complete F81`
+
+---
+### 2026-05-02 — /complete F81 (Dark Mode Visual Implementation)
+- **Completed**: Shipped F81. 669/669 tests pass. Committed 32 files. Closed #81. PLAN.md → Done. Token palette expanded 18→26 during review to cover auth error/success surfaces+borders, primary-tinted armed states, and undo/redo badge colors.
+- **Findings**: DESIGN.md and CODING.md had no mention of the F81 theming pattern — updated both to document `makeStyles(colors) + useMemo` as the mandatory component pattern.
+- **Design decisions**: Added §G (Theme System) to DESIGN.md §3 Core System Patterns; updated CODING.md §7 Styling with full theming guidance and intentional hardcode list.
+- **Design review**: CODING.md §7 updated to replace hardcoded hex in example with `colors.background`; intentional hardcodes explicitly documented.
+- **Next**: Backlog triage done — 4 F81 items discarded, 1 promoted to #112 (test color assertion cleanup). No F81-scope items remain.

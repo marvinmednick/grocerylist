@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckCircle2, Circle, X } from 'lucide-react-native';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 export interface TripUser {
   userId: string;
@@ -43,6 +45,8 @@ export const MultiTripModal: React.FC<MultiTripModalProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -72,7 +76,7 @@ export const MultiTripModal: React.FC<MultiTripModalProps> = ({
         <View style={styles.header}>
           <Text style={styles.title}>End Trips at {storeName}</Text>
           <TouchableOpacity onPress={onCancel} style={styles.closeButton}>
-            <X size={20} color="#374151" />
+            <X size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
@@ -97,7 +101,7 @@ export const MultiTripModal: React.FC<MultiTripModalProps> = ({
                 </View>
 
                 <View testID={`multi-trip-checkbox-${item.userId}`}>
-                  {isSelected ? <CheckCircle2 size={24} color="#2563eb" /> : <Circle size={24} color="#d1d5db" />}
+                  {isSelected ? <CheckCircle2 size={24} color={colors.primary} /> : <Circle size={24} color={colors.inputBorder} />}
                 </View>
               </Pressable>
             );
@@ -122,10 +126,10 @@ export const MultiTripModal: React.FC<MultiTripModalProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
     paddingHorizontal: 20,
   },
   header: {
@@ -137,19 +141,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   closeButton: {
     padding: 8,
     borderRadius: 999,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: colors.surfaceRaised,
   },
   userRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: colors.surfaceRaised,
   },
   initialsBadge: {
     width: 32,
@@ -160,7 +164,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   initialsText: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -170,11 +174,11 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   itemCount: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.textMuted,
     marginTop: 2,
   },
   footer: {
@@ -190,10 +194,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#e5e7eb',
+    backgroundColor: colors.buttonSecondary,
   },
   confirmButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
   },
   confirmButtonDisabled: {
     opacity: 0.5,
@@ -201,11 +205,11 @@ const styles = StyleSheet.create({
   cancelText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#374151',
+    color: colors.buttonSecondaryText,
   },
   confirmText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#ffffff',
+    color: colors.primaryForeground,
   },
 });

@@ -21,6 +21,8 @@ import {
   type VocabRow,
   type VocabularyType,
 } from '@/api/vocabulary';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 interface VocabularyManagementProps {
   type: VocabularyType;
@@ -36,6 +38,8 @@ const SCREEN_TITLES: Record<VocabularyType, string> = {
 
 export function VocabularyManagement({ type, onBack, onClose }: VocabularyManagementProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { data: vocabulary, isLoading } = useVocabulary();
   const createEntry = useCreateVocabularyEntry(type);
   const updateEntry = useUpdateVocabularyEntry(type);
@@ -158,17 +162,17 @@ export function VocabularyManagement({ type, onBack, onClose }: VocabularyManage
     <View style={[styles.container, { paddingTop: insets.top || 20, paddingBottom: insets.bottom || 16 }]}> 
       <View style={styles.header}>
         <TouchableOpacity testID="vocabulary-back" style={styles.iconButton} onPress={onBack}>
-          <ArrowLeft size={20} color="#111827" />
+          <ArrowLeft size={20} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.title}>{title}</Text>
         <TouchableOpacity testID="vocabulary-close" style={styles.iconButton} onPress={onClose}>
-          <X size={22} color="#111827" />
+          <X size={22} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color="#2563eb" />
+          <ActivityIndicator size="small" color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -231,14 +235,14 @@ export function VocabularyManagement({ type, onBack, onClose }: VocabularyManage
                   style={styles.deletePill}
                   onPress={() => setShowDeleteConfirm(true)}
                 >
-                  <Trash2 size={16} color="#dc2626" />
+                  <Trash2 size={16} color={colors.destructiveText} />
                 </TouchableOpacity>
               ) : (
                 <View style={styles.deletePillSpacer} />
               )}
               <Text style={styles.dialogTitle}>{editingEntry ? 'Edit Entry' : 'Add Entry'}</Text>
               <TouchableOpacity style={styles.iconButton} onPress={closeDialog}>
-                <X size={18} color="#111827" />
+                <X size={18} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
@@ -336,10 +340,10 @@ export function VocabularyManagement({ type, onBack, onClose }: VocabularyManage
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: AppColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.background,
     paddingHorizontal: 20,
   },
   header: {
@@ -354,7 +358,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   loadingContainer: {
     flex: 1,
@@ -366,9 +370,9 @@ const styles = StyleSheet.create({
   },
   entryRow: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 12,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
     paddingHorizontal: 12,
     paddingVertical: 10,
     marginBottom: 10,
@@ -376,61 +380,61 @@ const styles = StyleSheet.create({
   entryCanonical: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.textPrimary,
     marginBottom: 2,
   },
   entryAliases: {
     fontSize: 13,
-    color: '#4b5563',
+    color: colors.textDisabled,
   },
   entryAliasesEmpty: {
     fontSize: 13,
-    color: '#9ca3af',
+    color: colors.textDisabled,
   },
   emptyText: {
     textAlign: 'center',
-    color: '#9ca3af',
+    color: colors.textDisabled,
     fontSize: 14,
     marginTop: 24,
   },
   actionsContainer: {
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: colors.border,
     paddingTop: 12,
     gap: 10,
   },
   primaryButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
   },
   primaryButtonText: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontWeight: '700',
   },
   resetButton: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.inputBorder,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
   },
   resetButtonText: {
-    color: '#374151',
+    color: colors.textSecondary,
     fontWeight: '700',
   },
   confirmContainer: {
     borderWidth: 1,
-    borderColor: '#fecaca',
-    backgroundColor: '#fef2f2',
+    borderColor: colors.border,
+    backgroundColor: colors.destructiveSurface,
     borderRadius: 10,
     padding: 10,
     gap: 10,
   },
   confirmText: {
-    color: '#7f1d1d',
+    color: colors.destructiveText,
     fontSize: 13,
     lineHeight: 18,
   },
@@ -442,13 +446,13 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.inputBorder,
     paddingVertical: 9,
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
   },
   confirmCancelText: {
-    color: '#374151',
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   confirmDeleteButton: {
@@ -459,12 +463,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#dc2626',
   },
   confirmDeleteText: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontWeight: '700',
   },
   dialogBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: colors.modalOverlay,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
@@ -473,7 +477,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 500,
     borderRadius: 14,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     padding: 16,
     gap: 10,
   },
@@ -486,8 +490,8 @@ const styles = StyleSheet.create({
   deletePill: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#fecaca',
-    backgroundColor: '#fef2f2',
+    borderColor: colors.border,
+    backgroundColor: colors.destructiveSurface,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -498,22 +502,22 @@ const styles = StyleSheet.create({
   dialogTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   inputLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#4b5563',
+    color: colors.textDisabled,
     textTransform: 'uppercase',
   },
   textInput: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.inputBorder,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: '#111827',
-    backgroundColor: '#ffffff',
+    color: colors.textPrimary,
+    backgroundColor: colors.surface,
   },
   aliasChipsWrap: {
     flexDirection: 'row',
@@ -525,32 +529,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.inputBorder,
     borderRadius: 999,
     paddingVertical: 6,
     paddingHorizontal: 10,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
   },
   aliasChipText: {
-    color: '#374151',
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
   },
   aliasChipRemove: {
-    color: '#6b7280',
+    color: colors.textMuted,
     fontSize: 14,
     fontWeight: '700',
   },
   aliasAddButton: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.inputBorder,
     borderRadius: 999,
     paddingVertical: 6,
     paddingHorizontal: 10,
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
   },
   aliasAddText: {
-    color: '#374151',
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -562,27 +566,27 @@ const styles = StyleSheet.create({
   dialogCancelButton: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: colors.inputBorder,
     borderRadius: 10,
     paddingVertical: 11,
     alignItems: 'center',
   },
   dialogCancelText: {
-    color: '#374151',
+    color: colors.textSecondary,
     fontWeight: '700',
   },
   dialogSaveButton: {
     flex: 1,
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 11,
     alignItems: 'center',
   },
   dialogSaveButtonDisabled: {
-    backgroundColor: '#93c5fd',
+    backgroundColor: colors.textDisabled,
   },
   dialogSaveText: {
-    color: '#ffffff',
+    color: colors.primaryForeground,
     fontWeight: '700',
   },
 });

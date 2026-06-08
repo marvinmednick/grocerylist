@@ -17,6 +17,8 @@ import { loadActiveStoreId, saveActiveStoreId } from '@/lib/activeStore';
 import { UserAvatar } from '@/components/UserAvatar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MultiTripModal, TripUser } from '@/components/MultiTripModal';
+import type { AppColors } from '@/constants/Colors';
+import { useThemeColors } from '@/lib/theme';
 
 type FlatListItem =
   | { type: 'header'; id: string; title: string; storeId: string; entries: Array<{ parent: ListItem; entry: QuantityEntry }> }
@@ -30,6 +32,8 @@ interface MultiTripContextState {
 
 export default function ShoppingListScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useThemeColors();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { householdId, userId, avatarColor, isLoading: isHouseholdLoading } = useHousehold();
   const { data: members = [] } = useHouseholdMembers(householdId);
   const [toast, setToast] = useState<{ visible: boolean; message: string; variant: 'default' | 'warning' }>({
@@ -314,7 +318,7 @@ export default function ShoppingListScreen() {
 
   const renderCheckbox = (entry: QuantityEntry) => {
     if (!entry.is_purchased) {
-      return <Circle size={24} color="#d1d5db" />;
+      return <Circle size={24} color={colors.inputBorder} />;
     }
 
     if (entry.purchased_by && entry.purchased_by !== userId) {
@@ -322,14 +326,14 @@ export default function ShoppingListScreen() {
       return (
         <View
           testID={`other-user-checkbox-${entry.id}`}
-          style={[styles.otherUserPurchasedBadge, { backgroundColor: purchaser?.color ?? '#6b7280' }]}
+          style={[styles.otherUserPurchasedBadge, { backgroundColor: purchaser?.color ?? colors.textMuted }]}
         >
-          <Check size={14} color="white" />
+          <Check size={14} color={colors.primaryForeground} />
         </View>
       );
     }
 
-    return <CheckCircle2 size={24} color={avatarColor ?? '#2563eb'} />;
+    return <CheckCircle2 size={24} color={avatarColor ?? colors.primary} />;
   };
 
   const handleEndTrip = (storeId?: string, storeName?: string) => {
@@ -388,7 +392,7 @@ export default function ShoppingListScreen() {
           userId: purchaserId,
           displayName: member?.display_name || fallbackName,
           displayNameShort: member?.display_name_short || null,
-          color: member?.color || '#6b7280',
+          color: member?.color || colors.textMuted,
           itemCount,
         };
       });
@@ -501,7 +505,7 @@ export default function ShoppingListScreen() {
               style={[styles.inlineEndTripBtn, isHouseholdLoading && { opacity: 0.5 }]}
               disabled={isHouseholdLoading}
             >
-              <Archive size={14} color="#2563eb" />
+              <Archive size={14} color={colors.primary} />
               <Text style={styles.inlineEndTripText}>End Trip</Text>
             </TouchableOpacity>
           )}
@@ -550,7 +554,7 @@ export default function ShoppingListScreen() {
               <WarningBadge warnings={parent.warnings} />
             ) : null}
             <TouchableOpacity onLongPress={drag} delayLongPress={50} style={styles.dragHandle}>
-              <GripVertical size={20} color="#d1d5db" />
+              <GripVertical size={20} color={colors.inputBorder} />
             </TouchableOpacity>
           </View>
         </ScaleDecorator>
@@ -587,7 +591,7 @@ export default function ShoppingListScreen() {
             <WarningBadge warnings={parent.warnings} />
           ) : null}
           <TouchableOpacity onLongPress={drag} delayLongPress={50} style={styles.dragHandle}>
-            <GripVertical size={20} color="#d1d5db" />
+            <GripVertical size={20} color={colors.inputBorder} />
           </TouchableOpacity>
         </View>
       </ScaleDecorator>
@@ -606,20 +610,20 @@ export default function ShoppingListScreen() {
           >
             {interactionMode === 'shopping' ? (
               <View testID="cart-icon-container">
-                <ShoppingCart size={20} color="#2563eb" />
+                <ShoppingCart size={20} color={colors.primary} />
               </View>
             ) : (
               <View testID="pencil-icon-toggle-container">
-                <Pencil size={20} color="#2563eb" />
+                <Pencil size={20} color={colors.primary} />
               </View>
             )}
           </TouchableOpacity>
           <TouchableOpacity onPress={undoLastAction} disabled={!canUndo} style={[styles.headerActionBtn, !canUndo && { opacity: 0.3 }, { marginLeft: 12 }]}>
-            <RotateCcw size={20} color={canUndo ? "#2563eb" : "#9ca3af"} />
+            <RotateCcw size={20} color={canUndo ? colors.primary : colors.textDisabled} />
             {undoStack.length > 0 && <View style={[styles.badge, styles.undoBadge]}><Text style={styles.badgeText}>{undoStack.length}</Text></View>}
           </TouchableOpacity>
           <TouchableOpacity onPress={redoLastAction} disabled={!canRedo} style={[styles.headerActionBtn, !canRedo && { opacity: 0.3 }, { marginLeft: 12 }]}>
-            <RotateCw size={20} color={canRedo ? "#2563eb" : "#9ca3af"} />
+            <RotateCw size={20} color={canRedo ? colors.primary : colors.textDisabled} />
             {redoStack.length > 0 && <View style={[styles.badge, styles.redoBadge]}><Text style={styles.badgeText}>{redoStack.length}</Text></View>}
           </TouchableOpacity>
           <View style={{ marginLeft: 12 }}>
@@ -638,7 +642,7 @@ export default function ShoppingListScreen() {
         />
       </View>
       {isLoading || isHouseholdLoading ? (
-        <View style={styles.center}><ActivityIndicator size="large" color="#0000ff" /></View>
+        <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>
       ) : (
         <View style={{ flex: 1, width: '100%', maxWidth: 600, alignSelf: 'center' }}>
           <DraggableFlatList
@@ -658,7 +662,7 @@ export default function ShoppingListScreen() {
                   onPress={() => handleEndTrip()}
                   disabled={isHouseholdLoading}
                 >
-                  <Archive size={20} color="white" />
+                  <Archive size={20} color={colors.primaryForeground} />
                   <Text style={styles.globalEndTripText}>End All Shopping Trips</Text>
                 </TouchableOpacity>
               );
@@ -670,9 +674,9 @@ export default function ShoppingListScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { paddingTop: insets.top }]}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity testID="modal-delete-button" onPress={handleDelete} style={styles.deleteBtn}><Trash2 size={20} color="#ef4444" /></TouchableOpacity>
+              <TouchableOpacity testID="modal-delete-button" onPress={handleDelete} style={styles.deleteBtn}><Trash2 size={20} color={colors.destructiveText} /></TouchableOpacity>
               <Text style={styles.modalTitle}>Edit Item</Text>
-              <TouchableOpacity onPress={() => setIsEditModalVisible(false)} style={styles.modalCloseBtn}><X size={20} color="#6b7280" /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setIsEditModalVisible(false)} style={styles.modalCloseBtn}><X size={20} color={colors.textMuted} /></TouchableOpacity>
             </View>
             {editingParent?.item_id ? (
               <WarningCallout warnings={editWarnings} />
@@ -713,7 +717,7 @@ export default function ShoppingListScreen() {
                         <View
                           style={[
                             styles.storeColorDot,
-                            { backgroundColor: metadata?.stores?.find((s) => s.id === editStoreId)?.color_code ?? '#9ca3af' },
+                            { backgroundColor: metadata?.stores?.find((s) => s.id === editStoreId)?.color_code ?? colors.textDisabled },
                           ]}
                         />
                         <Text style={styles.storeNameText}>
@@ -724,7 +728,7 @@ export default function ShoppingListScreen() {
                       <Text style={styles.dropdownPlaceholder}>No store</Text>
                     )}
                   </View>
-                  <ChevronDown size={16} color="#6b7280" />
+                  <ChevronDown size={16} color={colors.textMuted} />
                 </TouchableOpacity>
                 {editStoreDropdownOpen ? (
                   <View style={styles.dropdownMenu}>
@@ -736,7 +740,7 @@ export default function ShoppingListScreen() {
                         setEditStoreDropdownOpen(false);
                       }}
                     >
-                      <Text style={[styles.storeNameText, { color: '#9ca3af' }]}>— No store —</Text>
+                      <Text style={[styles.storeNameText, { color: colors.textDisabled }]}>— No store —</Text>
                     </TouchableOpacity>
                     {metadata?.stores?.map((store) => (
                       <TouchableOpacity
@@ -783,58 +787,58 @@ export default function ShoppingListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ffffff' },
+const makeStyles = (colors: AppColors) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
   globalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 10 },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
-  headerActionBtn: { padding: 8, backgroundColor: '#eff6ff', borderRadius: 12, position: 'relative' },
-  badge: { position: 'absolute', top: -4, right: -4, borderRadius: 10, width: 18, height: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'white' },
-  undoBadge: { backgroundColor: '#ef4444' },
-  redoBadge: { backgroundColor: '#10b981' },
-  badgeText: { color: 'white', fontSize: 9, fontWeight: '800' },
-  headerContainer: { paddingTop: 8, paddingBottom: 8, backgroundColor: '#ffffff', zIndex: 10, width: '100%', maxWidth: 600, alignSelf: 'center' },
+  headerActionBtn: { padding: 8, backgroundColor: colors.buttonSecondary, borderRadius: 12, position: 'relative' },
+  badge: { position: 'absolute', top: -4, right: -4, borderRadius: 10, width: 18, height: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: colors.primaryForeground },
+  undoBadge: { backgroundColor: colors.undoBadge },
+  redoBadge: { backgroundColor: colors.redoBadge },
+  badgeText: { color: colors.primaryForeground, fontSize: 9, fontWeight: '800' },
+  headerContainer: { paddingTop: 8, paddingBottom: 8, backgroundColor: colors.background, zIndex: 10, width: '100%', maxWidth: 600, alignSelf: 'center' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingBottom: 100 },
-  sectionHeader: { height: 32, backgroundColor: '#f3f4f6', paddingHorizontal: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#e5e7eb', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionHeaderText: { fontSize: 12, fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5 },
-  itemRow: { minHeight: 48, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#f9fafb', backgroundColor: '#ffffff', width: '100%' },
-  itemRowActive: { backgroundColor: '#eff6ff', elevation: 5, zIndex: 100 },
+  sectionHeader: { height: 32, backgroundColor: colors.surfaceRaised, paddingHorizontal: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionHeaderText: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  itemRow: { minHeight: 48, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.surface, width: '100%' },
+  itemRowActive: { backgroundColor: colors.buttonSecondary, elevation: 5, zIndex: 100 },
   shoppingPressable: { flex: 1, justifyContent: 'center' },
   planningTextPressable: { flex: 1, justifyContent: 'center' },
   colCheckbox: { marginRight: 12, width: 32, alignItems: 'center' },
   textContent: { flex: 1, marginRight: 8 },
-  nameText: { fontSize: 15, fontWeight: '500', color: '#111827' },
-  secondaryText: { fontSize: 12, color: '#6b7280', marginTop: 2 },
-  strikethrough: { textDecorationLine: 'line-through', color: '#9ca3af' },
+  nameText: { fontSize: 15, fontWeight: '500', color: colors.textPrimary },
+  secondaryText: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  strikethrough: { textDecorationLine: 'line-through', color: colors.textDisabled },
   dragHandle: { paddingHorizontal: 8, justifyContent: 'center' },
-  inlineEndTripBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#bfdbfe' },
-  inlineEndTripText: { fontSize: 11, fontWeight: '700', color: '#2563eb', marginLeft: 4 },
-  globalEndTripBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2563eb', margin: 20, padding: 16, borderRadius: 16, shadowColor: '#2563eb', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  globalEndTripText: { color: 'white', fontWeight: '700', fontSize: 16, marginLeft: 8 },
+  inlineEndTripBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.buttonSecondary, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: colors.border },
+  inlineEndTripText: { fontSize: 11, fontWeight: '700', color: colors.primary, marginLeft: 4 },
+  globalEndTripBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, margin: 20, padding: 16, borderRadius: 16, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  globalEndTripText: { color: colors.primaryForeground, fontWeight: '700', fontSize: 16, marginLeft: 8 },
   emptyContainer: { padding: 32, alignItems: 'center', marginTop: 40 },
-  emptyText: { color: '#9ca3af', fontSize: 16 },
-  modalOverlay: { flex: 1, justifyContent: 'center', paddingHorizontal: 16, backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContent: { backgroundColor: 'white', borderRadius: 16, padding: 24, maxHeight: '85%' },
-  modalTitle: { fontSize: 20, fontWeight: '700' },
+  emptyText: { color: colors.textDisabled, fontSize: 16 },
+  modalOverlay: { flex: 1, justifyContent: 'center', paddingHorizontal: 16, backgroundColor: colors.modalOverlay },
+  modalContent: { backgroundColor: colors.surface, borderRadius: 16, padding: 24, maxHeight: '85%' },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   modalCloseBtn: { padding: 8 },
-  deleteBtn: { padding: 8, backgroundColor: '#fee2e2', borderRadius: 8 },
-  label: { fontSize: 12, fontWeight: '700', color: '#9ca3af', marginBottom: 8, textTransform: 'uppercase' },
-  modalInput: { backgroundColor: '#f3f4f6', padding: 16, borderRadius: 12, marginBottom: 16, fontSize: 16 },
+  deleteBtn: { padding: 8, backgroundColor: colors.destructiveSurface, borderRadius: 8 },
+  label: { fontSize: 12, fontWeight: '700', color: colors.textDisabled, marginBottom: 8, textTransform: 'uppercase' },
+  modalInput: { backgroundColor: colors.surfaceRaised, padding: 16, borderRadius: 12, marginBottom: 16, fontSize: 16, color: colors.textPrimary },
   tagsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
   usualQtySection: { marginBottom: 16 },
   tag: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
-  tagActive: { backgroundColor: '#2563eb', borderColor: '#2563eb' },
-  tagInactive: { backgroundColor: 'white', borderColor: '#d1d5db' },
-  tagTextActive: { color: 'white', fontWeight: '600' },
-  tagTextInactive: { color: '#374151' },
+  tagActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  tagInactive: { backgroundColor: colors.surface, borderColor: colors.inputBorder },
+  tagTextActive: { color: colors.primaryForeground, fontWeight: '600' },
+  tagTextInactive: { color: colors.textSecondary },
   modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8 },
   dropdownTrigger: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 12,
     padding: 12,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.surfaceRaised,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -845,16 +849,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   dropdownPlaceholder: {
-    color: '#9ca3af',
+    color: colors.textDisabled,
     fontSize: 14,
     fontWeight: '500',
   },
   dropdownMenu: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: colors.border,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#ffffff',
+    backgroundColor: colors.surface,
     marginTop: 4,
   },
   dropdownOption: {
@@ -872,13 +876,13 @@ const styles = StyleSheet.create({
   storeNameText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.textPrimary,
   },
   actionBtn: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, alignItems: 'center' },
-  cancelBtn: { backgroundColor: '#e5e7eb' },
-  saveBtn: { backgroundColor: '#2563eb' },
-  cancelText: { fontWeight: '700', color: '#374151' },
-  saveText: { fontWeight: '700', color: 'white' },
+  cancelBtn: { backgroundColor: colors.buttonSecondary },
+  saveBtn: { backgroundColor: colors.primary },
+  cancelText: { fontWeight: '700', color: colors.buttonSecondaryText },
+  saveText: { fontWeight: '700', color: colors.primaryForeground },
   otherUserPurchasedBadge: {
     width: 24,
     height: 24,

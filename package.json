@@ -17,6 +17,8 @@
     "db:types": "export $(grep -v '^#' .env | xargs) && npx supabase gen types typescript --linked > client/lib/database.types.ts"
   },
   "devDependencies": {
-    "supabase": "^2.76.12"
+    "@types/react": "~19.2.14",
+    "supabase": "^2.76.12",
+    "typescript": "~6.0.3"
   }
 }

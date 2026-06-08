@@ -1,1 +1,1 @@
-/home/mmednick/.workflow-template/review-plan.md
+/home/mmednick/Development/workflow_template/review-plan.md

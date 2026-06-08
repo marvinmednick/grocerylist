@@ -1,1 +1,1 @@
-/home/mmednick/.workflow-template/claude-stubs/fix-baseline.md
+/home/mmednick/Development/workflow_template/claude-stubs/fix-baseline.md

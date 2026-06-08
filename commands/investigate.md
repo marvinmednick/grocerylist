@@ -1,1 +1,1 @@
-/home/mmednick/.workflow-template/investigate.md
+/home/mmednick/Development/workflow_template/investigate.md
