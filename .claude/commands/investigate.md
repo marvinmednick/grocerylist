@@ -1,1 +1,1 @@
-/home/mmednick/.workflow-template/claude-stubs/investigate.md
+/home/mmednick/Development/workflow_template/claude-stubs/investigate.md

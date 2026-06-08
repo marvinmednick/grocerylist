@@ -1,1 +1,1 @@
-/home/mmednick/.workflow-template/claude-stubs/triage.md
+/home/mmednick/Development/workflow_template/claude-stubs/triage.md

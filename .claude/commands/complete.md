@@ -1,1 +1,1 @@
-/home/mmednick/.workflow-template/claude-stubs/complete.md
+/home/mmednick/Development/workflow_template/claude-stubs/complete.md

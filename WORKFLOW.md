@@ -66,6 +66,18 @@ Tool is read from `.implement.conf` → `IMPLEMENT_TOOL` env → `--tool` arg (a
 | `--tool codex` | Codex CLI (project default) |
 | `--tool gemini` | Gemini CLI |
 | `--tool aider --model <model>` | aider (interactive) |
+| `--tool claude` | Claude Code (in-session Agent — recommended) |
+
+### Implement: Two Options
+
+When using Claude as the implementor (`--tool claude`), there are two paths:
+
+| Option | Command | When to use |
+|--------|---------|-------------|
+| **In-session Agent** (recommended) | `/implement F[N]` in Claude Code | Spawns an Agent sub-agent; same session; faster round-trips |
+| **CLI subprocess** (most isolated) | `./implement F[N]` (with `tool=claude` in `.implement.conf`) | Launches `claude` in a new terminal; fully isolated |
+
+Both produce identical output. `/implement F[N]` is recommended for most workflows.
 
 ---
 

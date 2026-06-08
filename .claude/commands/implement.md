@@ -1,0 +1,1 @@
+/home/mmednick/Development/workflow_template/claude-stubs/implement.md

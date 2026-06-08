@@ -1,1 +1,1 @@
-/home/mmednick/.workflow-template/resolve.md
+/home/mmednick/Development/workflow_template/resolve.md

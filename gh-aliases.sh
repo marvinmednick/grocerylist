@@ -1,1 +1,1 @@
-/home/mmednick/.workflow-template/scripts/gh-aliases.sh
+/home/mmednick/Development/workflow_template/scripts/gh-aliases.sh

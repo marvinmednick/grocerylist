@@ -1,1 +1,1 @@
-/home/mmednick/.workflow-template/claude-stubs/spec.md
+/home/mmednick/Development/workflow_template/claude-stubs/spec.md

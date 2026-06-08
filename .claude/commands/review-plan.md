@@ -1,1 +1,1 @@
-/home/mmednick/.workflow-template/claude-stubs/review-plan.md
+/home/mmednick/Development/workflow_template/claude-stubs/review-plan.md
